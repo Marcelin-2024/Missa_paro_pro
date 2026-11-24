@@ -1,0 +1,22 @@
+<%
+  const fieldId = name;
+  const hasError = typeof errorText !== 'undefined' && errorText;
+%>
+<div class="form-group">
+    <label for="<%= fieldId %>" class="form-label">
+        <%= label %>
+    </label>
+    <select
+        name="<%= name %>"
+        id="<%= fieldId %>"
+        class="form-select<%= hasError ? ' is-invalid' : '' %>"
+        <% if (typeof requit !== 'undefined' && requit) { %> required<% } %>
+    >
+        <% for (const [val, text] of options) { %>
+            <option value="<%= val %>"><%= text %></option>
+        <% } %>
+    </select>
+    <% if (hasError) { %>
+        <span id="<%= fieldId %>-error" class="form-error" role="alert"><%= errorText %></span>
+    <% } %>
+</div>

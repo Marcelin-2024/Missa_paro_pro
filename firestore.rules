@@ -1,0 +1,224 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default-Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Primitive Helpers ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerified() && request.auth.token.email == 'settaocram@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerified() && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // --- Validation Blueprints ---
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'paroisse', 'diocese', 'role', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'displayName', 'paroisse', 'diocese', 'role', 'createdAt']) &&
+        isValidId(data.uid) &&
+        data.uid == request.auth.uid &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
+        data.paroisse is string && data.paroisse.size() >= 1 && data.paroisse.size() <= 120 &&
+        data.diocese is string && data.diocese.size() >= 1 && data.diocese.size() <= 120 &&
+        data.role in ['fidele', 'paroisse'] &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidUserPrivateInfo(data) {
+      return data.keys().hasAll(['uid', 'email', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'telephone', 'updatedAt']) &&
+        isValidId(data.uid) &&
+        data.uid == request.auth.uid &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 200 &&
+        (!('telephone' in data) || (data.telephone is string && data.telephone.size() <= 30)) &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidMesse(data) {
+      return data.keys().hasAll(['date', 'horaire', 'celebrant', 'paroisse', 'statut', 'createdBy', 'createdAt']) &&
+        data.keys().hasOnly(['date', 'horaire', 'celebrant', 'paroisse', 'statut', 'createdBy', 'createdAt']) &&
+        data.date is string && data.date.size() >= 1 && data.date.size() <= 40 &&
+        data.horaire is string && data.horaire.size() >= 1 && data.horaire.size() <= 40 &&
+        data.celebrant is string && data.celebrant.size() >= 1 && data.celebrant.size() <= 120 &&
+        data.paroisse is string && data.paroisse.size() >= 1 && data.paroisse.size() <= 120 &&
+        data.statut in ['A venir', 'Passée', 'Annulée'] &&
+        isValidId(data.createdBy) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidAnnonce(data) {
+      return data.keys().hasAll(['type', 'titre', 'dateAnnonce', 'contenu', 'createdBy', 'createdAt']) &&
+        data.keys().hasOnly(['type', 'titre', 'dateAnnonce', 'contenu', 'createdBy', 'createdAt']) &&
+        data.type in ['evenement', 'Deces', 'Communique', 'Solennite'] &&
+        data.titre is string && data.titre.size() >= 1 && data.titre.size() <= 200 &&
+        data.dateAnnonce is string && data.dateAnnonce.size() >= 1 && data.dateAnnonce.size() <= 40 &&
+        data.contenu is string && data.contenu.size() >= 1 && data.contenu.size() <= 2000 &&
+        isValidId(data.createdBy) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidIntention(data) {
+      return data.keys().hasAll([
+          'fideleId', 'fideleNom', 'messeId', 'messeDate', 'messeHoraire',
+          'celebrant', 'objetIntention', 'detailIntention', 'statut', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'fideleId', 'fideleNom', 'messeId', 'messeDate', 'messeHoraire',
+          'celebrant', 'objetIntention', 'detailIntention', 'statut', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.fideleId) &&
+        data.fideleNom is string && data.fideleNom.size() >= 1 && data.fideleNom.size() <= 120 &&
+        isValidId(data.messeId) &&
+        data.messeDate is string && data.messeDate.size() >= 1 && data.messeDate.size() <= 40 &&
+        data.messeHoraire is string && data.messeHoraire.size() >= 1 && data.messeHoraire.size() <= 40 &&
+        data.celebrant is string && data.celebrant.size() >= 1 && data.celebrant.size() <= 120 &&
+        data.objetIntention is string && data.objetIntention.size() >= 1 && data.objetIntention.size() <= 150 &&
+        data.detailIntention is string && data.detailIntention.size() >= 1 && data.detailIntention.size() <= 1000 &&
+        data.statut in ['en attente', 'validé', 'annulée'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // --- Connection Health Check (testConnection) ---
+    match /test/connection {
+      allow get: if isSignedIn();
+    }
+
+    // --- Admin Markers (Read-Only for owner/admin) ---
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && (isOwner(adminId) || isAdmin());
+      allow list, write: if false;
+    }
+
+    // --- User Profiles (No PII) ---
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isBootstrappedAdmin() && resource.data.role in ['fidele', 'paroisse'];
+      allow create: if isVerified() && isValidId(userId) && isOwner(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().createdAt == request.time;
+      allow update: if isVerified() && isValidId(userId) &&
+        isValidUserProfile(incoming()) &&
+        (isOwner(userId) || isAdmin()) &&
+        incoming().uid == existing().uid &&
+        incoming().role == existing().role &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'paroisse', 'diocese']);
+      allow delete: if false;
+
+      // --- Isolated PII Subcollection ---
+      match /private/info {
+        allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+        allow list: if false;
+        allow create: if isVerified() && isValidId(userId) && isOwner(userId) &&
+          isValidUserPrivateInfo(incoming()) &&
+          incoming().updatedAt == request.time;
+        allow update: if isVerified() && isValidId(userId) && isOwner(userId) &&
+          isValidUserPrivateInfo(incoming()) &&
+          incoming().uid == existing().uid &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['email', 'telephone', 'updatedAt']);
+        allow delete: if false;
+      }
+    }
+
+    // --- Messes ---
+    match /messes/{messeId} {
+      allow get: if isValidId(messeId) && isSignedIn();
+      allow list: if isSignedIn() && resource.data.statut in ['A venir', 'Passée', 'Annulée'];
+      allow create: if isAdmin() && isValidId(messeId) &&
+        isValidMesse(incoming()) &&
+        incoming().createdBy == request.auth.uid &&
+        incoming().createdAt == request.time;
+      allow update: if isAdmin() && isValidId(messeId) &&
+        isValidMesse(incoming()) &&
+        incoming().createdBy == existing().createdBy &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['date', 'horaire', 'celebrant', 'paroisse', 'statut']);
+      allow delete: if isAdmin() && isValidId(messeId);
+    }
+
+    // --- Annonces ---
+    match /annonces/{annonceId} {
+      allow get: if isValidId(annonceId) && isSignedIn();
+      allow list: if isSignedIn() && resource.data.type in ['evenement', 'Deces', 'Communique', 'Solennite'];
+      allow create: if isAdmin() && isValidId(annonceId) &&
+        isValidAnnonce(incoming()) &&
+        incoming().createdBy == request.auth.uid &&
+        incoming().createdAt == request.time;
+      allow update: if isAdmin() && isValidId(annonceId) &&
+        isValidAnnonce(incoming()) &&
+        incoming().createdBy == existing().createdBy &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['type', 'titre', 'dateAnnonce', 'contenu']);
+      allow delete: if isAdmin() && isValidId(annonceId);
+    }
+
+    // --- Intentions de Messe ---
+    match /intentions/{intentionId} {
+      allow get: if isValidId(intentionId) && isSignedIn() && (
+        existing().fideleId == request.auth.uid || isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.fideleId == request.auth.uid || isBootstrappedAdmin()
+      );
+      allow create: if isVerified() && isValidId(intentionId) &&
+        isValidIntention(incoming()) &&
+        incoming().fideleId == request.auth.uid &&
+        incoming().statut == 'en attente' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/messes/$(incoming().messeId));
+      allow update: if isVerified() && isValidId(intentionId) &&
+        isValidIntention(incoming()) &&
+        incoming().fideleId == existing().fideleId &&
+        incoming().messeId == existing().messeId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          // Tier 1: Admin can validate or cancel intentions (or correct status)
+          (isAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['statut', 'updatedAt'])) ||
+          // Tier 2: Owner can edit intention details only while still 'en attente'
+          (isOwner(existing().fideleId) &&
+            existing().statut == 'en attente' &&
+            incoming().statut == 'en attente' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['objetIntention', 'detailIntention', 'updatedAt']))
+        );
+      allow delete: if isVerified() && isValidId(intentionId) && (
+        (isOwner(existing().fideleId) && existing().statut == 'en attente') ||
+        isAdmin()
+      );
+    }
+  }
+}

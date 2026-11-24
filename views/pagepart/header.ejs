@@ -1,0 +1,36 @@
+<div class="flex items-center gap-2">
+    <button
+        type="button"
+        class="icon-btn mobile-menu-toggle"
+        data-drawer-toggle
+        aria-label="Ouvrir le menu de navigation"
+        aria-expanded="false"
+        aria-controls="app-sidebar"
+    >
+        <span class="material-symbols-rounded" aria-hidden="true">menu</span>
+    </button>
+    <a href="/page/tableau_bords" class="header-card header-brand">
+        <img src="/static/image/logomissaparo.png" alt="Logo Missa Paro" class="header-logo">
+        <span class="header-brand-name">Missa Paro</span>
+    </a>
+</div>
+
+<div class="header-card header-parish">
+    <img src="/static/icon/eglise.svg" alt="" class="header-avatar">
+    <div class="header-parish-info">
+        <p class="header-parish-title">Paroisse <%= user && user.paroisse ? user.paroisse : 'Sainte Rita' %></p>
+        <p id="header-welcome-name" class="header-parish-welcome">Bienvenue <%= user && user.nom_complet ? user.nom_complet : 'Marcelin Attes' %></p>
+    </div>
+</div>
+
+<div class="header-card header-actions">
+    <button
+        id="notification-btn"
+        type="button"
+        class="icon-btn"
+        aria-label="Afficher les notifications"
+        title="Notifications"
+    >
+        <span class="material-symbols-rounded" aria-hidden="true">notifications</span>
+    </button>
+</div>

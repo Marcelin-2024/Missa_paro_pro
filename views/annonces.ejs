@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" href="/static/image/logomissaparo.png" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Application de gestion paroissiale — messes, annonces, intentions et espace fidèles.">
+    <title>Missa Paro - Annonces</title>
+    <%- include('partials/styles') %>
+</head>
+
+<body>
+    <main class="form-page">
+        <div class="form-card">
+            <div class="card-header-gradient">
+                <div>
+                    <h1 class="section-title">Nouvelle annonce paroissiale</h1>
+                    <p class="text-muted">Publiez un événement, communiqué ou avis aux fidèles</p>
+                </div>
+                <a href="/page/tableau_bords" class="btn btn-outline btn-sm">Retour</a>
+            </div>
+
+            <form
+                id="ajoute-annonce-form"
+                action="/page/ajoute_annonce"
+                method="POST"
+                enctype="multipart/form-data"
+                class="form-body"
+                data-loading-form
+            >
+                <% for (const champ of champs) { %>
+                    <% if (champ.type === 'select') { %>
+                        <%- include('partials/select_field', { name: champ.name, label: champ.label, options: champ.options, requit: champ.required }) %>
+                    <% } else { %>
+                        <%- include('partials/input_field', { name: champ.name, label: champ.label, placeholder: champ.placeholder, type: champ.type, value: '', requit: champ.required }) %>
+                    <% } %>
+                <% } %>
+
+                <div class="form-group">
+                    <label for="date_annonce" class="form-label">Date de l'annonce</label>
+                    <input id="date_annonce" type="date" name="date_annonce" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="image_annonce" class="form-label">Image de l'annonce (Optionnel)</label>
+                    <div id="upload-dropzone" class="upload-dropzone">
+                        <input
+                            id="image_annonce"
+                            type="file"
+                            name="image_annonce"
+                            accept="image/*"
+                            class="upload-input"
+                            aria-describedby="image_annonce-helper"
+                            onchange="previewImage(event)"
+                        >
+                        <span class="upload-dropzone-title">Cliquez ou déposez une image ici</span>
+                        <span id="image_annonce-filename" class="upload-dropzone-hint">
+                            Formats acceptés : JPG, PNG (Max 2 Mo)
+                        </span>
+                    </div>
+                    <small id="image_annonce-helper" class="form-helper">
+                        L'image accompagne l'annonce dans le tableau de bord paroissial.
+                    </small>
+
+                    <div id="upload-preview-box" class="upload-preview-box hidden">
+                        <img id="aperçu" src="#" alt="Aperçu de l'image" class="upload-preview">
+                        <button id="remove-image-btn" type="button" class="btn btn-outline btn-sm mt-2">
+                            Retirer l'image
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="contenu_annonce" class="form-label">Détails de l'annonce</label>
+                    <textarea
+                        id="contenu_annonce"
+                        name="contenu_annonce"
+                        class="form-textarea"
+                        required
+                        rows="4"
+                        placeholder="Écrivez le message ici..."
+                    ></textarea>
+                </div>
+
+                <%- include('partials/bouton_envoi', { name: "Publier l'annonce" }) %>
+
+                <a href="/page/tableau_bords" class="btn btn-outline btn-block">
+                    Annuler et retourner au tableau de bord
+                </a>
+            </form>
+        </div>
+    </main>
+
+    <script src="/static/js/ui-interactions.js"></script>
+    <script type="module" src="/static/js/firebase-client.js"></script>
+    <script>
+        function previewImage(event) {
+            const input = event.target;
+            const previewBox = document.getElementById('upload-preview-box');
+            const output = document.getElementById('aperçu');
+            const filenameEl = document.getElementById('image_annonce-filename');
+            if (!input.files || !input.files[0]) return;
+
+            const file = input.files[0];
+            if (filenameEl) {
+                filenameEl.textContent = file.name;
+            }
+            const reader = new FileReader();
+            reader.onload = function () {
+                if (output && typeof reader.result === 'string') {
+                    output.src = reader.result;
+                    if (previewBox) previewBox.classList.remove('hidden');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        const dropzone = document.getElementById('upload-dropzone');
+        if (dropzone) {
+            dropzone.addEventListener('dragover', function () {
+                dropzone.classList.add('is-dragover');
+            });
+            dropzone.addEventListener('dragleave', function () {
+                dropzone.classList.remove('is-dragover');
+            });
+            dropzone.addEventListener('drop', function () {
+                dropzone.classList.remove('is-dragover');
+            });
+        }
+
+        const removeBtn = document.getElementById('remove-image-btn');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function () {
+                const input = document.getElementById('image_annonce');
+                const previewBox = document.getElementById('upload-preview-box');
+                const output = document.getElementById('aperçu');
+                const filenameEl = document.getElementById('image_annonce-filename');
+                if (input) input.value = '';
+                if (output) output.src = '#';
+                if (previewBox) previewBox.classList.add('hidden');
+                if (filenameEl) filenameEl.textContent = 'Formats acceptés : JPG, PNG (Max 2 Mo)';
+            });
+        }
+
+        document.getElementById('ajoute-annonce-form').addEventListener('submit', async function (e) {
+            if (window.missaFirebase) {
+                e.preventDefault();
+                const form = this;
+                const type = form.querySelector('[name="type_annonces"]')?.value || 'Communique';
+                const titre = form.querySelector('[name="Titre_annonce"]')?.value || '';
+                const dateAnnonce = form.querySelector('[name="date_annonce"]')?.value || '';
+                const contenu = form.querySelector('[name="contenu_annonce"]')?.value || '';
+                try {
+                    await window.missaFirebase.createAnnonceFirestore(type, titre, dateAnnonce, contenu);
+                } catch (err) {
+                    console.warn(err);
+                }
+                form.submit();
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" href="/static/image/logomissaparo.png" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Application de gestion paroissiale — messes, annonces, intentions et espace fidèles.">
+    <title>Missa Paro - Ajout de messe</title>
+    <%- include('partials/styles') %>
+</head>
+
+<body>
+    <main class="form-page">
+        <div class="form-card">
+            <div class="card-header-gradient">
+                <div>
+                    <h1 class="section-title">Ajouter une messe</h1>
+                    <p class="text-muted">Programmez une nouvelle célébration paroissiale</p>
+                </div>
+                <a href="/page/tableau_bords" class="btn btn-outline btn-sm">Retour</a>
+            </div>
+
+            <form id="ajoute-messe-form" action="/page/ajoute_messe" method="POST" class="form-body" data-loading-form>
+                <% for (const champ of champs) { %>
+                    <% if (champ.type === 'select') { %>
+                        <%- include('partials/select_field', { name: champ.name, label: champ.label, options: champ.options, requit: champ.required }) %>
+                    <% } else { %>
+                        <%- include('partials/input_field', { name: champ.name, label: champ.label, placeholder: champ.placeholder, type: champ.type, value: '', requit: champ.required }) %>
+                    <% } %>
+                <% } %>
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="date_messe" class="form-label">Date de la messe</label>
+                        <input id="date_messe" type="date" name="date_messe" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="heure_messe" class="form-label">Heure de la messe</label>
+                        <input id="heure_messe" type="time" name="heure_messe" class="form-control" required>
+                    </div>
+                </div>
+
+                <%- include('partials/bouton_envoi', { name: 'Ajouter la messe' }) %>
+
+                <a href="/page/tableau_bords" class="btn btn-outline btn-block">
+                    Annuler et retourner au tableau de bord
+                </a>
+            </form>
+        </div>
+    </main>
+
+    <script src="/static/js/ui-interactions.js"></script>
+    <script type="module" src="/static/js/firebase-client.js"></script>
+    <script>
+        document.getElementById('ajoute-messe-form').addEventListener('submit', async function (e) {
+            if (window.missaFirebase) {
+                e.preventDefault();
+                const form = this;
+                const celebrant = form.querySelector('[name="Celebrant_messe"]')?.value || '';
+                const date = form.querySelector('[name="date_messe"]')?.value || '';
+                const horaire = form.querySelector('[name="heure_messe"]')?.value || '';
+                try {
+                    await window.missaFirebase.createMesseFirestore(celebrant, date, horaire);
+                } catch (err) {
+                    console.warn(err);
+                }
+                form.submit();
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,222 @@
+.form-page {
+  min-height: 100vh;
+  background-color: var(--color-form-bg);
+  padding: var(--space-8) var(--space-4);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.form-card {
+  width: min(100%, 560px);
+  background-color: var(--color-white);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border-light);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.form-body {
+  padding: var(--space-6);
+}
+
+.form-group {
+  margin-bottom: var(--space-5);
+  text-align: left;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--font-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+}
+
+.form-control,
+.form-select,
+.form-textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px var(--space-4);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-white);
+  font-size: var(--font-base);
+  color: var(--color-text-primary);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+}
+
+.form-control:hover:not(:disabled),
+.form-select:hover:not(:disabled),
+.form-textarea:hover:not(:disabled) {
+  border-color: var(--color-primary);
+}
+
+.form-control:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-focus);
+}
+
+.form-control.is-invalid,
+.form-select.is-invalid,
+.form-textarea.is-invalid {
+  border-color: var(--color-danger);
+}
+
+.form-control:disabled,
+.form-select:disabled,
+.form-textarea:disabled {
+  background-color: var(--color-surface-muted);
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.form-textarea {
+  min-height: 96px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.form-helper {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+}
+
+.form-error {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--font-sm);
+  color: var(--color-danger);
+  font-weight: var(--font-medium);
+}
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+/* Password toggle */
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper .form-control {
+  padding-right: 72px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: var(--space-2);
+  padding: 4px var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-primary);
+  font-size: var(--font-sm);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  background-color: var(--color-primary-light);
+}
+
+/* Upload Dropzone */
+.upload-dropzone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-4);
+  border: 1.5px dashed var(--color-primary);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface-soft);
+  text-align: center;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.upload-dropzone:hover,
+.upload-dropzone.is-dragover {
+  background-color: var(--color-primary-light);
+  border-color: var(--color-primary-hover);
+}
+
+.upload-dropzone-title {
+  font-size: var(--font-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-heading);
+}
+
+.upload-dropzone-hint {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+}
+
+.upload-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.upload-preview-box {
+  margin-top: var(--space-3);
+}
+
+.upload-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+/* Ecclesiastical Directory Selector */
+.ecclesiastical-section {
+  padding: var(--space-4);
+  margin-bottom: var(--space-5);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface-soft);
+}
+
+.ecclesiastical-section-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-base);
+  font-weight: var(--font-bold);
+  color: var(--color-heading);
+}
+
+.parish-search-wrap {
+  margin-bottom: var(--space-2);
+}
+
+.parish-empty-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+

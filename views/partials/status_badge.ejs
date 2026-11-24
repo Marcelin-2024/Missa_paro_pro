@@ -1,0 +1,14 @@
+<%
+  const normalized = String(statut || '').toLowerCase();
+  let badgeClass = 'badge-warning';
+  if (normalized === 'a venir') {
+    badgeClass = 'badge-info';
+  } else if (normalized === 'validé' || normalized === 'validée') {
+    badgeClass = 'badge-success';
+  } else if (normalized === 'annulée' || normalized === 'annulee') {
+    badgeClass = 'badge-danger';
+  } else if (normalized === 'passée' || normalized === 'passee') {
+    badgeClass = 'badge-neutral';
+  }
+%>
+<span class="badge <%= badgeClass %>"><%= statut %></span>

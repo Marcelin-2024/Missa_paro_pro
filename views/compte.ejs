@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" href="/static/image/logomissaparo.png" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Application de gestion paroissiale — messes, annonces, intentions et espace fidèles.">
+    <meta property="og:title" content="Missa Paro - Compte">
+    <meta property="og:description" content="Application de gestion paroissiale — messes, annonces, intentions et espace fidèles.">
+    <title>Missa Paro - Connexion</title>
+    <%- include('partials/styles') %>
+</head>
+
+<body class="auth-page">
+    <main class="auth-card" aria-labelledby="login-title">
+        <div class="auth-brand">
+            <img src="/static/image/logomissaparo.png" alt="Logo Missa Paro" class="auth-logo">
+            <h1 id="login-title" class="page-title">Connexion à votre espace</h1>
+            <p class="auth-subtitle">Heureux de vous revoir sur Missa Paro</p>
+        </div>
+
+        <% if (typeof error !== 'undefined' && error) { %>
+            <div class="alert alert-error mb-4" role="alert">
+                <%= error %>
+            </div>
+        <% } %>
+
+        <form action="/page/verification" method="POST" data-loading-form>
+            <% for (const champ of champs) { %>
+                <% if (champ.type === 'select') { %>
+                    <%- include('partials/select_field', { name: champ.name, label: champ.label, options: champ.options, requit: champ.required }) %>
+                <% } else { %>
+                    <%- include('partials/input_field', { name: champ.name, label: champ.label, placeholder: champ.placeholder, type: champ.type, value: '', requit: champ.required, width: champ.width || null }) %>
+                <% } %>
+            <% } %>
+            <%- include('partials/bouton_envoi', { name: 'Se connecter' }) %>
+        </form>
+
+        <div class="auth-divider">ou</div>
+
+        <button id="google-signin-btn" type="button" class="btn btn-secondary btn-block">
+            Continuer avec Google (Firebase)
+        </button>
+        <p id="firebase-login-error" class="alert alert-error mt-3 hidden" role="alert"></p>
+
+        <div class="auth-footer">
+            <span>Vous n'avez pas encore de compte ?</span>
+            <a class="auth-link" href="/page/inscription">Créer un compte paroisse</a>
+        </div>
+    </main>
+
+    <script src="/static/js/ui-interactions.js"></script>
+    <script type="module" src="/static/js/firebase-client.js"></script>
+</body>
+
+</html>

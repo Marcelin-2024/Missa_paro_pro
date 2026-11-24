@@ -1,0 +1,57 @@
+<%
+  const fieldId = name;
+  const hasError = typeof errorText !== 'undefined' && errorText;
+  const hasHelper = typeof helperText !== 'undefined' && helperText;
+%>
+<div class="form-group">
+    <label for="<%= fieldId %>" class="form-label">
+        <%= label %>
+    </label>
+    <% if (type === 'textarea') { %>
+        <textarea
+            name="<%= name %>"
+            id="<%= fieldId %>"
+            class="form-textarea<%= hasError ? ' is-invalid' : '' %>"
+            placeholder="<%= placeholder || '' %>"
+            <% if (requit) { %> required<% } %>
+            <% if (hasError) { %> aria-invalid="true" aria-describedby="<%= fieldId %>-error"<% } else if (hasHelper) { %> aria-describedby="<%= fieldId %>-helper"<% } %>
+        ><%= value || '' %></textarea>
+    <% } else if (type === 'password') { %>
+        <div class="password-wrapper">
+            <input
+                type="password"
+                name="<%= name %>"
+                id="<%= fieldId %>"
+                class="form-control<%= hasError ? ' is-invalid' : '' %>"
+                placeholder="<%= placeholder || '' %>"
+                value="<%= value || '' %>"
+                <% if (requit) { %> required<% } %>
+                <% if (hasError) { %> aria-invalid="true" aria-describedby="<%= fieldId %>-error"<% } else if (hasHelper) { %> aria-describedby="<%= fieldId %>-helper"<% } %>
+            >
+            <button
+                type="button"
+                class="password-toggle"
+                data-toggle-password="<%= fieldId %>"
+                aria-label="Afficher ou masquer le mot de passe"
+                aria-pressed="false"
+            >Afficher</button>
+        </div>
+    <% } else { %>
+        <input
+            type="<%= type || 'text' %>"
+            name="<%= name %>"
+            id="<%= fieldId %>"
+            class="form-control<%= hasError ? ' is-invalid' : '' %>"
+            placeholder="<%= placeholder || '' %>"
+            value="<%= value || '' %>"
+            <% if (requit) { %> required<% } %>
+            <% if (hasError) { %> aria-invalid="true" aria-describedby="<%= fieldId %>-error"<% } else if (hasHelper) { %> aria-describedby="<%= fieldId %>-helper"<% } %>
+        >
+    <% } %>
+    <% if (hasHelper) { %>
+        <small id="<%= fieldId %>-helper" class="form-helper"><%= helperText %></small>
+    <% } %>
+    <% if (hasError) { %>
+        <span id="<%= fieldId %>-error" class="form-error" role="alert"><%= errorText %></span>
+    <% } %>
+</div>

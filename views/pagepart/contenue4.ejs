@@ -1,0 +1,64 @@
+<div class="page-header">
+    <div class="page-header-meta">
+        <h1 class="page-title">Gestion des annonces</h1>
+        <p class="page-subtitle">Consultez et publiez les communications paroissiales</p>
+    </div>
+    <div class="page-actions">
+        <a href="/page/annonces" class="btn btn-gold">Ajouter une annonce</a>
+    </div>
+</div>
+
+<% const annonces = (stats && stats.allAnnonces) ? stats.allAnnonces : []; %>
+<section class="table-card" aria-label="Liste des annonces paroissiales">
+    <div class="table-toolbar">
+        <div class="table-filters">
+            <label for="annonces-search" class="sr-only">Rechercher une annonce</label>
+            <input
+                id="annonces-search"
+                type="search"
+                class="form-control table-search"
+                placeholder="Rechercher par titre ou contenu..."
+                data-cards-search="annonces-cards-grid"
+            >
+            <label for="annonces-type-filter" class="sr-only">Filtrer par type</label>
+            <select
+                id="annonces-type-filter"
+                class="form-select table-search"
+                data-cards-filter="annonces-cards-grid"
+            >
+                <option value="">Tous les types</option>
+                <option value="evenement">Événement</option>
+                <option value="deces">Décès</option>
+                <option value="communique">Communiqué</option>
+                <option value="solennite">Solennité</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="annonces-cards-grid" class="cards-grid">
+        <% if (annonces.length > 0) { %>
+            <% for (const item of annonces) { %>
+                <article class="annonce-card" data-filter-type="<%= String(item.type || '').toLowerCase() %>">
+                    <div class="annonce-card-meta">
+                        <span class="badge badge-info"><%= item.type %></span>
+                        <span><%= item.date_annonce %></span>
+                    </div>
+                    <% if (item.image) { %>
+                        <img src="<%= item.image %>" alt="<%= item.titre %>" class="annonce-card-image">
+                    <% } %>
+                    <h2 class="annonce-card-title"><%= item.titre %></h2>
+                    <p class="annonce-card-content"><%= item.contenu %></p>
+                </article>
+            <% } %>
+        <% } else { %>
+            <div class="empty-state empty-state-full">
+                <p class="empty-state-title">Aucune annonce publiée</p>
+                <p>Publiez une première annonce pour informer les fidèles de la paroisse.</p>
+            </div>
+        <% } %>
+    </div>
+
+    <div id="annonces-cards-grid-empty" class="empty-state hidden">
+        Aucune annonce ne correspond à votre recherche.
+    </div>
+</section>

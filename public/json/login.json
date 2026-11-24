@@ -1,0 +1,121 @@
+{
+  "inscription_champs": [
+    {
+      "name": "nom_complet",
+      "label": "Nom complet",
+      "placeholder": "Koffi Marcelin",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "poste",
+      "label": "Poste",
+      "type": "select",
+      "options": [
+        [
+          "cure",
+          "Curé"
+        ],
+        [
+          "vicaire",
+          "Vicaire"
+        ],
+        [
+          "secretaire",
+          "Secrétaire"
+        ]
+      ],
+      "required": true
+    },
+    {
+      "name": "telephone",
+      "label": "Téléphone",
+      "placeholder": "+225 07XXXXXXXX",
+      "type": "tel",
+      "required": true
+    },
+    {
+      "name": "gmail",
+      "label": "Adresse Gmail",
+      "placeholder": "nom@domaine.com",
+      "type": "email",
+      "required": true
+    },
+    {
+      "name": "motdepasse",
+      "label": "Mot de passe",
+      "placeholder": "****************",
+      "type": "password",
+      "required": true
+    },
+    {
+      "name": "confirmationmotdepasse",
+      "label": "Confirmation du mot de passe",
+      "placeholder": "****************",
+      "type": "password",
+      "required": true
+    }
+  ],
+  "connection": [
+    {
+      "name": "gmail",
+      "label": "Adresse Gmail",
+      "placeholder": "nom@domaine.com",
+      "type": "email",
+      "required": true
+    },
+    {
+      "name": "motdepasse",
+      "label": "Mot de passe",
+      "placeholder": "****************",
+      "type": "password",
+      "required": true
+    }
+  ],
+  "messes": [
+    {
+      "name": "Celebrant_messe",
+      "label": "Célébrant de la messe",
+      "placeholder": "Célébrant de la messe",
+      "type": "text",
+      "width": "370px",
+      "required": true
+    }
+  ],
+    "annonces": [
+
+    {
+      "name": "type_annonces",
+      "label": "Type d'annonce",
+      "type": "select",
+      "options": [
+        [
+          "evenement",
+          "Événement"
+        ],
+        [
+          "Deces",
+          "Décès"
+        ],
+        [
+          "Communique",
+          "Communiqué"
+        ],
+        [
+          "Solennite",
+          "Solennité"
+        ]
+      ],
+      "required": true
+    },
+    
+    {
+      "name": "Titre_annonce",
+      "label": "Titre de l'annonce",
+      "placeholder": "Titre de l'annonce",
+      "type": "textarea",
+      "width": "370px",
+      "required": true
+    }
+  ]
+}

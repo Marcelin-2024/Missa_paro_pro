@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" href="/static/image/logomissaparo.png" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Application de gestion paroissiale — messes, annonces, intentions et espace fidèles.">
+    <title>Missa Paro - Tableau de bord</title>
+    <%- include('partials/styles') %>
+</head>
+
+<body class="dashboard-body">
+    <a href="#main-content" class="skip-link">Aller au contenu principal</a>
+
+    <!-- HEADER GLOBAL -->
+    <header class="app-header">
+        <%- include('pagepart/header', { user }) %>
+    </header>
+
+    <!-- APP SHELL -->
+    <div class="app-shell">
+        <div id="sidebar-backdrop" class="sidebar-backdrop" aria-hidden="true"></div>
+
+        <!-- SIDEBAR -->
+        <aside id="app-sidebar" class="app-sidebar" aria-label="Navigation principale">
+            <div class="sidebar-card">
+                <%- include('pagepart/menue') %>
+            </div>
+
+            <div class="sidebar-card">
+                <p id="firebase-auth-status" class="sidebar-status-text">Initialisation Firebase...</p>
+                <div class="sidebar-actions">
+                    <button id="firebase-auth-action" type="button" class="btn btn-outline btn-sm btn-block">
+                        Connexion Google (Firebase)
+                    </button>
+                    <button id="settings-btn" type="button" class="btn btn-ghost btn-sm btn-block">
+                        <span class="material-symbols-rounded icon-sm" aria-hidden="true">settings</span>
+                        <span>Paramètres</span>
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-danger btn-sm btn-block"
+                        onclick="(window.missaFirebase ? window.missaFirebase.signOutFirebase() : Promise.resolve()).finally(() => { window.location.href='/page/logout'; })"
+                    >
+                        <span class="material-symbols-rounded icon-sm" aria-hidden="true">logout</span>
+                        <span>Déconnecter</span>
+                    </button>
+                </div>
+                <p id="sidebar-feedback" class="form-helper hidden mt-2" role="status"></p>
+            </div>
+        </aside>
+
+        <!-- MAIN -->
+        <main id="main-content" class="app-main" tabindex="-1">
+            <%- include('pagepart/contenue1', { stats }) %>
+        </main>
+    </div>
+
+    <div id="confirm-dialog" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h2 id="confirm-dialog-title" class="modal-title">Confirmer la suppression</h2>
+            </div>
+            <p id="confirm-dialog-message" class="modal-body">
+                Voulez-vous vraiment supprimer cette intention de messe ? Cette action est irréversible.
+            </p>
+            <div class="modal-footer">
+                <button id="confirm-dialog-cancel" type="button" class="btn btn-outline btn-sm">Annuler</button>
+                <button id="confirm-dialog-confirm" type="button" class="btn btn-danger btn-sm">Supprimer</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/ui-interactions.js"></script>
+    <script type="module" src="/static/js/firebase-client.js"></script>
+</body>
+
+</html>

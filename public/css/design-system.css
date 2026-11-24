@@ -1,0 +1,101 @@
+:root {
+  /* Brand */
+  --color-primary: #0596F0;
+  --color-primary-hover: #047AC4;
+  --color-primary-active: #0369A6;
+  --color-primary-light: #E3F2FD;
+  --color-primary-focus: rgba(5, 150, 240, 0.22);
+
+  /* Secondary / Parish gold */
+  --color-gold: #C69200;
+  --color-gold-light: #FFF9E6;
+  --color-gold-hover: #A97900;
+  --color-gold-border: #FCEEC7;
+
+  /* Dashboard & page backgrounds */
+  --color-dashboard-bg: #EEF6FB;
+  --color-auth-bg: #E7F9FF;
+  --color-form-bg: #F8FAFF;
+  --color-table-bg: #F0F7FF;
+
+  /* Surfaces */
+  --color-white: #FFFFFF;
+  --color-surface-soft: #F0F9FF;
+  --color-surface-muted: #F5F7FA;
+
+  /* Text */
+  --color-heading: #1A2B4B;
+  --color-text-primary: #334155;
+  --color-text-secondary: #475569;
+  --color-text-muted: #5B6B80;
+
+  /* Borders */
+  --color-border: #E2E8F0;
+  --color-border-light: #F0F0F0;
+
+  /* Semantic (WCAG AA compliant foreground/background pairs) */
+  --color-success: #1C7D01;
+  --color-success-bg: #E8F5E9;
+
+  --color-info: #1565C0;
+  --color-info-accent: #1E88E5;
+  --color-info-bg: #E3F2FD;
+
+  --color-warning: #7A6B00;
+  --color-warning-accent: #AFB42B;
+  --color-warning-bg: #FFFDE7;
+
+  --color-danger: #C62828;
+  --color-danger-accent: #E53935;
+  --color-danger-bg: #FFEBEE;
+
+  /* Typography */
+  --font-family-base: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-xs: 11px;
+  --font-sm: 12px;
+  --font-base: 14px;
+  --font-md: 16px;
+  --font-lg: 18px;
+  --font-xl: 20px;
+  --font-2xl: 24px;
+  --font-3xl: 30px;
+
+  --font-regular: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-full: 999px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.07);
+  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.09);
+  --shadow-card: 0 2px 10px rgba(15, 23, 42, 0.06);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 350ms ease;
+
+  /* Layout measurements */
+  --header-height: 80px;
+  --sidebar-width: 250px;
+}

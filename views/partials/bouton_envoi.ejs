@@ -1,0 +1,9 @@
+<%
+  const btnVariant = typeof variant !== 'undefined' && variant ? variant : 'primary';
+  const btnClass = typeof extraClass !== 'undefined' && extraClass ? extraClass : '';
+%>
+<div class="form-group">
+    <button type="submit" class="btn btn-<%= btnVariant %> btn-block <%= btnClass %>">
+        <%= name %>
+    </button>
+</div>

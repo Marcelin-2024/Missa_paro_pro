@@ -1,0 +1,258 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Public profile metadata for a parish member or faithful user (no PII).",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "paroisse": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "diocese": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "role": {
+          "type": "string",
+          "enum": ["fidele", "paroisse"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "displayName", "paroisse", "diocese", "role", "createdAt"]
+    },
+    "UserPrivateInfo": {
+      "title": "UserPrivateInfo",
+      "description": "Isolated PII document for user contact details (email and phone).",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 200
+        },
+        "telephone": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "updatedAt"]
+    },
+    "AdminMarker": {
+      "title": "AdminMarker",
+      "description": "Trusted administrator marker document.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 200
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin"]
+        }
+      },
+      "required": ["email", "role"]
+    },
+    "Messe": {
+      "title": "Messe",
+      "description": "Scheduled parish mass.",
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "horaire": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "celebrant": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "paroisse": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "statut": {
+          "type": "string",
+          "enum": ["A venir", "Passée", "Annulée"]
+        },
+        "createdBy": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["date", "horaire", "celebrant", "paroisse", "statut", "createdBy", "createdAt"]
+    },
+    "Annonce": {
+      "title": "Annonce",
+      "description": "Parish announcement published by parish administration.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["evenement", "Deces", "Communique", "Solennite"]
+        },
+        "titre": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "dateAnnonce": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "contenu": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "createdBy": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["type", "titre", "dateAnnonce", "contenu", "createdBy", "createdAt"]
+    },
+    "Intention": {
+      "title": "Intention",
+      "description": "Mass intention submitted by a faithful user for a specific mass.",
+      "type": "object",
+      "properties": {
+        "fideleId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "fideleNom": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "messeId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "messeDate": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "messeHoraire": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "celebrant": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "objetIntention": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 150
+        },
+        "detailIntention": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "statut": {
+          "type": "string",
+          "enum": ["en attente", "validé", "annulée"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "fideleId",
+        "fideleNom",
+        "messeId",
+        "messeDate",
+        "messeHoraire",
+        "celebrant",
+        "objetIntention",
+        "detailIntention",
+        "statut",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile summary documents keyed by Firebase Auth UID."
+    },
+    "/users/{userId}/private/info": {
+      "schema": { "$ref": "#/entities/UserPrivateInfo" },
+      "description": "Isolated PII subcollection document for a user's email and phone."
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminMarker" },
+      "description": "Read-only admin role marker collection."
+    },
+    "/messes/{messeId}": {
+      "schema": { "$ref": "#/entities/Messe" },
+      "description": "Scheduled parish masses."
+    },
+    "/annonces/{annonceId}": {
+      "schema": { "$ref": "#/entities/Annonce" },
+      "description": "Published parish announcements."
+    },
+    "/intentions/{intentionId}": {
+      "schema": { "$ref": "#/entities/Intention" },
+      "description": "Mass intentions submitted by faithful users."
+    }
+  }
+}

@@ -1,0 +1,1652 @@
+{
+  "metadata": {
+    "country": "Côte d'Ivoire",
+    "lastUpdated": "2026-11-24",
+    "sourcePolicy": "Aucune paroisse inventée. Seules les paroisses et quasi-paroisses documentées par des sources diocésaines, ecclésiales ou de presse fiables sont incluses avec leur niveau de vérification.",
+    "totalProvinces": 4,
+    "totalDioceses": 15
+  },
+  "provinces": [
+    {
+      "id": "province_abidjan",
+      "name": "Province ecclésiastique d'Abidjan",
+      "dioceses": [
+        {
+          "id": "diocese_abidjan",
+          "name": "Archidiocèse d'Abidjan",
+          "type": "ARCHDIOCESE",
+          "officialWebsite": "https://www.dioceseabidjan.com/",
+          "estimatedParishCount": 123,
+          "directoryCompleteness": "PARTIAL",
+          "coverageNote": "L'Économat Diocésain d'Abidjan (eda.ci) recense 6 vicariats, 22 doyennés, 101 paroisses et 22 quasi-paroisses. Seules les paroisses confirmées lors de la recherche sont listées ici ; les autres sont prises en charge via le signalement de paroisse manquante.",
+          "parishes": [
+            {
+              "id": "paroisse_cathedrale_saint_paul_plateau",
+              "name": "Cathédrale Saint-Paul du Plateau",
+              "aliases": ["Saint Paul Plateau", "Cathedrale Plateau"],
+              "location": "Plateau, Abidjan",
+              "pastoralSectorOrDeanery": "Doyenné Mgr Laurent Yapi",
+              "category": "CATHEDRAL_PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://eda.ci/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_albert_le_grand_cocody",
+              "name": "Paroisse Saint-Albert-le-Grand de Cocody",
+              "aliases": ["Saint Albert Cocody"],
+              "location": "Cocody, Abidjan",
+              "pastoralSectorOrDeanery": "Doyenné Mgr Laurent Yapi",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://eda.ci/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_jean_cocody",
+              "name": "Paroisse Saint-Jean de Cocody",
+              "aliases": ["Saint Jean Cocody"],
+              "location": "Cocody, Abidjan",
+              "pastoralSectorOrDeanery": "Doyenné Mgr Laurent Yapi",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://eda.ci/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_pierre_blockhauss",
+              "name": "Paroisse Saint-Pierre de Blockhauss",
+              "aliases": ["Saint Pierre Blockhauss"],
+              "location": "Blockhauss, Cocody",
+              "pastoralSectorOrDeanery": "Doyenné Mgr Laurent Yapi",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://eda.ci/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_notre_dame_nativite_djorogobite",
+              "name": "Paroisse Notre-Dame-de-la-Nativité de Djorogobité",
+              "aliases": ["Nativite Djorogobite"],
+              "location": "Djorogobité, Cocody",
+              "pastoralSectorOrDeanery": "Doyenné Mgr Blaise Anoh",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_ambroise_jubile_angre",
+              "name": "Paroisse Saint-Ambroise-du-Jubilé d'Angré",
+              "aliases": ["Saint Ambroise Jubile Angre"],
+              "location": "Angré, Cocody",
+              "pastoralSectorOrDeanery": "Doyenné Mgr Blaise Anoh",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_ignace_loyola_angre",
+              "name": "Paroisse Saint-Ignace-de-Loyola d'Angré",
+              "aliases": ["Saint Ignace ITCJ Angre"],
+              "location": "Angré, Cocody",
+              "pastoralSectorOrDeanery": "Doyenné Mgr Blaise Anoh",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_jean_paul_ii_angre",
+              "name": "Paroisse Saint-Jean-Paul-II d'Angré 8e Tranche",
+              "aliases": ["Saint Jean Paul 2 Angre"],
+              "location": "Angré 8e Tranche, Cocody",
+              "pastoralSectorOrDeanery": "Doyenné Mgr Blaise Anoh",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_joachim_angre_extension",
+              "name": "Paroisse Saint-Joachim d'Angré Extension",
+              "aliases": ["Saint Joachim Angre"],
+              "location": "Angré Extension, Cocody",
+              "pastoralSectorOrDeanery": "Doyenné Mgr Blaise Anoh",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sainte_dorothee_angre",
+              "name": "Paroisse Sainte-Dorothée d'Angré",
+              "aliases": ["Sainte Dorothee Angre"],
+              "location": "Angré, Cocody",
+              "pastoralSectorOrDeanery": "Doyenné Mgr Blaise Anoh",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_coeur_immacule_marie_plateau_dokui",
+              "name": "Paroisse Cœur-Immaculé-de-Marie de Plateau-Dokui",
+              "aliases": ["Coeur Immacule Cite Forest Dokui"],
+              "location": "Plateau-Dokui Cité Forest",
+              "pastoralSectorOrDeanery": "Doyenné Père Jacques Nomel",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://eda.ci/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_ambroise_ma_vigne_angre",
+              "name": "Paroisse Saint-Ambroise-Ma-Vigne d'Angré",
+              "aliases": ["Saint Ambroise Ma Vigne"],
+              "location": "Angré, Cocody",
+              "pastoralSectorOrDeanery": "Doyenné Père Jacques Nomel",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://eda.ci/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_jacques_deux_plateaux",
+              "name": "Paroisse Saint-Jacques des Deux-Plateaux",
+              "aliases": ["Saint Jacques 2 Plateaux"],
+              "location": "Deux-Plateaux, Cocody",
+              "pastoralSectorOrDeanery": "Doyenné Père Jacques Nomel",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://eda.ci/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sainte_cecile_deux_plateaux_vallon",
+              "name": "Paroisse Sainte-Cécile des Deux-Plateaux Vallon",
+              "aliases": ["Sainte Cecile Vallon"],
+              "location": "Deux-Plateaux Vallon, Cocody",
+              "pastoralSectorOrDeanery": "Doyenné Père Jacques Nomel",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://eda.ci/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_charles_lwanga_adjame",
+              "name": "Paroisse Saint-Charles-Lwanga d'Adjamé",
+              "aliases": ["Saint Charles Lwanga Adjame"],
+              "location": "Adjamé, Abidjan",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "SECONDARY_SOURCE",
+              "sourceUrl": "https://saintjosephmemni.com/",
+              "lastVerifiedAt": "2026-11-24"
+            }
+          ]
+        },
+        {
+          "id": "diocese_agboville",
+          "name": "Diocèse d'Agboville",
+          "type": "DIOCESE",
+          "officialWebsite": null,
+          "estimatedParishCount": 50,
+          "directoryCompleteness": "MINIMAL",
+          "coverageNote": "Le diocèse d'Agboville compte environ 50 paroisses mais ne publie pas d'annuaire exhaustif en ligne. Seules les paroisses formellement recoupées sont incluses.",
+          "parishes": [
+            {
+              "id": "paroisse_cathedrale_saint_jean_marie_vianney_agboville",
+              "name": "Cathédrale Saint-Jean-Marie-Vianney d'Agboville",
+              "aliases": ["Saint Jean Marie Vianney Agboville"],
+              "location": "Agboville",
+              "pastoralSectorOrDeanery": null,
+              "category": "CATHEDRAL_PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.fides.org/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_martin_akoupe",
+              "name": "Paroisse Saint-Martin d'Akoupé",
+              "aliases": ["Saint Martin Akoupe"],
+              "location": "Akoupé",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "SECONDARY_SOURCE",
+              "sourceUrl": "https://www.fratmat.info/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_charles_borromee_adzope",
+              "name": "Paroisse Saint-Charles-Borromée d'Adzopé",
+              "aliases": ["Saint Charles Borromee Adzope"],
+              "location": "Adzopé",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "TO_CONFIRM",
+              "sourceUrl": "https://www.youtube.com/",
+              "lastVerifiedAt": "2026-11-24"
+            }
+          ]
+        },
+        {
+          "id": "diocese_grand_bassam",
+          "name": "Diocèse de Grand-Bassam",
+          "type": "DIOCESE",
+          "officialWebsite": "https://diocesedegrandbassam.ci/",
+          "estimatedParishCount": 60,
+          "directoryCompleteness": "PARTIAL",
+          "coverageNote": "Répertoire officiel issu de diocesedegrandbassam.ci couvrant les secteurs de Bassam, Aboisso, Bonoua, Port-Bouët, Maféré et Koumassi. Certaines fiches de Koumassi restent à compléter.",
+          "parishes": [
+            {
+              "id": "paroisse_cathedrale_sacre_coeur_grand_bassam",
+              "name": "Cathédrale Sacré-Cœur de Grand-Bassam",
+              "aliases": ["Sacre Coeur Grand Bassam"],
+              "location": "Grand-Bassam",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bassam",
+              "category": "CATHEDRAL_PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_esprit_mockeyville",
+              "name": "Paroisse Saint-Esprit de Mockeyville",
+              "aliases": ["Saint Esprit Mockeyville"],
+              "location": "Mockeyville, Grand-Bassam",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bassam",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_antoine_padoue_moossou",
+              "name": "Paroisse Saint-Antoine-de-Padoue de Moossou",
+              "aliases": ["Saint Antoine Moossou"],
+              "location": "Moossou, Grand-Bassam",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bassam",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_coeur_immacule_marie_imperial",
+              "name": "Paroisse Cœur-Immaculé-de-Marie d'Impérial",
+              "aliases": ["Coeur Immacule Imperial"],
+              "location": "Impérial, Grand-Bassam",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bassam",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sainte_therese_vitre_1",
+              "name": "Paroisse Sainte-Thérèse-de-l'Enfant-Jésus de Vitré 1",
+              "aliases": ["Sainte Therese Vitre"],
+              "location": "Vitré 1, Grand-Bassam",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bassam",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sacre_coeur_ebrah",
+              "name": "Paroisse Sacré-Cœur d'Ebrah",
+              "aliases": ["Sacre Coeur Ebrah"],
+              "location": "Ebrah, Grand-Bassam",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bassam",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_jean_baptiste_motobe",
+              "name": "Paroisse Saint-Jean-Baptiste de Motobé",
+              "aliases": ["Saint Jean Baptiste Motobe"],
+              "location": "Motobé",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bassam",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_quasi_saint_jacques_modeste",
+              "name": "Quasi-Paroisse Saint-Jacques de Modeste",
+              "aliases": ["Saint Jacques Modeste"],
+              "location": "Modeste, Grand-Bassam",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bassam",
+              "category": "QUASI_PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_quasi_notre_dame_annonciation_mondoukou",
+              "name": "Quasi-Paroisse Notre-Dame-de-l'Annonciation de Mondoukou",
+              "aliases": ["Notre Dame Mondoukou"],
+              "location": "Mondoukou, Grand-Bassam",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bassam",
+              "category": "QUASI_PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_andre_koumassi",
+              "name": "Paroisse Saint-André de Koumassi",
+              "aliases": ["Saint Andre Koumassi"],
+              "location": "Koumassi",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Koumassi",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_pierre_koumassi",
+              "name": "Paroisse Saint-Pierre de Koumassi",
+              "aliases": ["Saint Pierre Koumassi"],
+              "location": "Koumassi",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Koumassi",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_joseph_artisan_koumassi_nord_est",
+              "name": "Paroisse Saint-Joseph-Artisan de Koumassi Nord-Est",
+              "aliases": ["Saint Joseph Artisan Koumassi"],
+              "location": "Koumassi Nord-Est",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Koumassi",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_etienne_koumassi",
+              "name": "Paroisse Saint-Étienne de Koumassi",
+              "aliases": ["Saint Etienne Koumassi"],
+              "location": "Koumassi",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Koumassi",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_francois_assise_koumassi",
+              "name": "Paroisse Saint-François-d'Assise de Koumassi",
+              "aliases": ["Saint Francois Assise Koumassi"],
+              "location": "Koumassi",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Koumassi",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sainte_trinite_koumassi_sicogi",
+              "name": "Paroisse Sainte-Trinité de Koumassi Sicogi",
+              "aliases": ["Sainte Trinite Koumassi Sicogi"],
+              "location": "Koumassi Sicogi",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Koumassi",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sacres_stigmates_aboisso",
+              "name": "Paroisse Sacrés-Stigmates d'Aboisso",
+              "aliases": ["Sacres Stigmates Aboisso"],
+              "location": "Aboisso",
+              "pastoralSectorOrDeanery": "Secteur Pastoral d'Aboisso",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_francois_xavier_aboisso",
+              "name": "Paroisse Saint-François-Xavier d'Aboisso",
+              "aliases": ["Saint Francois Xavier Aboisso"],
+              "location": "Aboisso",
+              "pastoralSectorOrDeanery": "Secteur Pastoral d'Aboisso",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_jean_aboisso",
+              "name": "Paroisse Saint-Jean d'Aboisso",
+              "aliases": ["Saint Jean Aboisso"],
+              "location": "Aboisso",
+              "pastoralSectorOrDeanery": "Secteur Pastoral d'Aboisso",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sainte_famille_krindjabo",
+              "name": "Paroisse Sainte-Famille de Krindjabo",
+              "aliases": ["Sainte Famille Krindjabo"],
+              "location": "Krindjabo",
+              "pastoralSectorOrDeanery": "Secteur Pastoral d'Aboisso",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_pierre_claver_assouba",
+              "name": "Paroisse Saint-Pierre-Claver d'Assouba",
+              "aliases": ["Saint Pierre Claver Assouba"],
+              "location": "Assouba",
+              "pastoralSectorOrDeanery": "Secteur Pastoral d'Aboisso",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_christ_roi_ahigbe_koffikro",
+              "name": "Paroisse Christ-Roi d'Ahigbé-Koffikro",
+              "aliases": ["Christ Roi Ahigbe Koffikro"],
+              "location": "Ahigbé-Koffikro",
+              "pastoralSectorOrDeanery": "Secteur Pastoral d'Aboisso",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_joseph_ayame",
+              "name": "Paroisse Saint-Joseph d'Ayamé",
+              "aliases": ["Saint Joseph Ayame"],
+              "location": "Ayamé",
+              "pastoralSectorOrDeanery": "Secteur Pastoral d'Aboisso",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sacre_coeur_yaou",
+              "name": "Paroisse Sacré-Cœur de Yaou",
+              "aliases": ["Sacre Coeur Yaou"],
+              "location": "Yaou",
+              "pastoralSectorOrDeanery": "Secteur Pastoral d'Aboisso",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_gaspard_bertoni_ketesso",
+              "name": "Paroisse Saint-Gaspard-Bertoni de Ketesso",
+              "aliases": ["Saint Gaspard Ketesso"],
+              "location": "Ketesso",
+              "pastoralSectorOrDeanery": "Secteur Pastoral d'Aboisso",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_jerome_bianouan",
+              "name": "Paroisse Saint-Jérôme de Bianouan",
+              "aliases": ["Saint Jerome Bianouan"],
+              "location": "Bianouan",
+              "pastoralSectorOrDeanery": "Secteur Pastoral d'Aboisso",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_pierre_claver_bonoua",
+              "name": "Paroisse Saint-Pierre-Claver de Bonoua",
+              "aliases": ["Saint Pierre Claver Bonoua"],
+              "location": "Bonoua",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bonoua",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_louis_adiake",
+              "name": "Paroisse Saint-Louis d'Adiaké",
+              "aliases": ["Saint Louis Adiake"],
+              "location": "Adiaké",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bonoua",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_pierre_apotre_yaou",
+              "name": "Paroisse Saint-Pierre-Apôtre de Yaou",
+              "aliases": ["Saint Pierre Apotre Yaou"],
+              "location": "Yaou",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bonoua",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_andre_yaou",
+              "name": "Paroisse Saint-André de Yaou",
+              "aliases": ["Saint Andre Yaou"],
+              "location": "Yaou",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bonoua",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_paul_samo",
+              "name": "Paroisse Saint-Paul de Samo",
+              "aliases": ["Saint Paul Samo"],
+              "location": "Samo",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bonoua",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_toussaint_bonoua",
+              "name": "Paroisse Toussaint de Bonoua",
+              "aliases": ["Toussaint Bonoua"],
+              "location": "Bonoua",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bonoua",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_louis_orione_aboisso_comoe",
+              "name": "Paroisse Saint-Louis-Orione d'Aboisso-Comoé",
+              "aliases": ["Saint Louis Orione Aboisso Comoe"],
+              "location": "Aboisso-Comoé",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bonoua",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_michel_archange_bongo",
+              "name": "Paroisse Saint-Michel-Archange de Bongo",
+              "aliases": ["Saint Michel Bongo"],
+              "location": "Bongo",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bonoua",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sainte_therese_assinie",
+              "name": "Paroisse Sainte-Thérèse-de-l'Enfant-Jésus d'Assinie",
+              "aliases": ["Sainte Therese Assinie"],
+              "location": "Assinie",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bonoua",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_notre_dame_rosaire_kakoukro",
+              "name": "Paroisse Notre-Dame-du-Rosaire de Kakoukro",
+              "aliases": ["Notre Dame Rosaire Kakoukro"],
+              "location": "Kakoukro",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bonoua",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_quasi_divine_providence_bonoua",
+              "name": "Quasi-Paroisse Divine-Providence de Bonoua",
+              "aliases": ["Divine Providence Bonoua"],
+              "location": "Bonoua",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Bonoua",
+              "category": "QUASI_PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sainte_anne_port_bouet",
+              "name": "Paroisse Sainte-Anne de Port-Bouët",
+              "aliases": ["Sainte Anne Port Bouet"],
+              "location": "Port-Bouët",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Port-Bouët",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_bon_pasteur_abattoir",
+              "name": "Paroisse Bon-Pasteur de l'Abattoir",
+              "aliases": ["Bon Pasteur Abattoir Port Bouet"],
+              "location": "Abattoir, Port-Bouët",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Port-Bouët",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_ascension_seigneur_aeroport",
+              "name": "Paroisse Ascension-du-Seigneur de l'Aéroport",
+              "aliases": ["Ascension Aeroport Port Bouet"],
+              "location": "Aéroport, Port-Bouët",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Port-Bouët",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_jean_marie_vianney_vridi_cite",
+              "name": "Paroisse Saint-Jean-Marie-Vianney de Vridi-Cité",
+              "aliases": ["Saint Jean Marie Vianney Vridi"],
+              "location": "Vridi-Cité, Port-Bouët",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Port-Bouët",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sainte_bernadette_vridi_canal",
+              "name": "Paroisse Sainte-Bernadette de Vridi-Canal",
+              "aliases": ["Sainte Bernadette Vridi Canal"],
+              "location": "Vridi-Canal, Port-Bouët",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Port-Bouët",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_coeur_immacule_marie_vridi_3",
+              "name": "Paroisse Cœur-Immaculé-de-Marie de Vridi 3",
+              "aliases": ["Coeur Immacule Vridi 3"],
+              "location": "Vridi 3, Port-Bouët",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Port-Bouët",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_notre_dame_compassion_adjahui_coube",
+              "name": "Paroisse Notre-Dame-de-la-Compassion d'Adjahui-Coubé",
+              "aliases": ["Notre Dame Compassion Adjahui"],
+              "location": "Adjahui-Coubé, Port-Bouët",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Port-Bouët",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_notre_dame_refuge_mafere",
+              "name": "Paroisse Notre-Dame-du-Refuge de Maféré",
+              "aliases": ["Notre Dame Refuge Mafere"],
+              "location": "Maféré",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Maféré",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_francois_assise_affienou",
+              "name": "Paroisse Saint-François-d'Assise d'Affiénou",
+              "aliases": ["Saint Francois Affienou"],
+              "location": "Affiénou",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Maféré",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_immaculee_conception_aby",
+              "name": "Paroisse Immaculée-Conception d'Aby",
+              "aliases": ["Immaculee Conception Aby"],
+              "location": "Aby",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Maféré",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_joseph_epoux_ehania",
+              "name": "Paroisse Saint-Joseph-Époux d'Ehania",
+              "aliases": ["Saint Joseph Ehania"],
+              "location": "Ehania",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Maféré",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sainte_marie_tiapoum",
+              "name": "Paroisse Sainte-Marie de Tiapoum",
+              "aliases": ["Sainte Marie Tiapoum"],
+              "location": "Tiapoum",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Maféré",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_notre_dame_garde_nouamou",
+              "name": "Paroisse Notre-Dame-de-la-Garde de Nouamou",
+              "aliases": ["Notre Dame Garde Nouamou"],
+              "location": "Nouamou",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Maféré",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sacre_coeur_noe",
+              "name": "Paroisse Sacré-Cœur de Noé",
+              "aliases": ["Sacre Coeur Noe"],
+              "location": "Noé",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Maféré",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_vincent_paul_etueboue",
+              "name": "Paroisse Saint-Vincent-de-Paul d'Étuéboué",
+              "aliases": ["Saint Vincent Etueboue"],
+              "location": "Étuéboué",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Maféré",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_christ_roi_mouyassue",
+              "name": "Paroisse Christ-Roi-de-l'Univers de Mouyassué",
+              "aliases": ["Christ Roi Mouyassue"],
+              "location": "Mouyassué",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Maféré",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sacre_coeur_eboinda",
+              "name": "Paroisse Sacré-Cœur d'Éboinda",
+              "aliases": ["Sacre Coeur Eboinda"],
+              "location": "Éboinda",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Maféré",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sainte_jeanne_arc_baffia",
+              "name": "Paroisse Sainte-Jeanne-d'Arc de Baffia",
+              "aliases": ["Sainte Jeanne Arc Baffia"],
+              "location": "Baffia",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Maféré",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_quasi_saint_michel_archange_edjambo",
+              "name": "Quasi-Paroisse Saint-Michel-Archange d'Édjambo",
+              "aliases": ["Saint Michel Edjambo"],
+              "location": "Édjambo",
+              "pastoralSectorOrDeanery": "Secteur Pastoral de Maféré",
+              "category": "QUASI_PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedegrandbassam.ci/church",
+              "lastVerifiedAt": "2026-11-24"
+            }
+          ]
+        },
+        {
+          "id": "diocese_yopougon",
+          "name": "Diocèse de Yopougon",
+          "type": "DIOCESE",
+          "officialWebsite": "http://www.dioceseyopougon.org/",
+          "estimatedParishCount": null,
+          "directoryCompleteness": "PARTIAL",
+          "coverageNote": "Le site officiel dioceseyopougon.org n'expose pas un annuaire complet indexable en ligne. Les principales paroisses du vicariat de la cathédrale recoupées sont listées ci-dessous.",
+          "parishes": [
+            {
+              "id": "paroisse_cathedrale_saint_andre_yopougon",
+              "name": "Cathédrale Saint-André de Yopougon",
+              "aliases": ["Saint Andre Yopougon Sicogi"],
+              "location": "Yopougon Sicogi, Abidjan",
+              "pastoralSectorOrDeanery": "Vicariat forain Saint-André",
+              "category": "CATHEDRAL_PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_joseph_charpentier_yopougon_gare",
+              "name": "Paroisse Saint-Joseph-Charpentier de Yopougon-Gare",
+              "aliases": ["Saint Joseph Charpentier Yopougon"],
+              "location": "Yopougon-Gare, Abidjan",
+              "pastoralSectorOrDeanery": "Vicariat forain Saint-André",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_timothee_yopougon_eeci",
+              "name": "Paroisse Saint-Timothée de Yopougon Cité EECI",
+              "aliases": ["Saint Timothee Cite EECI"],
+              "location": "Cité EECI, Yopougon",
+              "pastoralSectorOrDeanery": "Vicariat forain Saint-André",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://paroissesttimothee.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_mathias_yopougon_attie",
+              "name": "Paroisse Saint-Mathias de Yopougon-Attié",
+              "aliases": ["Saint Mathias Yopougon Attie"],
+              "location": "Yopougon-Attié, Abidjan",
+              "pastoralSectorOrDeanery": "Vicariat forain Saint-André",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "province_bouake",
+      "name": "Province ecclésiastique de Bouaké",
+      "dioceses": [
+        {
+          "id": "diocese_bouake",
+          "name": "Archidiocèse de Bouaké",
+          "type": "ARCHDIOCESE",
+          "officialWebsite": "https://archidiocesedebouake.org/",
+          "estimatedParishCount": 39,
+          "directoryCompleteness": "PARTIAL",
+          "coverageNote": "L'archidiocèse compte environ 39 paroisses (dont celles recensées sur catechesebouake.org). Les paroisses non encore indexées sont signalables via le formulaire dédié.",
+          "parishes": [
+            {
+              "id": "paroisse_cathedrale_sainte_therese_bouake",
+              "name": "Cathédrale Sainte-Thérèse-de-l'Enfant-Jésus de Bouaké",
+              "aliases": ["Cathedrale Sainte Therese Bouake"],
+              "location": "Bouaké",
+              "pastoralSectorOrDeanery": null,
+              "category": "CATHEDRAL_PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://catechesebouake.org/index.php/paroisses/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sainte_marie_zone_industrielle_bouake",
+              "name": "Paroisse Sainte-Marie de la Zone Industrielle",
+              "aliases": ["Saint Marie Zone Industrielle Bouake"],
+              "location": "Zone Industrielle, Bouaké",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://catechesebouake.org/index.php/paroisses/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_francois_xavier_yaokoffikro",
+              "name": "Paroisse Saint-François-Xavier de Yaokoffikro",
+              "aliases": ["Saint Francois Xavier Yaokoffikro"],
+              "location": "Yaokoffikro, Bouaké",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://catechesebouake.org/index.php/paroisses/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_joseph_mukasa_sokoura",
+              "name": "Paroisse Saint-Joseph-Mukasa de Sokoura",
+              "aliases": ["Saint Joseph Mukasa Sokoura"],
+              "location": "Sokoura, Bouaké",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://catechesebouake.org/index.php/paroisses/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_marc_broukro",
+              "name": "Paroisse Saint-Marc de Broukro",
+              "aliases": ["Saint Marc Broukro"],
+              "location": "Broukro, Bouaké",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://catechesebouake.org/index.php/paroisses/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_notre_dame_paix_beoumi",
+              "name": "Paroisse Notre-Dame-de-la-Paix de Béoumi",
+              "aliases": ["Notre Dame Paix Beoumi"],
+              "location": "Béoumi",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://catechesebouake.org/index.php/paroisses/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_paul_brobo",
+              "name": "Paroisse Saint-Paul de Brobo",
+              "aliases": ["Saint Paul Brobo"],
+              "location": "Brobo",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://catechesebouake.org/index.php/paroisses/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_universitaire_bouake",
+              "name": "Paroisse Universitaire de Bouaké",
+              "aliases": ["Paroisse Universitaire Campus 1 et 2"],
+              "location": "Campus 1 et 2, Bouaké",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://catechesebouake.org/index.php/paroisses/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_nativite_notre_dame_prikro",
+              "name": "Paroisse Nativité-Notre-Dame de Prikro",
+              "aliases": ["Nativite Notre Dame Prikro"],
+              "location": "Prikro",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://catechesebouake.org/index.php/paroisses/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_tounzuebo_beoumi",
+              "name": "Paroisse de Tounzuébo",
+              "aliases": ["Tounzuebo Beoumi"],
+              "location": "Tounzuébo, Béoumi",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://catechesebouake.org/index.php/paroisses/",
+              "lastVerifiedAt": "2026-11-24"
+            }
+          ]
+        },
+        {
+          "id": "diocese_abengourou",
+          "name": "Diocèse d'Abengourou",
+          "type": "DIOCESE",
+          "officialWebsite": null,
+          "estimatedParishCount": 58,
+          "directoryCompleteness": "MINIMAL",
+          "coverageNote": "Le diocèse d'Abengourou compte environ 58 paroisses mais ne dispose pas d'un annuaire public exhaustif en ligne.",
+          "parishes": [
+            {
+              "id": "paroisse_cathedrale_sainte_therese_abengourou",
+              "name": "Cathédrale Sainte-Thérèse-de-l'Enfant-Jésus d'Abengourou",
+              "aliases": ["Sainte Therese Abengourou"],
+              "location": "Abengourou",
+              "pastoralSectorOrDeanery": null,
+              "category": "CATHEDRAL_PARISH",
+              "verificationStatus": "SECONDARY_SOURCE",
+              "sourceUrl": "https://fr.wikipedia.org/wiki/Dioc%C3%A8se_d%27Abengourou",
+              "lastVerifiedAt": "2026-11-24"
+            }
+          ]
+        },
+        {
+          "id": "diocese_bondoukou",
+          "name": "Diocèse de Bondoukou",
+          "type": "DIOCESE",
+          "officialWebsite": null,
+          "estimatedParishCount": 30,
+          "directoryCompleteness": "PARTIAL",
+          "coverageNote": "Le diocèse compte environ 30 paroisses. Les paroisses et quasi-paroisses du doyenné de Bondoukou ont été vérifiées via les publications diocésaines ; les paroisses rurales (Tanda, Bouna, Nassian) restent à compléter.",
+          "parishes": [
+            {
+              "id": "paroisse_cathedrale_sainte_odile_bondoukou",
+              "name": "Cathédrale Sainte-Odile de Bondoukou",
+              "aliases": ["Sainte Odile Bondoukou"],
+              "location": "Bondoukou",
+              "pastoralSectorOrDeanery": "Doyenné de Bondoukou",
+              "category": "CATHEDRAL_PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_notre_dame_mont_carmel_bondoukou",
+              "name": "Paroisse Notre-Dame-du-Mont-Carmel de Bondoukou",
+              "aliases": ["Notre Dame Mont Carmel Bondoukou"],
+              "location": "Bondoukou",
+              "pastoralSectorOrDeanery": "Doyenné de Bondoukou",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_augustin_bondoukou",
+              "name": "Paroisse Saint-Augustin de Bondoukou",
+              "aliases": ["Saint Augustin Bondoukou"],
+              "location": "Bondoukou",
+              "pastoralSectorOrDeanery": "Doyenné de Bondoukou",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sainte_anne_bondoukou",
+              "name": "Paroisse Sainte-Anne de Bondoukou",
+              "aliases": ["Sainte Anne Bondoukou"],
+              "location": "Bondoukou",
+              "pastoralSectorOrDeanery": "Doyenné de Bondoukou",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sainte_famille_bondoukou",
+              "name": "Paroisse Sainte-Famille de Bondoukou",
+              "aliases": ["Sainte Famille Bondoukou"],
+              "location": "Bondoukou",
+              "pastoralSectorOrDeanery": "Doyenné de Bondoukou",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_luc_soko",
+              "name": "Paroisse Saint-Luc de Soko",
+              "aliases": ["Saint Luc Soko Bondoukou"],
+              "location": "Soko, Bondoukou",
+              "pastoralSectorOrDeanery": "Doyenné de Bondoukou",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_quasi_saint_pierre_bondoukou",
+              "name": "Quasi-Paroisse Saint-Pierre de Bondoukou",
+              "aliases": ["Saint Pierre Bondoukou"],
+              "location": "Bondoukou",
+              "pastoralSectorOrDeanery": "Doyenné de Bondoukou",
+              "category": "QUASI_PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_quasi_saint_alexandre_bondoukou",
+              "name": "Quasi-Paroisse Saint-Alexandre de Bondoukou",
+              "aliases": ["Saint Alexandre Bondoukou"],
+              "location": "Bondoukou",
+              "pastoralSectorOrDeanery": "Doyenné de Bondoukou",
+              "category": "QUASI_PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            }
+          ]
+        },
+        {
+          "id": "diocese_yamoussoukro",
+          "name": "Diocèse de Yamoussoukro",
+          "type": "DIOCESE",
+          "officialWebsite": "https://cathedrale-st-augustin-de-yakro.com/",
+          "estimatedParishCount": 27,
+          "directoryCompleteness": "MINIMAL",
+          "coverageNote": "Le diocèse compte environ 27 paroisses sans annuaire public centralisé exhaustif. Seules les paroisses documentées de Yamoussoukro et Tiébissou sont incluses.",
+          "parishes": [
+            {
+              "id": "paroisse_cathedrale_saint_augustin_yamoussoukro",
+              "name": "Cathédrale Saint-Augustin de Yamoussoukro",
+              "aliases": ["Saint Augustin Yamoussoukro Yakro"],
+              "location": "Yamoussoukro",
+              "pastoralSectorOrDeanery": null,
+              "category": "CATHEDRAL_PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://cathedrale-st-augustin-de-yakro.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_notre_dame_visitation_yamoussoukro",
+              "name": "Paroisse Notre-Dame-de-la-Visitation de Yamoussoukro",
+              "aliases": ["Notre Dame Visitation Yamoussoukro"],
+              "location": "Yamoussoukro",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "SECONDARY_SOURCE",
+              "sourceUrl": "https://news.abidjan.net/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sainte_bernadette_soubirous_tiebissou",
+              "name": "Paroisse Sainte-Bernadette-Soubirous de Tiébissou",
+              "aliases": ["Sainte Bernadette Tiebissou"],
+              "location": "Tiébissou",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "SECONDARY_SOURCE",
+              "sourceUrl": "https://www.aip.ci/",
+              "lastVerifiedAt": "2026-11-24"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "province_gagnoa",
+      "name": "Province ecclésiastique de Gagnoa",
+      "dioceses": [
+        {
+          "id": "diocese_gagnoa",
+          "name": "Archidiocèse de Gagnoa",
+          "type": "ARCHDIOCESE",
+          "officialWebsite": "http://www.archidiocesedegagnoa.org/",
+          "estimatedParishCount": 40,
+          "directoryCompleteness": "MINIMAL",
+          "coverageNote": "L'archidiocèse comprend une quarantaine de paroisses mais son annuaire exhaustif n'est pas publié sur un répertoire unique vérifiable.",
+          "parishes": [
+            {
+              "id": "paroisse_cathedrale_sainte_anne_gagnoa",
+              "name": "Cathédrale Sainte-Anne de Gagnoa",
+              "aliases": ["Sainte Anne Gagnoa"],
+              "location": "Gagnoa",
+              "pastoralSectorOrDeanery": null,
+              "category": "CATHEDRAL_PARISH",
+              "verificationStatus": "SECONDARY_SOURCE",
+              "sourceUrl": "https://fr.wikipedia.org/wiki/Archidioc%C3%A8se_de_Gagnoa",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_christophe_oume",
+              "name": "Paroisse Saint-Christophe d'Oumé",
+              "aliases": ["Saint Christophe Oume"],
+              "location": "Oumé",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "SECONDARY_SOURCE",
+              "sourceUrl": "https://infodirecte.net/",
+              "lastVerifiedAt": "2026-11-24"
+            }
+          ]
+        },
+        {
+          "id": "diocese_daloa",
+          "name": "Diocèse de Daloa",
+          "type": "DIOCESE",
+          "officialWebsite": "https://www.diocesedaloa.net/",
+          "estimatedParishCount": 40,
+          "directoryCompleteness": "PARTIAL",
+          "coverageNote": "Le site officiel diocesedaloa.net présente les secteurs Centre, Est et Sud. Les paroisses confirmées de ces trois secteurs sont répertoriées ci-dessous.",
+          "parishes": [
+            {
+              "id": "paroisse_cathedrale_christ_roi_daloa",
+              "name": "Cathédrale du Christ-Roi de Daloa",
+              "aliases": ["Christ Roi Daloa"],
+              "location": "Daloa",
+              "pastoralSectorOrDeanery": "Secteur Centre",
+              "category": "CATHEDRAL_PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.diocesedaloa.net/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_joseph_daloa",
+              "name": "Paroisse Saint-Joseph de Daloa",
+              "aliases": ["Saint Joseph Daloa"],
+              "location": "Daloa",
+              "pastoralSectorOrDeanery": "Secteur Centre",
+              "category": "PARISH",
+              "verificationStatus": "SECONDARY_SOURCE",
+              "sourceUrl": "https://fr.wikipedia.org/wiki/Dioc%C3%A8se_de_Daloa",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_luc_daloa",
+              "name": "Paroisse Saint-Luc de Daloa",
+              "aliases": ["Saint Luc Daloa"],
+              "location": "Daloa",
+              "pastoralSectorOrDeanery": "Secteur Centre",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.diocesedaloa.net/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sainte_therese_daloa",
+              "name": "Paroisse Sainte-Thérèse-de-l'Enfant-Jésus de Daloa",
+              "aliases": ["Sainte Therese Daloa"],
+              "location": "Daloa",
+              "pastoralSectorOrDeanery": "Secteur Centre",
+              "category": "PARISH",
+              "verificationStatus": "SECONDARY_SOURCE",
+              "sourceUrl": "https://fr.wikipedia.org/wiki/Dioc%C3%A8se_de_Daloa",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sainte_marie_mere_dieu_daloa",
+              "name": "Paroisse Sainte-Marie-Mère-de-Dieu de Daloa",
+              "aliases": ["Sainte Marie Mere de Dieu Daloa"],
+              "location": "Daloa",
+              "pastoralSectorOrDeanery": "Secteur Centre",
+              "category": "PARISH",
+              "verificationStatus": "SECONDARY_SOURCE",
+              "sourceUrl": "https://fr.wikipedia.org/wiki/Dioc%C3%A8se_de_Daloa",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sainte_helene_daloa",
+              "name": "Paroisse Sainte-Hélène de Daloa",
+              "aliases": ["Sainte Helene Daloa"],
+              "location": "Daloa",
+              "pastoralSectorOrDeanery": "Secteur Centre",
+              "category": "PARISH",
+              "verificationStatus": "SECONDARY_SOURCE",
+              "sourceUrl": "https://fr.wikipedia.org/wiki/Dioc%C3%A8se_de_Daloa",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sacre_coeur_vavoua",
+              "name": "Paroisse Sacré-Cœur de Vavoua",
+              "aliases": ["Sacre Coeur Vavoua"],
+              "location": "Vavoua",
+              "pastoralSectorOrDeanery": "Secteur Centre",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.diocesedaloa.net/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_francois_xavier_zoukougbeu",
+              "name": "Paroisse Saint-François-Xavier de Zoukougbeu",
+              "aliases": ["Saint Francois Xavier Zoukougbeu"],
+              "location": "Zoukougbeu",
+              "pastoralSectorOrDeanery": "Secteur Centre",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.diocesedaloa.net/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_augustin_bouafle",
+              "name": "Paroisse Saint-Augustin de Bouaflé",
+              "aliases": ["Saint Augustin Bouafle"],
+              "location": "Bouaflé",
+              "pastoralSectorOrDeanery": "Secteur Est",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.diocesedaloa.net/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_notre_dame_kononfla",
+              "name": "Paroisse Notre-Dame de Kononfla",
+              "aliases": ["Notre Dame Kononfla"],
+              "location": "Kononfla",
+              "pastoralSectorOrDeanery": "Secteur Est",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.diocesedaloa.net/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_notre_dame_lourdes_issia",
+              "name": "Paroisse Notre-Dame-de-Lourdes d'Issia",
+              "aliases": ["Notre Dame Lourdes Issia"],
+              "location": "Issia",
+              "pastoralSectorOrDeanery": "Secteur Sud",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.diocesedaloa.net/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_michel_archange_sinfra",
+              "name": "Paroisse Saint-Michel-Archange de Sinfra",
+              "aliases": ["Saint Michel Sinfra"],
+              "location": "Sinfra",
+              "pastoralSectorOrDeanery": "Secteur Sud",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.diocesedaloa.net/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_jacques_saioua",
+              "name": "Paroisse Saint-Jacques de Saïoua",
+              "aliases": ["Saint Jacques Saioua"],
+              "location": "Saïoua",
+              "pastoralSectorOrDeanery": "Secteur Sud",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.diocesedaloa.net/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_mathieu_sucrivoire",
+              "name": "Paroisse Saint-Mathieu de Sucrivoire",
+              "aliases": ["Saint Mathieu Sucrivoire"],
+              "location": "Zuénoula / Sucrivoire",
+              "pastoralSectorOrDeanery": "Secteur Est",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.diocesedaloa.net/",
+              "lastVerifiedAt": "2026-11-24"
+            }
+          ]
+        },
+        {
+          "id": "diocese_man",
+          "name": "Diocèse de Man",
+          "type": "DIOCESE",
+          "officialWebsite": null,
+          "estimatedParishCount": 29,
+          "directoryCompleteness": "MINIMAL",
+          "coverageNote": "Le diocèse de Man compte environ 29 paroisses (Man, Danané, Guiglo, Duékoué) mais ne publie pas d'annuaire complet en ligne.",
+          "parishes": [
+            {
+              "id": "paroisse_cathedrale_saint_michel_man",
+              "name": "Cathédrale Saint-Michel de Man",
+              "aliases": ["Saint Michel Man"],
+              "location": "Man",
+              "pastoralSectorOrDeanery": null,
+              "category": "CATHEDRAL_PARISH",
+              "verificationStatus": "SECONDARY_SOURCE",
+              "sourceUrl": "https://fr.wikipedia.org/wiki/Dioc%C3%A8se_de_Man",
+              "lastVerifiedAt": "2026-11-24"
+            }
+          ]
+        },
+        {
+          "id": "diocese_san_pedro",
+          "name": "Diocèse de San-Pédro",
+          "type": "DIOCESE",
+          "officialWebsite": "https://diocesedesanpedro.org/",
+          "estimatedParishCount": 37,
+          "directoryCompleteness": "PARTIAL",
+          "coverageNote": "Le diocèse compte 37 paroisses réparties dans les secteurs Port, Néro et Cavally (diocesedesanpedro.org). Les paroisses confirmées par les décrets diocésains sont listées ci-dessous.",
+          "parishes": [
+            {
+              "id": "paroisse_cathedrale_saint_pierre_san_pedro",
+              "name": "Cathédrale Saint-Pierre de San-Pédro",
+              "aliases": ["Saint Pierre San Pedro"],
+              "location": "San-Pédro",
+              "pastoralSectorOrDeanery": "Secteur Port / Doyenné Saint-Pierre",
+              "category": "CATHEDRAL_PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedesanpedro.org/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_paul_cite_san_pedro",
+              "name": "Paroisse Saint-Paul de la Cité",
+              "aliases": ["Saint Paul Cite San Pedro"],
+              "location": "San-Pédro",
+              "pastoralSectorOrDeanery": "Secteur Port / Doyenné Saint-Pierre",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedesanpedro.org/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_esprit_lac_san_pedro",
+              "name": "Paroisse Saint-Esprit du Lac",
+              "aliases": ["Saint Esprit du Lac San Pedro"],
+              "location": "San-Pédro",
+              "pastoralSectorOrDeanery": "Secteur Port / Doyenné Saint-Pierre",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_notre_dame_fatima_seweke",
+              "name": "Paroisse Notre-Dame-de-Fatima de Séwéké",
+              "aliases": ["Notre Dame Fatima Seweke San Pedro"],
+              "location": "Séwéké, San-Pédro",
+              "pastoralSectorOrDeanery": "Secteur Port / Doyenné Saint-Pierre",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedesanpedro.org/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_notre_dame_visitation_san_pedro",
+              "name": "Paroisse Notre-Dame-de-la-Visitation de San-Pédro",
+              "aliases": ["Notre Dame Visitation San Pedro"],
+              "location": "San-Pédro",
+              "pastoralSectorOrDeanery": "Secteur Port / Doyenné Saint-Pierre",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedesanpedro.org/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_sainte_monique_baba",
+              "name": "Paroisse Sainte-Monique de Baba",
+              "aliases": ["Sainte Monique Baba San Pedro"],
+              "location": "Baba, San-Pédro",
+              "pastoralSectorOrDeanery": "Secteur Port / Doyenné Saint-Pierre",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedesanpedro.org/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_notre_dame_mer_grand_bereby",
+              "name": "Paroisse Notre-Dame-de-la-Mer de Grand-Béréby",
+              "aliases": ["Notre Dame Mer Grand Bereby"],
+              "location": "Grand-Béréby",
+              "pastoralSectorOrDeanery": "Secteur Néro / Doyenné Mgr Jean-Jacques Koffi",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedesanpedro.org/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_louis_tabou",
+              "name": "Paroisse Saint-Louis de Tabou",
+              "aliases": ["Saint Louis Tabou"],
+              "location": "Tabou",
+              "pastoralSectorOrDeanery": "Secteur Cavally / Doyenné Père Simon-Pierre Cossé",
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://diocesedesanpedro.org/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saints_martyrs_ouganda_soubre",
+              "name": "Paroisse des Saints-Martyrs-de-l'Ouganda de Soubré",
+              "aliases": ["Saints Martyrs Ouganda Soubre"],
+              "location": "Soubré",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_notre_dame_rosaire_soubre",
+              "name": "Paroisse Notre-Dame-du-Rosaire de Soubré",
+              "aliases": ["Notre Dame Rosaire Soubre"],
+              "location": "Soubré",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "VERIFIED",
+              "sourceUrl": "https://www.dioceseabidjan.com/",
+              "lastVerifiedAt": "2026-11-24"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "province_korhogo",
+      "name": "Province ecclésiastique de Korhogo",
+      "dioceses": [
+        {
+          "id": "diocese_korhogo",
+          "name": "Archidiocèse de Korhogo",
+          "type": "ARCHDIOCESE",
+          "officialWebsite": null,
+          "estimatedParishCount": 27,
+          "directoryCompleteness": "MINIMAL",
+          "coverageNote": "L'archidiocèse compte environ 27 paroisses sans portail web annuaire permanent. Seules les paroisses confirmées de la ville de Korhogo sont listées.",
+          "parishes": [
+            {
+              "id": "paroisse_cathedrale_saint_jean_baptiste_korhogo",
+              "name": "Cathédrale Saint-Jean-Baptiste de Korhogo",
+              "aliases": ["Saint Jean Baptiste Korhogo"],
+              "location": "Korhogo",
+              "pastoralSectorOrDeanery": null,
+              "category": "CATHEDRAL_PARISH",
+              "verificationStatus": "SECONDARY_SOURCE",
+              "sourceUrl": "https://fr.wikipedia.org/wiki/Archidioc%C3%A8se_de_Korhogo",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_jean_bosco_korhogo",
+              "name": "Paroisse Saint-Jean-Bosco de Korhogo",
+              "aliases": ["Saint Jean Bosco Korhogo"],
+              "location": "Korhogo",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "SECONDARY_SOURCE",
+              "sourceUrl": "https://www.fides.org/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_notre_dame_victoires_korhogo",
+              "name": "Paroisse Notre-Dame-des-Victoires de Korhogo",
+              "aliases": ["Notre Dame Victoires Korhogo"],
+              "location": "Korhogo",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "SECONDARY_SOURCE",
+              "sourceUrl": "https://www.fides.org/",
+              "lastVerifiedAt": "2026-11-24"
+            }
+          ]
+        },
+        {
+          "id": "diocese_katiola",
+          "name": "Diocèse de Katiola",
+          "type": "DIOCESE",
+          "officialWebsite": null,
+          "estimatedParishCount": 25,
+          "directoryCompleteness": "MINIMAL",
+          "coverageNote": "Le diocèse de Katiola compte environ 25 paroisses (Katiola, Ferkessédougou, Dabakala) sans annuaire public complet en ligne.",
+          "parishes": [
+            {
+              "id": "paroisse_cathedrale_sainte_jeanne_arc_katiola",
+              "name": "Cathédrale Sainte-Jeanne-d'Arc de Katiola",
+              "aliases": ["Sainte Jeanne Arc Katiola"],
+              "location": "Katiola",
+              "pastoralSectorOrDeanery": null,
+              "category": "CATHEDRAL_PARISH",
+              "verificationStatus": "SECONDARY_SOURCE",
+              "sourceUrl": "https://fr.wikipedia.org/wiki/Dioc%C3%A8se_de_Katiola",
+              "lastVerifiedAt": "2026-11-24"
+            }
+          ]
+        },
+        {
+          "id": "diocese_odienne",
+          "name": "Diocèse d'Odienné",
+          "type": "DIOCESE",
+          "officialWebsite": null,
+          "estimatedParishCount": 29,
+          "directoryCompleteness": "MINIMAL",
+          "coverageNote": "Le diocèse d'Odienné compte environ 29 paroisses (Odienné, Séguéla, Touba, Mankono) sans annuaire public complet en ligne.",
+          "parishes": [
+            {
+              "id": "paroisse_cathedrale_saint_augustin_odienne",
+              "name": "Cathédrale Saint-Augustin d'Odienné",
+              "aliases": ["Saint Augustin Odienne"],
+              "location": "Odienné",
+              "pastoralSectorOrDeanery": null,
+              "category": "CATHEDRAL_PARISH",
+              "verificationStatus": "SECONDARY_SOURCE",
+              "sourceUrl": "https://jec-ci.org/",
+              "lastVerifiedAt": "2026-11-24"
+            },
+            {
+              "id": "paroisse_saint_antoine_padoue_seguela",
+              "name": "Paroisse Saint-Antoine-de-Padoue de Séguéla",
+              "aliases": ["Saint Antoine Padoue Seguela"],
+              "location": "Séguéla",
+              "pastoralSectorOrDeanery": null,
+              "category": "PARISH",
+              "verificationStatus": "SECONDARY_SOURCE",
+              "sourceUrl": "https://www.aip.ci/",
+              "lastVerifiedAt": "2026-11-24"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
