@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import crypto from 'crypto';
+import fs from 'fs';
 import path from 'path';
 import express, { Request, Response } from 'express';
 import session from 'express-session';
@@ -40,7 +41,26 @@ declare module 'express-session' {
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const HOST = '0.0.0.0';
-const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+
+function resolveSessionSecret(): string {
+  const fromEnv = (process.env.SESSION_SECRET || '').trim();
+  if (fromEnv) return fromEnv;
+  const secretFile = path.join(process.cwd(), 'src', 'data', '.session-secret');
+  try {
+    if (fs.existsSync(secretFile)) {
+      const stored = fs.readFileSync(secretFile, 'utf-8').trim();
+      if (stored.length >= 32) return stored;
+    }
+    const generated = crypto.randomBytes(32).toString('hex');
+    fs.mkdirSync(path.dirname(secretFile), { recursive: true });
+    fs.writeFileSync(secretFile, generated, { encoding: 'utf-8', mode: 0o600 });
+    return generated;
+  } catch {
+    return crypto.randomBytes(32).toString('hex');
+  }
+}
+
+const SESSION_SECRET = resolveSessionSecret();
 
 app.set('trust proxy', 1);
 app.set('view engine', 'ejs');

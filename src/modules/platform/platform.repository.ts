@@ -368,7 +368,20 @@ export function getPlatformState(): PlatformState {
   }
 
   const raw = fs.readFileSync(STATE_FILE, 'utf-8');
-  cachedState = JSON.parse(raw) as PlatformState;
+  const parsed = JSON.parse(raw) as PlatformState;
+  const superAdminEnvPass = (process.env.SUPER_ADMIN_PASSWORD || '').trim();
+  if (!parsed.superAdminClaimed && superAdminEnvPass) {
+    const sa = parsed.users.find((u) => u.isSuperAdmin);
+    if (sa) {
+      sa.passwordHash = hashPassword(superAdminEnvPass);
+      sa.status = 'ACTIVE';
+      sa.mustChangePassword = false;
+      parsed.superAdminClaimed = true;
+      savePlatformState(parsed);
+      return parsed;
+    }
+  }
+  cachedState = parsed;
   return cachedState;
 }
 

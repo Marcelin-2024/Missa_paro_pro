@@ -57,7 +57,18 @@ export function authenticateWithCredentials(
   const state = getPlatformState();
   const user = state.users.find((u) => u.email.toLowerCase() === cleanEmail);
 
-  if (!user || !user.passwordHash) {
+  if (!user) {
+    return { ok: false, code: 'INVALID_CREDENTIALS', message: 'Identifiants invalides.' };
+  }
+
+  if (!user.passwordHash) {
+    if (user.isSuperAdmin && !state.superAdminClaimed) {
+      return {
+        ok: false,
+        code: 'SUPER_ADMIN_SETUP_REQUIRED',
+        message: 'Ce serveur déployé n’a pas encore de mot de passe Super Administrateur initialisé.',
+      };
+    }
     return { ok: false, code: 'INVALID_CREDENTIALS', message: 'Identifiants invalides.' };
   }
 

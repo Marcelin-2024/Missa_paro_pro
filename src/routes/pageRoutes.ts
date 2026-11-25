@@ -150,20 +150,31 @@ pageRouter.post('/verification', (req: Request, res: Response) => {
   const limit = checkLoginRateLimit(rateKey);
 
   const formData = loadFormConfig();
+  const state = getPlatformState();
+  const needsSuperAdminSetup =
+    !state.superAdminClaimed && !(process.env.SUPER_ADMIN_PASSWORD || '').trim();
+
   if (!limit.allowed) {
     res.status(429).render('compte', {
       champs: formData.connection,
       error: `Trop de tentatives échouées. Réessayez dans ${limit.retryAfterSec} secondes.`,
+      needsSuperAdminSetup,
     });
     return;
   }
 
   const auth = authenticateWithCredentials(gmail, motdepasse);
   if (!auth.ok) {
+    if (auth.code === 'SUPER_ADMIN_SETUP_REQUIRED') {
+      clearLoginFailures(rateKey);
+      res.redirect('/setup-super-admin');
+      return;
+    }
     recordLoginFailure(rateKey);
     res.status(401).render('compte', {
       champs: formData.connection,
       error: auth.message,
+      needsSuperAdminSetup,
     });
     return;
   }
