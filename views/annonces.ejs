@@ -18,7 +18,7 @@
                     <h1 class="section-title">Nouvelle annonce paroissiale</h1>
                     <p class="text-muted">Publiez un événement, communiqué ou avis aux fidèles</p>
                 </div>
-                <a href="/page/tableau_bords" class="btn btn-outline btn-sm">Retour</a>
+                <a href="/page/tableau_bords?section=announcements" class="btn btn-outline btn-sm">Retour</a>
             </div>
 
             <form
@@ -29,6 +29,9 @@
                 class="form-body"
                 data-loading-form
             >
+                <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <% } %>
                 <% for (const champ of champs) { %>
                     <% if (champ.type === 'select') { %>
                         <%- include('partials/select_field', { name: champ.name, label: champ.label, options: champ.options, requit: champ.required }) %>
@@ -52,7 +55,7 @@
                             accept="image/*"
                             class="upload-input"
                             aria-describedby="image_annonce-helper"
-                            onchange="previewImage(event)"
+                            data-preview-upload
                         >
                         <span class="upload-dropzone-title">Cliquez ou déposez une image ici</span>
                         <span id="image_annonce-filename" class="upload-dropzone-hint">
@@ -64,7 +67,7 @@
                     </small>
 
                     <div id="upload-preview-box" class="upload-preview-box hidden">
-                        <img id="aperçu" src="#" alt="Aperçu de l'image" class="upload-preview">
+                        <img id="apercu-image" src="#" alt="Aperçu de l'image" class="upload-preview">
                         <button id="remove-image-btn" type="button" class="btn btn-outline btn-sm mt-2">
                             Retirer l'image
                         </button>
@@ -85,7 +88,7 @@
 
                 <%- include('partials/bouton_envoi', { name: "Publier l'annonce" }) %>
 
-                <a href="/page/tableau_bords" class="btn btn-outline btn-block">
+                <a href="/page/tableau_bords?section=announcements" class="btn btn-outline btn-block">
                     Annuler et retourner au tableau de bord
                 </a>
             </form>
@@ -93,73 +96,6 @@
     </main>
 
     <script src="/static/js/ui-interactions.js"></script>
-    <script type="module" src="/static/js/firebase-client.js"></script>
-    <script>
-        function previewImage(event) {
-            const input = event.target;
-            const previewBox = document.getElementById('upload-preview-box');
-            const output = document.getElementById('aperçu');
-            const filenameEl = document.getElementById('image_annonce-filename');
-            if (!input.files || !input.files[0]) return;
-
-            const file = input.files[0];
-            if (filenameEl) {
-                filenameEl.textContent = file.name;
-            }
-            const reader = new FileReader();
-            reader.onload = function () {
-                if (output && typeof reader.result === 'string') {
-                    output.src = reader.result;
-                    if (previewBox) previewBox.classList.remove('hidden');
-                }
-            };
-            reader.readAsDataURL(file);
-        }
-
-        const dropzone = document.getElementById('upload-dropzone');
-        if (dropzone) {
-            dropzone.addEventListener('dragover', function () {
-                dropzone.classList.add('is-dragover');
-            });
-            dropzone.addEventListener('dragleave', function () {
-                dropzone.classList.remove('is-dragover');
-            });
-            dropzone.addEventListener('drop', function () {
-                dropzone.classList.remove('is-dragover');
-            });
-        }
-
-        const removeBtn = document.getElementById('remove-image-btn');
-        if (removeBtn) {
-            removeBtn.addEventListener('click', function () {
-                const input = document.getElementById('image_annonce');
-                const previewBox = document.getElementById('upload-preview-box');
-                const output = document.getElementById('aperçu');
-                const filenameEl = document.getElementById('image_annonce-filename');
-                if (input) input.value = '';
-                if (output) output.src = '#';
-                if (previewBox) previewBox.classList.add('hidden');
-                if (filenameEl) filenameEl.textContent = 'Formats acceptés : JPG, PNG (Max 2 Mo)';
-            });
-        }
-
-        document.getElementById('ajoute-annonce-form').addEventListener('submit', async function (e) {
-            if (window.missaFirebase) {
-                e.preventDefault();
-                const form = this;
-                const type = form.querySelector('[name="type_annonces"]')?.value || 'Communique';
-                const titre = form.querySelector('[name="Titre_annonce"]')?.value || '';
-                const dateAnnonce = form.querySelector('[name="date_annonce"]')?.value || '';
-                const contenu = form.querySelector('[name="contenu_annonce"]')?.value || '';
-                try {
-                    await window.missaFirebase.createAnnonceFirestore(type, titre, dateAnnonce, contenu);
-                } catch (err) {
-                    console.warn(err);
-                }
-                form.submit();
-            }
-        });
-    </script>
 </body>
 
 </html>

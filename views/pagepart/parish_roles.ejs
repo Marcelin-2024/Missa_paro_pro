@@ -1,0 +1,85 @@
+<%- include('../partials/page_header', {
+    title: 'Rôles cumulés & Permissions',
+    subtitle: `Un utilisateur peut cumuler plusieurs rôles dans ${activeParish.name} (ex. Curé + Admin paroissial)`,
+    actions: []
+}) %>
+
+<div id="parish-roles-feedback" class="alert hidden mb-4" role="status"></div>
+
+<section class="panel-soft mb-4">
+    <h2 class="section-title mb-3">Catalogue des rôles paroissiaux</h2>
+    <div class="cards-grid">
+        <% for (const code of roleCodes) { const def = roleCatalog[code]; %>
+            <article class="annonce-card">
+                <div class="annonce-card-meta">
+                    <%- include('../partials/role_badge', { roleCode: code }) %>
+                    <span><%= def.permissions.length %> permissions</span>
+                </div>
+                <p class="annonce-card-content"><%= def.description %></p>
+            </article>
+        <% } %>
+    </div>
+</section>
+
+<section class="table-card" aria-label="Attribution des rôles cumulés">
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Utilisateur</th>
+                    <th>Rôles actifs (cumulés)</th>
+                    <% if (permissions.includes('parish.roles.manage')) { %>
+                        <th>Attribuer un rôle</th>
+                    <% } %>
+                </tr>
+            </thead>
+            <tbody>
+                <% for (const m of members) { %>
+                    <tr>
+                        <td>
+                            <span class="table-cell-title"><%= m.user.displayName %></span>
+                            <span class="table-cell-sub"><%= m.user.email %></span>
+                        </td>
+                        <td>
+                            <div class="roles-chip-list">
+                                <% for (const assign of m.roleAssignments.filter((ra) => ra.status === 'ACTIVE')) { %>
+                                    <span class="role-chip-action-wrap">
+                                        <%- include('../partials/role_badge', { roleCode: assign.roleCode, expiresAt: assign.expiresAt }) %>
+                                        <% if (permissions.includes('parish.roles.manage')) { %>
+                                            <button
+                                                type="button"
+                                                class="btn btn-ghost btn-sm"
+                                                title="Retirer ce rôle"
+                                                aria-label="Retirer <%= assign.roleCode %>"
+                                                data-revoke-role="<%= assign.roleCode %>"
+                                                data-membership-id="<%= m.membership.id %>"
+                                            >&times;</button>
+                                        <% } %>
+                                    </span>
+                                <% } %>
+                                <% if (m.activeRoles.length === 0) { %>
+                                    <span class="text-muted">Aucun rôle actif</span>
+                                <% } %>
+                            </div>
+                        </td>
+                        <% if (permissions.includes('parish.roles.manage')) { %>
+                            <td>
+                                <form class="inline-role-assign-form" data-assign-role-form data-membership-id="<%= m.membership.id %>">
+                                    <select name="roleCode" class="form-select" aria-label="Choisir un rôle à ajouter">
+                                        <% for (const code of roleCodes) { %>
+                                            <% if (!m.activeRoles.includes(code)) { %>
+                                                <option value="<%= code %>"><%= roleCatalog[code].label %></option>
+                                            <% } %>
+                                        <% } %>
+                                    </select>
+                                    <input name="expiresAt" type="date" class="form-control" title="Expiration optionnelle">
+                                    <button type="submit" class="btn btn-primary btn-sm">Ajouter</button>
+                                </form>
+                            </td>
+                        <% } %>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+</section>

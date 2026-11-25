@@ -1,55 +1,40 @@
-<!-- HEADER -->
+<%
+  const perms = typeof permissions !== 'undefined' && Array.isArray(permissions) ? permissions : [];
+  const statusLabels = (stats && stats.statusLabels) ? stats.statusLabels : {};
+%>
 <div class="page-header">
     <div class="page-header-meta">
         <h1 class="page-title">Tableau de bord</h1>
         <p class="page-subtitle">Vue d'ensemble des intentions, messes et annonces paroissiales</p>
     </div>
     <div class="page-actions">
-        <a href="/page/annonces" class="btn btn-outline">Nouvelle annonce</a>
-        <a href="/page/messes" class="btn btn-gold">Ajouter une messe</a>
+        <% if (perms.includes('parish.announcements.publish')) { %>
+            <a href="/page/annonces" class="btn btn-outline">Nouvelle annonce</a>
+        <% } %>
+        <% if (perms.includes('parish.masses.manage')) { %>
+            <a href="/page/messes" class="btn btn-gold">Ajouter une messe</a>
+        <% } %>
     </div>
 </div>
 
-<!-- STATS -->
 <section class="kpi-grid" aria-label="Indicateurs clés">
-    <article class="kpi-card">
-        <span class="kpi-label">Intentions en attente</span>
-        <strong id="stat-pending-count" class="kpi-value"><%= stats ? stats.pendingCount : 13 %></strong>
-        <span class="kpi-meta">À valider par la paroisse</span>
-    </article>
-
-    <article class="kpi-card">
-        <span class="kpi-label">Intentions validées</span>
-        <strong id="stat-validated-count" class="kpi-value"><%= stats ? stats.validatedCount : 88 %></strong>
-        <span class="kpi-meta">Confirmées pour célébration</span>
-    </article>
-
-    <article class="kpi-card">
-        <span class="kpi-label">Messes programmées</span>
-        <strong id="stat-messes-count" class="kpi-value"><%= stats ? stats.messesCount : 2 %></strong>
-        <span class="kpi-meta">Célébrations à venir</span>
-    </article>
-
-    <article class="kpi-card">
-        <span class="kpi-label">Annonces publiées</span>
-        <strong id="stat-annonces-count" class="kpi-value"><%= stats ? stats.annoncesCount : 5 %></strong>
-        <span class="kpi-meta">Communications paroissiales</span>
-    </article>
+    <%- include('../partials/stat_card', { id: 'stat-pending-count', label: 'Intentions en attente', value: stats ? stats.pendingCount : 0, meta: 'À traiter ou programmer', icon: 'hourglass_top' }) %>
+    <%- include('../partials/stat_card', { id: 'stat-validated-count', label: 'Acceptées / Programmées', value: stats ? stats.acceptedCount : 0, meta: `${stats ? stats.celebratedCount : 0} célébrée(s)`, icon: 'check_circle' }) %>
+    <%- include('../partials/stat_card', { id: 'stat-messes-count', label: 'Messes à venir', value: stats ? stats.messesCount : 0, meta: 'Célébrations programmées', icon: 'church' }) %>
+    <%- include('../partials/stat_card', { id: 'stat-annonces-count', label: 'Annonces', value: stats ? stats.annoncesCount : 0, meta: 'Communications paroissiales', icon: 'campaign' }) %>
 </section>
 
-<!-- GRID -->
 <section class="dashboard-grid" aria-label="Activité et aperçu">
-    <!-- GRAPH -->
     <article class="panel-soft">
         <div class="chart-header">
             <div>
-                <h2 class="section-title">Intentions de la semaine</h2>
-                <p class="text-muted">Répartition hebdomadaire (données de démonstration)</p>
+                <h2 class="section-title">Volume des intentions</h2>
+                <p class="text-muted">Répartition des demandes reçues par la paroisse</p>
             </div>
-            <strong id="stat-weekly-total" class="kpi-value text-success"><%= stats ? stats.weeklyTotal : 101 %></strong>
+            <strong id="stat-weekly-total" class="kpi-value text-success"><%= stats ? stats.weeklyTotal : 0 %></strong>
         </div>
 
-        <div class="chart-bars" role="img" aria-label="Graphique hebdomadaire de démonstration : Lundi 40%, Mardi 55%, Mercredi 80%, Jeudi 25%, Vendredi 65%">
+        <div class="chart-bars" role="img" aria-label="Aperçu hebdomadaire des intentions">
             <div class="chart-bar-col">
                 <span class="chart-bar-pct">40%</span>
                 <div class="chart-bar bar-h-40" title="Lundi : 40%"></div>
@@ -78,37 +63,34 @@
         </div>
     </article>
 
-    <!-- PREVIEW TABLE -->
     <article class="panel-soft">
         <div class="flex items-center justify-between mb-3">
             <h2 class="section-title">Intentions récentes</h2>
-            <button
-                type="button"
-                class="btn btn-ghost btn-sm text-primary-brand"
-                onclick="document.getElementById('reload-btn1') && document.getElementById('reload-btn1').click()"
-            >
-                Voir plus
-            </button>
+            <% if (perms.includes('parish.intentions.view')) { %>
+                <button type="button" class="btn btn-ghost btn-sm text-primary-brand" data-nav-target="intentions">
+                    Voir plus
+                </button>
+            <% } %>
         </div>
 
         <div class="table-responsive">
             <table class="data-table data-table-compact">
                 <thead>
                     <tr>
-                        <th>Date</th>
-                        <th>Horaire</th>
-                        <th>Célébrant</th>
+                        <th>Réf.</th>
+                        <th>Demandeur</th>
+                        <th>Objet</th>
                         <th>Statut</th>
                     </tr>
                 </thead>
                 <tbody id="recent-intentions-body">
                     <% if (stats && stats.recentIntentions && stats.recentIntentions.length > 0) { %>
-                        <% for (const item of stats.recentIntentions.slice(0, 4)) { %>
+                        <% for (const item of stats.recentIntentions.slice(0, 5)) { %>
                             <tr>
-                                <td><%= item.date %></td>
-                                <td><%= item.horaire %></td>
-                                <td><%= item.celebrant %></td>
-                                <td><%- include('../partials/status_badge', { statut: item.statut }) %></td>
+                                <td><code><%= item.trackingRef %></code></td>
+                                <td><%= item.requesterName %></td>
+                                <td><%= item.objet %></td>
+                                <td><%- include('../partials/status_badge', { statut: item.status, label: statusLabels[item.status] || item.status }) %></td>
                             </tr>
                         <% } %>
                     <% } else { %>

@@ -1,0 +1,27 @@
+<%
+  const code = String(roleCode || '').toUpperCase();
+  const labels = {
+    PARISH_ADMIN: 'Admin paroissial',
+    CURE: 'Curé',
+    VICAIRE: 'Vicaire',
+    SECRETAIRE: 'Secrétaire paroissiale',
+    RESPONSABLE_LITURGIQUE: 'Responsable liturgique',
+    SUPER_ADMIN: 'Super Administrateur',
+  };
+  const roleClassMap = {
+    PARISH_ADMIN: 'role-chip-gold',
+    CURE: 'role-chip-primary',
+    VICAIRE: 'role-chip-info',
+    SECRETAIRE: 'role-chip-success',
+    RESPONSABLE_LITURGIQUE: 'role-chip-neutral',
+    SUPER_ADMIN: 'role-chip-primary',
+  };
+  const display = (typeof label !== 'undefined' && label) ? label : (labels[code] || code);
+  const chipClass = roleClassMap[code] || 'role-chip-neutral';
+%>
+<span class="role-chip <%= chipClass %>">
+    <span><%= display %></span>
+    <% if (typeof expiresAt !== 'undefined' && expiresAt) { %>
+        <span class="role-chip-exp" title="Expire le <%= expiresAt %>">exp.</span>
+    <% } %>
+</span>

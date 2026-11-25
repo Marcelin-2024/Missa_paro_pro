@@ -1,0 +1,113 @@
+<%- include('../partials/page_header', {
+    title: 'Utilisateurs de la paroisse',
+    subtitle: `Équipe pastorale et administrative rattachée à ${activeParish.name}`,
+    actions: []
+}) %>
+
+<div id="parish-users-feedback" class="alert hidden mb-4" role="status"></div>
+
+<div id="parish-member-temp-reveal" class="card-soft card-soft-gold hidden mb-4" role="region" aria-live="polite">
+    <h2 class="section-title mb-2">Mot de passe temporaire généré</h2>
+    <p>Communiquez ce mot de passe temporaire à l’utilisateur (changement obligatoire à la première connexion) : <code id="parish-member-temp-pass" class="credential-code"></code></p>
+</div>
+
+<% if (permissions.includes('parish.users.manage')) { %>
+    <form id="parish-create-member-form" class="card-soft mb-4">
+        <h2 class="section-title mb-3">Ajouter ou rattacher un membre à la paroisse</h2>
+        <div class="form-grid-2">
+            <div class="form-group">
+                <label for="pm-displayName" class="form-label">Nom complet</label>
+                <input id="pm-displayName" name="displayName" type="text" class="form-control" required placeholder="Ex. Père André Kouamé">
+            </div>
+            <div class="form-group">
+                <label for="pm-email" class="form-label">Email</label>
+                <input id="pm-email" name="email" type="email" class="form-control" required placeholder="membre@paroisse.ci">
+            </div>
+        </div>
+        <div class="form-grid-2">
+            <div class="form-group">
+                <label for="pm-phone" class="form-label">Téléphone</label>
+                <input id="pm-phone" name="phone" type="tel" class="form-control" placeholder="+225 07 00 00 00 00">
+            </div>
+            <div class="form-group">
+                <label for="pm-title" class="form-label">Fonction affichée (optionnel)</label>
+                <input id="pm-title" name="titleLabel" type="text" class="form-control" placeholder="Ex. Vicaire chargé de la catéchèse">
+            </div>
+        </div>
+        <div class="form-group">
+            <span class="form-label">Rôles initiaux cumulables</span>
+            <div class="roles-checkbox-grid">
+                <% for (const code of roleCodes) { %>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="roles" value="<%= code %>">
+                        <span><%= roleCatalog[code].label %></span>
+                    </label>
+                <% } %>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Ajouter à la paroisse</button>
+        </div>
+    </form>
+<% } %>
+
+<section class="table-card" aria-label="Membres de la paroisse">
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Membre</th>
+                    <th>Rôles actifs</th>
+                    <th>Compte / Appartenance</th>
+                    <% if (permissions.includes('parish.users.manage')) { %>
+                        <th>Actions</th>
+                    <% } %>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (members && members.length > 0) { %>
+                    <% for (const m of members) { %>
+                        <tr>
+                            <td>
+                                <span class="table-cell-title"><%= m.user.displayName %></span>
+                                <span class="table-cell-sub"><%= m.user.email %> · <%= m.membership.titleLabel || 'Membre paroissial' %></span>
+                            </td>
+                            <td>
+                                <div class="roles-chip-list">
+                                    <% if (m.activeRoles.length > 0) { %>
+                                        <% for (const r of m.activeRoles) { %>
+                                            <%- include('../partials/role_badge', { roleCode: r }) %>
+                                        <% } %>
+                                    <% } else { %>
+                                        <span class="text-muted">Aucun rôle actif</span>
+                                    <% } %>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="flex items-center gap-2">
+                                    <%- include('../partials/status_badge', { statut: m.user.status }) %>
+                                    <%- include('../partials/status_badge', { statut: m.membership.status }) %>
+                                </div>
+                            </td>
+                            <% if (permissions.includes('parish.users.manage')) { %>
+                                <td>
+                                    <div class="table-actions">
+                                        <% if (m.membership.status === 'ACTIVE') { %>
+                                            <button type="button" class="btn btn-danger btn-sm" data-parish-membership-status="SUSPENDED" data-membership-id="<%= m.membership.id %>">Suspendre accès</button>
+                                        <% } else if (m.membership.status === 'SUSPENDED') { %>
+                                            <button type="button" class="btn btn-primary btn-sm" data-parish-membership-status="ACTIVE" data-membership-id="<%= m.membership.id %>">Réactiver</button>
+                                        <% } %>
+                                    </div>
+                                </td>
+                            <% } %>
+                        </tr>
+                    <% } %>
+                <% } else { %>
+                    <tr>
+                        <td colspan="4" class="empty-state">Aucun membre rattaché à cette paroisse.</td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+</section>

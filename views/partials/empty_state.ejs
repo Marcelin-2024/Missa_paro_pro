@@ -1,0 +1,9 @@
+<div class="empty-state empty-state-full">
+    <% if (typeof icon !== 'undefined' && icon) { %>
+        <span class="material-symbols-rounded empty-state-icon" aria-hidden="true"><%= icon %></span>
+    <% } %>
+    <p class="empty-state-title"><%= title %></p>
+    <% if (typeof description !== 'undefined' && description) { %>
+        <p><%= description %></p>
+    <% } %>
+</div>

@@ -1,73 +1,28 @@
+<%
+  const perms = typeof permissions !== 'undefined' && Array.isArray(permissions) ? permissions : [];
+  const intentions = (stats && stats.allIntentions) ? stats.allIntentions : [];
+  const messes = (stats && stats.allMesses) ? stats.allMesses : [];
+  const statusLabels = (stats && stats.statusLabels) ? stats.statusLabels : {};
+
+  const canProcess = perms.includes('parish.intentions.process');
+  const canApprove = perms.includes('parish.intentions.approve');
+  const canCelebrate = perms.includes('parish.intentions.celebrate');
+%>
 <div class="page-header">
     <div class="page-header-meta">
-        <h1 class="page-title">Gestion des intentions</h1>
-        <p class="page-subtitle">Déposez, modifiez et suivez l'état des intentions de messe</p>
+        <h1 class="page-title">Intentions de messe reçues</h1>
+        <p class="page-subtitle">Cycle strict : En attente → En traitement → Acceptée → Programmée → Célébrée</p>
     </div>
     <div class="page-actions">
-        <a href="/page/messes" class="btn btn-gold">Ajouter une messe</a>
+        <a href="/demande-intention" class="btn btn-outline">Portail public fidèles</a>
+        <% if (perms.includes('parish.masses.manage')) { %>
+            <a href="/page/messes" class="btn btn-gold">Ajouter une messe</a>
+        <% } %>
     </div>
 </div>
 
-<!-- Formulaire d'ajout d'intention Firestore -->
-<form id="firebase-intention-form" class="card-soft mb-4">
-    <h2 class="section-title mb-3">Déposer une intention de messe</h2>
-    <div class="form-grid-2 mb-3">
-        <div>
-            <label for="intention-messe-select" class="form-label">Messe concernée</label>
-            <select id="intention-messe-select" class="form-select" required>
-                <option value="">Connectez-vous avec Google pour charger les messes</option>
-            </select>
-        </div>
-        <div>
-            <label for="intention-objet-input" class="form-label">Objet de l'intention</label>
-            <input
-                id="intention-objet-input"
-                type="text"
-                class="form-control"
-                required
-                maxlength="150"
-                placeholder="Ex : Action de grâce, Repos de l'âme..."
-            >
-        </div>
-    </div>
+<div id="parish-intentions-feedback" class="alert hidden mb-4" role="status"></div>
 
-    <div class="form-group">
-        <label for="intention-detail-input" class="form-label">Détail de l'intention</label>
-        <textarea
-            id="intention-detail-input"
-            class="form-textarea"
-            required
-            maxlength="1000"
-            rows="2"
-            placeholder="Précisez votre intention de prière..."
-        ></textarea>
-    </div>
-
-    <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Enregistrer l'intention</button>
-        <span id="intention-form-feedback" class="alert hidden" role="status"></span>
-    </div>
-</form>
-
-<!-- Formulaire de modification inline (owner) -->
-<form id="intention-edit-form" class="card-soft card-soft-gold mb-4 hidden">
-    <h3 class="mb-3">Modifier mon intention en attente</h3>
-    <input id="edit-intention-id" type="hidden">
-    <div class="form-group">
-        <label for="edit-intention-objet" class="form-label">Objet de l'intention</label>
-        <input id="edit-intention-objet" type="text" class="form-control" required maxlength="150">
-    </div>
-    <div class="form-group">
-        <label for="edit-intention-detail" class="form-label">Détail de l'intention</label>
-        <textarea id="edit-intention-detail" class="form-textarea" required maxlength="1000" rows="2"></textarea>
-    </div>
-    <div class="form-actions">
-        <button type="submit" class="btn btn-gold btn-sm">Mettre à jour</button>
-        <button type="button" class="btn btn-outline btn-sm" data-close-edit-form>Annuler</button>
-    </div>
-</form>
-
-<!-- Tableau des intentions -->
 <section class="table-card" aria-label="Liste des intentions de messe">
     <div class="table-toolbar">
         <div class="table-filters">
@@ -76,7 +31,7 @@
                 id="intentions-search"
                 type="search"
                 class="form-control table-search"
-                placeholder="Rechercher par date, célébrant ou objet..."
+                placeholder="Rechercher par référence, demandeur, objet ou date..."
                 data-table-search="intentions-table-body"
             >
             <label for="intentions-status-filter" class="sr-only">Filtrer par statut</label>
@@ -87,9 +42,12 @@
             >
                 <option value="">Tous les statuts</option>
                 <option value="en attente">En attente</option>
-                <option value="validé">Validé</option>
+                <option value="en traitement">En traitement</option>
+                <option value="acceptée">Acceptée</option>
+                <option value="programmée">Programmée</option>
+                <option value="célébrée">Célébrée</option>
+                <option value="refusée">Refusée</option>
                 <option value="annulée">Annulée</option>
-                <option value="a venir">À venir</option>
             </select>
         </div>
     </div>
@@ -98,30 +56,87 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Horaire</th>
-                    <th>Intention &amp; Célébrant</th>
+                    <th>Référence &amp; Date</th>
+                    <th>Demandeur</th>
+                    <th>Objet &amp; Détails</th>
                     <th>Statut</th>
-                    <th>Action</th>
+                    <th>Traitement paroissial</th>
                 </tr>
             </thead>
             <tbody id="intentions-table-body">
-                <% const intentions = (stats && stats.allIntentions) ? stats.allIntentions : []; %>
                 <% if (intentions.length > 0) { %>
                     <% for (const item of intentions) { %>
-                        <tr>
-                            <td><%= item.date %></td>
-                            <td><%= item.horaire %></td>
-                            <td><%= item.celebrant %></td>
-                            <td><%- include('../partials/status_badge', { statut: item.statut }) %></td>
+                        <tr data-intention-row="<%= item.id %>">
                             <td>
-                                <span class="text-muted">Synchronisation requise</span>
+                                <code><%= item.trackingRef %></code>
+                                <span class="table-cell-sub">
+                                    Souhaitée : <%= item.desiredDate || 'Non précisée' %><br>
+                                    Reçue : <%= new Date(item.requestedAt).toLocaleDateString('fr-FR') %>
+                                </span>
+                            </td>
+                            <td>
+                                <span class="table-cell-title"><%= item.requesterName %></span>
+                                <span class="table-cell-sub"><%= item.requesterPhone %></span>
+                            </td>
+                            <td>
+                                <span class="table-cell-title"><%= item.objet %></span>
+                                <span class="table-cell-sub"><%= item.details %></span>
+                                <% if (item.internalComment) { %>
+                                    <span class="table-cell-note">Note interne : <%= item.internalComment %></span>
+                                <% } %>
+                            </td>
+                            <td>
+                                <%- include('../partials/status_badge', { statut: item.status, label: statusLabels[item.status] || item.status }) %>
+                            </td>
+                            <td>
+                                <% const isTerminal = ['CELEBRATED', 'REJECTED', 'CANCELLED'].includes(item.status); %>
+                                <% if (!isTerminal && (canProcess || canApprove || canCelebrate)) { %>
+                                    <div class="intention-workflow-box" data-intention-controls="<%= item.id %>">
+                                        <% if (item.status === 'ACCEPTED' && canProcess) { %>
+                                            <select class="form-select intention-messe-picker" data-intention-messe="<%= item.id %>" aria-label="Associer une messe">
+                                                <option value="">Choisir une messe...</option>
+                                                <% for (const m of messes) { %>
+                                                    <option value="<%= m.id %>" <%= item.messeId === m.id ? 'selected' : '' %>><%= m.date %> · <%= m.horaire %> (<%= m.celebrant %>)</option>
+                                                <% } %>
+                                            </select>
+                                        <% } %>
+
+                                        <input
+                                            type="text"
+                                            class="form-control intention-comment-input"
+                                            data-intention-comment="<%= item.id %>"
+                                            placeholder="Note interne (invisible au fidèle)..."
+                                            value="<%= item.internalComment || '' %>"
+                                        >
+
+                                        <div class="table-actions">
+                                            <% if (item.status === 'PENDING' && canProcess) { %>
+                                                <button type="button" class="btn btn-outline btn-sm" data-intention-transition="PROCESSING" data-intention-id="<%= item.id %>">Mettre en traitement</button>
+                                            <% } %>
+                                            <% if ((item.status === 'PENDING' || item.status === 'PROCESSING') && canApprove) { %>
+                                                <button type="button" class="btn btn-primary btn-sm" data-intention-transition="ACCEPTED" data-intention-id="<%= item.id %>">Accepter</button>
+                                                <button type="button" class="btn btn-danger btn-sm" data-intention-transition="REJECTED" data-intention-id="<%= item.id %>">Refuser</button>
+                                            <% } %>
+                                            <% if (item.status === 'ACCEPTED' && canProcess) { %>
+                                                <button type="button" class="btn btn-gold btn-sm" data-intention-transition="SCHEDULED" data-intention-id="<%= item.id %>">Programmer sur messe</button>
+                                            <% } %>
+                                            <% if (item.status === 'SCHEDULED' && canCelebrate) { %>
+                                                <button type="button" class="btn btn-primary btn-sm" data-intention-transition="CELEBRATED" data-intention-id="<%= item.id %>">Marquer célébrée</button>
+                                            <% } %>
+                                            <% if ((canProcess || canApprove) && ['PENDING', 'PROCESSING', 'ACCEPTED', 'SCHEDULED'].includes(item.status)) { %>
+                                                <button type="button" class="btn btn-ghost btn-sm" data-intention-transition="CANCELLED" data-intention-id="<%= item.id %>">Annuler</button>
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                <% } else { %>
+                                    <span class="text-muted"><%= isTerminal ? 'Clôturée' : 'Consultation seule' %></span>
+                                <% } %>
                             </td>
                         </tr>
                     <% } %>
                 <% } else { %>
                     <tr>
-                        <td colspan="5" class="empty-state">Aucune intention enregistrée pour le moment.</td>
+                        <td colspan="5" class="empty-state">Aucune intention reçue pour cette paroisse.</td>
                     </tr>
                 <% } %>
             </tbody>

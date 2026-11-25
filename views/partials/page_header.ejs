@@ -1,0 +1,23 @@
+<%
+  const actionsList = typeof actions !== 'undefined' && Array.isArray(actions) ? actions : [];
+%>
+<div class="page-header">
+    <div class="page-header-meta">
+        <h1 class="page-title"><%= title %></h1>
+        <% if (typeof subtitle !== 'undefined' && subtitle) { %>
+            <p class="page-subtitle"><%= subtitle %></p>
+        <% } %>
+    </div>
+    <% if (actionsList.length > 0) { %>
+        <div class="page-actions">
+            <% for (const act of actionsList) { %>
+                <a href="<%= act.href %>" class="btn <%= act.variant || 'btn-outline' %>">
+                    <% if (act.icon) { %>
+                        <span class="material-symbols-rounded icon-sm" aria-hidden="true"><%= act.icon %></span>
+                    <% } %>
+                    <span><%= act.label %></span>
+                </a>
+            <% } %>
+        </div>
+    <% } %>
+</div>

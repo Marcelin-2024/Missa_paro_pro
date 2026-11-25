@@ -1,0 +1,16 @@
+<%
+  const hasId = typeof id !== 'undefined' && id;
+  const hasIcon = typeof icon !== 'undefined' && icon;
+%>
+<article class="kpi-card">
+    <div class="kpi-card-top">
+        <span class="kpi-label"><%= label %></span>
+        <% if (hasIcon) { %>
+            <span class="material-symbols-rounded kpi-icon" aria-hidden="true"><%= icon %></span>
+        <% } %>
+    </div>
+    <strong <% if (hasId) { %>id="<%= id %>"<% } %> class="kpi-value"><%= value %></strong>
+    <% if (typeof meta !== 'undefined' && meta) { %>
+        <span class="kpi-meta"><%= meta %></span>
+    <% } %>
+</article>

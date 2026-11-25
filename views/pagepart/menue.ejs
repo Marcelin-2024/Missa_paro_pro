@@ -1,67 +1,32 @@
+<%
+  const perms = typeof permissions !== 'undefined' && Array.isArray(permissions) ? permissions : [];
+  const currentSec = typeof activeSection !== 'undefined' && activeSection ? activeSection : 'overview';
+  const menuItems = [
+    { key: 'overview', perm: 'parish.dashboard.view', url: '/refresh/refresh_firt', icon: 'dashboard', label: 'Tableau de bord', id: 'reload-btn' },
+    { key: 'intentions', perm: 'parish.intentions.view', url: '/refresh/refresh_second', icon: 'description', label: 'Intentions', id: 'reload-btn1' },
+    { key: 'masses', perm: 'parish.masses.view', url: '/refresh/refresh_third', icon: 'church', label: 'Messes', id: 'reload-btn2' },
+    { key: 'announcements', perm: 'parish.announcements.view', url: '/refresh/refresh_four', icon: 'campaign', label: 'Annonces', id: 'reload-btn3' },
+    { key: 'reports', perm: 'parish.reports.view', url: '/refresh/parish/reports', icon: 'bar_chart', label: 'Statistiques', id: 'nav-reports-btn' },
+    { key: 'users', perm: 'parish.users.view', url: '/refresh/parish/users', icon: 'group', label: 'Utilisateurs', id: 'nav-users-btn' },
+    { key: 'roles', perm: 'parish.roles.view', url: '/refresh/parish/roles', icon: 'admin_panel_settings', label: 'Rôles & accès', id: 'nav-roles-btn' },
+    { key: 'settings', perm: 'parish.settings.view', url: '/refresh/parish/settings', icon: 'settings', label: 'Paramètres', id: 'nav-settings-btn' },
+    { key: 'audit', perm: 'parish.audit.view', url: '/refresh/parish/audit', icon: 'history', label: 'Historique', id: 'nav-audit-btn' },
+  ];
+%>
 <nav id="sidebar-nav" class="sidebar-nav" aria-label="Sections du tableau de bord">
-    <a id="reload-btn" class="nav-link active" href="#tableau-de-bord" aria-current="page">
-        <span class="material-symbols-rounded nav-icon" aria-hidden="true">dashboard</span>
-        <span>Tableau de bord</span>
-    </a>
-    <a id="reload-btn1" class="nav-link" href="#intentions">
-        <span class="material-symbols-rounded nav-icon" aria-hidden="true">description</span>
-        <span>Intentions</span>
-    </a>
-    <a id="reload-btn2" class="nav-link" href="#messes">
-        <span class="material-symbols-rounded nav-icon" aria-hidden="true">church</span>
-        <span>Messes</span>
-    </a>
-    <a id="reload-btn3" class="nav-link" href="#annonces">
-        <span class="material-symbols-rounded nav-icon" aria-hidden="true">campaign</span>
-        <span>Annonces</span>
-    </a>
+    <% for (const item of menuItems) { %>
+        <% if (perms.includes(item.perm)) { const isActive = currentSec === item.key; %>
+            <a
+                id="<%= item.id %>"
+                class="nav-link<%= isActive ? ' active' : '' %>"
+                href="/page/tableau_bords?section=<%= item.key %>"
+                data-refresh-url="<%= item.url %>"
+                data-section="<%= item.key %>"
+                <%= isActive ? 'aria-current="page"' : '' %>
+            >
+                <span class="material-symbols-rounded nav-icon" aria-hidden="true"><%= item.icon %></span>
+                <span><%= item.label %></span>
+            </a>
+        <% } %>
+    <% } %>
 </nav>
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const navLinks = document.querySelectorAll('.nav-link');
-        const mainContent = document.getElementById("main-content");
-
-        navLinks.forEach(link => {
-            link.addEventListener('click', function (e) {
-                e.preventDefault();
-                navLinks.forEach(btn => {
-                    btn.classList.remove('active');
-                    btn.removeAttribute('aria-current');
-                });
-                this.classList.add('active');
-                this.setAttribute('aria-current', 'page');
-
-                let endpoint = "";
-                if (this.id === "reload-btn") endpoint = "/refresh/refresh_firt";
-                else if (this.id === "reload-btn1") endpoint = "/refresh/refresh_second";
-                else if (this.id === "reload-btn2") endpoint = "/refresh/refresh_third";
-                else if (this.id === "reload-btn3") endpoint = "/refresh/refresh_four";
-
-                if (endpoint && mainContent) {
-                    mainContent.setAttribute('aria-busy', 'true');
-                    fetch(endpoint)
-                        .then(response => {
-                            if (!response.ok) throw new Error('Erreur réseau');
-                            return response.text();
-                        })
-                        .then(html => {
-                            mainContent.innerHTML = html;
-                            if (window.missaFirebase) {
-                                window.missaFirebase.refreshCurrentView();
-                            }
-                        })
-                        .catch(err => console.error("Erreur:", err))
-                        .finally(() => {
-                            mainContent.removeAttribute('aria-busy');
-                            const sidebar = document.getElementById('app-sidebar');
-                            const backdrop = document.getElementById('sidebar-backdrop');
-                            const toggle = document.querySelector('[data-drawer-toggle]');
-                            if (sidebar) sidebar.classList.remove('is-open');
-                            if (backdrop) backdrop.classList.remove('is-open');
-                            if (toggle) toggle.setAttribute('aria-expanded', 'false');
-                        });
-                }
-            });
-        });
-    });
-</script>

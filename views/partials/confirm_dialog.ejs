@@ -1,0 +1,18 @@
+<%
+  const dlgId = typeof id !== 'undefined' && id ? id : 'confirm-dialog';
+  const dlgTitle = typeof title !== 'undefined' && title ? title : 'Confirmer l’action';
+  const dlgMessage = typeof message !== 'undefined' && message ? message : 'Voulez-vous vraiment effectuer cette action ?';
+  const dlgConfirm = typeof confirmLabel !== 'undefined' && confirmLabel ? confirmLabel : 'Confirmer';
+%>
+<div id="<%= dlgId %>" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="<%= dlgId %>-title">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h2 id="<%= dlgId %>-title" class="modal-title"><%= dlgTitle %></h2>
+        </div>
+        <p id="<%= dlgId %>-message" class="modal-body"><%= dlgMessage %></p>
+        <div class="modal-footer">
+            <button id="<%= dlgId %>-cancel" type="button" class="btn btn-outline btn-sm" data-dialog-close="<%= dlgId %>">Annuler</button>
+            <button id="<%= dlgId %>-confirm" type="button" class="btn btn-danger btn-sm"><%= dlgConfirm %></button>
+        </div>
+    </div>
+</div>

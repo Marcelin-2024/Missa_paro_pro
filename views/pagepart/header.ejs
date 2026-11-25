@@ -1,3 +1,11 @@
+<%
+  const unreadCount = typeof notifications !== 'undefined' && Array.isArray(notifications)
+    ? notifications.filter((n) => !n.read).length
+    : 0;
+  const parishTitle = typeof activeParish !== 'undefined' && activeParish
+    ? `${activeParish.name} · ${activeParish.dioceseName}`
+    : (user && user.paroisse ? user.paroisse : 'Espace paroissial');
+%>
 <div class="flex items-center gap-2">
     <button
         type="button"
@@ -18,8 +26,8 @@
 <div class="header-card header-parish">
     <img src="/static/icon/eglise.svg" alt="" class="header-avatar">
     <div class="header-parish-info">
-        <p class="header-parish-title">Paroisse <%= user && user.paroisse ? user.paroisse : 'Sainte Rita' %></p>
-        <p id="header-welcome-name" class="header-parish-welcome">Bienvenue <%= user && user.nom_complet ? user.nom_complet : 'Marcelin Attes' %></p>
+        <p class="header-parish-title"><%= parishTitle %></p>
+        <p id="header-welcome-name" class="header-parish-welcome">Bienvenue <%= user && user.nom_complet ? user.nom_complet : '' %></p>
     </div>
 </div>
 
@@ -28,9 +36,12 @@
         id="notification-btn"
         type="button"
         class="icon-btn"
-        aria-label="Afficher les notifications"
+        aria-label="Afficher les notifications (<%= unreadCount %> non lues)"
         title="Notifications"
     >
         <span class="material-symbols-rounded" aria-hidden="true">notifications</span>
+        <% if (unreadCount > 0) { %>
+            <span class="notif-dot"><%= unreadCount %></span>
+        <% } %>
     </button>
 </div>

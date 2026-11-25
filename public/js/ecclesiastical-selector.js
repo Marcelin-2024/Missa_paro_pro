@@ -1,23 +1,37 @@
 (function initEcclesiasticalSelector() {
   const MISSING_PARISH_VALUE = '__missing__';
 
-  const form = document.querySelector('form[action="/page/valide"]');
-  const provinceSelect = document.getElementById('provinceId');
-  const dioceseSelect = document.getElementById('dioceseId');
-  const parishSearchInput = document.getElementById('parish-search-input');
-  const parishSelect = document.getElementById('parishId');
-  const dioceseHelper = document.getElementById('diocese-helper');
-  const parishHelper = document.getElementById('parish-helper');
-  const parishEmptyState = document.getElementById('parish-empty-state');
-  const parishEmptyText = document.getElementById('parish-empty-text');
-  const useMissingParishBtn = document.getElementById('use-missing-parish-btn');
-  const missingParishBox = document.getElementById('missing-parish-box');
-  const missingParishInput = document.getElementById('missing_parish_name');
-  const parishRequestIdInput = document.getElementById('parish_request_id');
-  const ecclesiasticalError = document.getElementById('ecclesiastical-error');
+  const pickerContainer =
+    document.querySelector('[data-ecclesiastical-picker]') ||
+    document.querySelector('form[action="/page/valide"]');
+
+  if (!pickerContainer) {
+    return;
+  }
+
+  const form =
+    pickerContainer instanceof HTMLFormElement
+      ? pickerContainer
+      : pickerContainer.querySelector('form');
+  const provinceSelect = pickerContainer.querySelector('#provinceId');
+  const dioceseSelect = pickerContainer.querySelector('#dioceseId');
+  const parishSearchInput = pickerContainer.querySelector('#parish-search-input');
+  const parishSelect = pickerContainer.querySelector('#parishId');
+  const dioceseHelper = pickerContainer.querySelector('#diocese-helper');
+  const parishHelper = pickerContainer.querySelector('#parish-helper');
+  const parishEmptyState = pickerContainer.querySelector('#parish-empty-state');
+  const parishEmptyText = pickerContainer.querySelector('#parish-empty-text');
+  const useMissingParishBtn = pickerContainer.querySelector('#use-missing-parish-btn');
+  const missingParishBox = pickerContainer.querySelector('#missing-parish-box');
+  const missingParishInput = pickerContainer.querySelector('#missing_parish_name');
+  const parishRequestIdInput = pickerContainer.querySelector('#parish_request_id');
+  const ecclesiasticalError = pickerContainer.querySelector('#ecclesiastical-error');
+
+  const supportsMissingOption = Boolean(missingParishBox);
+  const isPublicRegistrationForm =
+    form instanceof HTMLFormElement && form.getAttribute('action') === '/page/valide';
 
   if (
-    !(form instanceof HTMLFormElement) ||
     !(provinceSelect instanceof HTMLSelectElement) ||
     !(dioceseSelect instanceof HTMLSelectElement) ||
     !(parishSelect instanceof HTMLSelectElement)
@@ -166,7 +180,9 @@
     defaultOption.textContent =
       filtered.length > 0
         ? 'Sélectionnez votre paroisse'
-        : 'Aucune paroisse correspondante — utilisez l’option ci-dessous';
+        : supportsMissingOption
+          ? 'Aucune paroisse correspondante — utilisez l’option ci-dessous'
+          : 'Aucune paroisse correspondante dans ce diocèse';
     parishSelect.appendChild(defaultOption);
 
     filtered.forEach((parish) => {
@@ -176,10 +192,12 @@
       parishSelect.appendChild(option);
     });
 
-    const missingOption = document.createElement('option');
-    missingOption.value = MISSING_PARISH_VALUE;
-    missingOption.textContent = 'Je ne trouve pas ma paroisse';
-    parishSelect.appendChild(missingOption);
+    if (supportsMissingOption) {
+      const missingOption = document.createElement('option');
+      missingOption.value = MISSING_PARISH_VALUE;
+      missingOption.textContent = 'Je ne trouve pas ma paroisse';
+      parishSelect.appendChild(missingOption);
+    }
 
     if (
       previousValue &&
@@ -196,12 +214,12 @@
     if (loadedParishes.length === 0) {
       setEmptyState(
         true,
-        'Aucune paroisse officielle n’est encore répertoriée pour ce diocèse. Vous pouvez déclarer votre paroisse ci-dessous.'
+        'Aucune paroisse officielle n’est encore répertoriée pour ce diocèse.'
       );
     } else if (filtered.length === 0) {
       setEmptyState(
         true,
-        'Aucune paroisse ne correspond à votre recherche dans ce diocèse. Vérifiez l’orthographe ou déclarez votre paroisse.'
+        'Aucune paroisse ne correspond à votre recherche dans ce diocèse.'
       );
     } else {
       setEmptyState(false);
@@ -330,7 +348,7 @@
 
   function handleParishChange() {
     clearError();
-    if (parishSelect.value === MISSING_PARISH_VALUE) {
+    if (supportsMissingOption && parishSelect.value === MISSING_PARISH_VALUE) {
       showMissingParishBox(true);
     } else {
       hideMissingParishBox();
@@ -348,7 +366,7 @@
     });
   }
 
-  if (useMissingParishBtn instanceof HTMLButtonElement) {
+  if (useMissingParishBtn instanceof HTMLButtonElement && supportsMissingOption) {
     useMissingParishBtn.addEventListener('click', () => {
       clearError();
       parishSelect.value = MISSING_PARISH_VALUE;
@@ -373,116 +391,117 @@
     });
   }
 
-  form.addEventListener('submit', async (event) => {
-    if (isSubmittingPendingRequest) {
-      return;
-    }
+  if (isPublicRegistrationForm && form) {
+    form.addEventListener('submit', async (event) => {
+      if (isSubmittingPendingRequest) {
+        return;
+      }
 
-    clearError();
+      clearError();
 
-    const provinceId = provinceSelect.value.trim();
-    const dioceseId = dioceseSelect.value.trim();
-    const parishId = parishSelect.value.trim();
+      const provinceId = provinceSelect.value.trim();
+      const dioceseId = dioceseSelect.value.trim();
+      const parishId = parishSelect.value.trim();
 
-    if (!provinceId) {
-      event.preventDefault();
-      showError('Veuillez sélectionner votre province ecclésiastique.', provinceSelect);
-      return;
-    }
+      if (!provinceId) {
+        event.preventDefault();
+        showError('Veuillez sélectionner votre province ecclésiastique.', provinceSelect);
+        return;
+      }
 
-    if (!dioceseId) {
-      event.preventDefault();
-      showError('Veuillez sélectionner votre diocèse.', dioceseSelect);
-      return;
-    }
+      if (!dioceseId) {
+        event.preventDefault();
+        showError('Veuillez sélectionner votre diocèse.', dioceseSelect);
+        return;
+      }
 
-    if (!parishId) {
-      event.preventDefault();
-      showError(
-        'Veuillez sélectionner votre paroisse ou choisir « Je ne trouve pas ma paroisse ».',
-        parishSelect
-      );
-      return;
-    }
-
-    if (parishId === MISSING_PARISH_VALUE) {
-      const missingName =
-        missingParishInput instanceof HTMLInputElement ? missingParishInput.value.trim() : '';
-      if (missingName.length < 2) {
+      if (!parishId) {
         event.preventDefault();
         showError(
-          'Veuillez saisir le nom de votre paroisse (au moins 2 caractères).',
-          missingParishInput
+          'Veuillez sélectionner votre paroisse ou choisir « Je ne trouve pas ma paroisse ».',
+          parishSelect
         );
         return;
       }
 
-      // Check passwords match first so we don't send a parish request prematurely
-      const pw = form.querySelector('#motdepasse');
-      const confirmPw = form.querySelector('#confirmationmotdepasse');
-      if (
-        pw instanceof HTMLInputElement &&
-        confirmPw instanceof HTMLInputElement &&
-        pw.value !== confirmPw.value
-      ) {
-        return;
-      }
-
-      const existingRequestId =
-        parishRequestIdInput instanceof HTMLInputElement
-          ? parishRequestIdInput.value.trim()
-          : '';
-
-      if (!existingRequestId) {
-        event.preventDefault();
-        const submitBtn = form.querySelector('button[type="submit"]');
-        if (submitBtn instanceof HTMLButtonElement) {
-          submitBtn.classList.add('is-loading');
-          submitBtn.disabled = true;
-          submitBtn.textContent = 'Enregistrement...';
-        }
-
-        try {
-          const response = await fetch('/api/ecclesiastical/parish-requests', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-            },
-            body: JSON.stringify({
-              provinceId,
-              dioceseId,
-              parishName: missingName,
-            }),
-          });
-
-          const payload = await response.json();
-          if (!response.ok || !payload.request || !payload.request.id) {
-            throw new Error(
-              payload.error || 'Impossible d’enregistrer la demande de paroisse.'
-            );
-          }
-
-          if (parishRequestIdInput instanceof HTMLInputElement) {
-            parishRequestIdInput.value = payload.request.id;
-          }
-
-          isSubmittingPendingRequest = true;
-          form.submit();
-        } catch (error) {
-          if (submitBtn instanceof HTMLButtonElement) {
-            submitBtn.classList.remove('is-loading');
-            submitBtn.disabled = false;
-            submitBtn.textContent = "S'inscrire";
-          }
+      if (parishId === MISSING_PARISH_VALUE) {
+        const missingName =
+          missingParishInput instanceof HTMLInputElement ? missingParishInput.value.trim() : '';
+        if (missingName.length < 2) {
+          event.preventDefault();
           showError(
-            error instanceof Error
-              ? error.message
-              : 'Impossible d’enregistrer votre demande de paroisse.',
+            'Veuillez saisir le nom de votre paroisse (au moins 2 caractères).',
             missingParishInput
           );
+          return;
+        }
+
+        const pw = form.querySelector('#motdepasse');
+        const confirmPw = form.querySelector('#confirmationmotdepasse');
+        if (
+          pw instanceof HTMLInputElement &&
+          confirmPw instanceof HTMLInputElement &&
+          pw.value !== confirmPw.value
+        ) {
+          return;
+        }
+
+        const existingRequestId =
+          parishRequestIdInput instanceof HTMLInputElement
+            ? parishRequestIdInput.value.trim()
+            : '';
+
+        if (!existingRequestId) {
+          event.preventDefault();
+          const submitBtn = form.querySelector('button[type="submit"]');
+          if (submitBtn instanceof HTMLButtonElement) {
+            submitBtn.classList.add('is-loading');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Enregistrement...';
+          }
+
+          try {
+            const response = await fetch('/api/ecclesiastical/parish-requests', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+              },
+              body: JSON.stringify({
+                provinceId,
+                dioceseId,
+                parishName: missingName,
+              }),
+            });
+
+            const payload = await response.json();
+            if (!response.ok || !payload.request || !payload.request.id) {
+              throw new Error(
+                payload.error || 'Impossible d’enregistrer la demande de paroisse.'
+              );
+            }
+
+            if (parishRequestIdInput instanceof HTMLInputElement) {
+              parishRequestIdInput.value = payload.request.id;
+            }
+
+            isSubmittingPendingRequest = true;
+            form.submit();
+          } catch (error) {
+            if (submitBtn instanceof HTMLButtonElement) {
+              submitBtn.classList.remove('is-loading');
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Créer mon compte fidèle';
+            }
+            showError(
+              error instanceof Error
+                ? error.message
+                : 'Impossible d’enregistrer votre demande de paroisse.',
+              missingParishInput
+            );
+          }
         }
       }
-    }
-  });
+    });
+  }
 })();

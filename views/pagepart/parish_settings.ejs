@@ -1,0 +1,48 @@
+<%- include('../partials/page_header', {
+    title: 'Paramètres de la paroisse',
+    subtitle: `${activeParish.name} · ${activeParish.dioceseName}`,
+    actions: []
+}) %>
+
+<div id="parish-settings-feedback" class="alert hidden mb-4" role="status"></div>
+
+<form id="parish-settings-form" class="card-soft">
+    <div class="form-grid-2">
+        <div class="form-group">
+            <label for="ps-phone" class="form-label">Téléphone du secrétariat</label>
+            <input id="ps-phone" name="phone" type="tel" class="form-control" value="<%= activeParish.phone || '' %>" <%= permissions.includes('parish.settings.manage') ? '' : 'disabled' %>>
+        </div>
+        <div class="form-group">
+            <label for="ps-email" class="form-label">Email paroissial</label>
+            <input id="ps-email" name="email" type="email" class="form-control" value="<%= activeParish.email || '' %>" <%= permissions.includes('parish.settings.manage') ? '' : 'disabled' %>>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="ps-address" class="form-label">Adresse physique</label>
+        <input id="ps-address" name="address" type="text" class="form-control" value="<%= activeParish.address || '' %>" <%= permissions.includes('parish.settings.manage') ? '' : 'disabled' %>>
+    </div>
+
+    <div class="form-group">
+        <label for="ps-schedules" class="form-label">Horaires habituels des messes</label>
+        <textarea id="ps-schedules" name="massScheduleSummary" class="form-textarea" rows="2" <%= permissions.includes('parish.settings.manage') ? '' : 'disabled' %>><%= activeParish.massScheduleSummary || '' %></textarea>
+    </div>
+
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" name="chapelsEnabled" <%= activeParish.chapelsEnabled ? 'checked' : '' %> <%= permissions.includes('parish.settings.manage') ? '' : 'disabled' %>>
+            <span>Activer la gestion des chapelles rattachées</span>
+        </label>
+    </div>
+
+    <div class="form-group">
+        <label for="ps-chapels" class="form-label">Chapelles (séparées par des virgules)</label>
+        <input id="ps-chapels" name="chapels" type="text" class="form-control" value="<%= (activeParish.chapels || []).join(', ') %>" placeholder="Chapelle Saint-Joseph, Chapelle Sainte-Famille" <%= permissions.includes('parish.settings.manage') ? '' : 'disabled' %>>
+    </div>
+
+    <% if (permissions.includes('parish.settings.manage')) { %>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Enregistrer les paramètres</button>
+        </div>
+    <% } %>
+</form>

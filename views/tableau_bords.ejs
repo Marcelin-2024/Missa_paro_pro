@@ -6,43 +6,61 @@
     <link rel="shortcut icon" href="/static/image/logomissaparo.png" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Application de gestion paroissiale — messes, annonces, intentions et espace fidèles.">
-    <title>Missa Paro - Tableau de bord</title>
+    <title>Missa Paro - Tableau de bord paroissial</title>
     <%- include('partials/styles') %>
 </head>
 
 <body class="dashboard-body">
     <a href="#main-content" class="skip-link">Aller au contenu principal</a>
 
-    <!-- HEADER GLOBAL -->
     <header class="app-header">
-        <%- include('pagepart/header', { user }) %>
+        <%- include('pagepart/header', { user, activeParish, activeRoles, notifications }) %>
     </header>
 
-    <!-- APP SHELL -->
+    <%- include('partials/notification_list', { notifications }) %>
+
     <div class="app-shell">
         <div id="sidebar-backdrop" class="sidebar-backdrop" aria-hidden="true"></div>
 
-        <!-- SIDEBAR -->
         <aside id="app-sidebar" class="app-sidebar" aria-label="Navigation principale">
             <div class="sidebar-card">
-                <%- include('pagepart/menue') %>
+                <% if (typeof memberships !== 'undefined' && memberships.length > 1) { %>
+                    <form action="/page/switch-parish" method="POST" class="mb-3">
+                        <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <% } %>
+                        <label for="switch-parish-select" class="form-label">Paroisse active</label>
+                        <select id="switch-parish-select" name="parishId" class="form-select" data-auto-submit-select>
+                            <% for (const m of memberships) { if (m.parish) { %>
+                                <option value="<%= m.parish.id %>" <%= activeParish && activeParish.id === m.parish.id ? 'selected' : '' %>>
+                                    <%= m.parish.name %>
+                                </option>
+                            <% } } %>
+                        </select>
+                    </form>
+                <% } %>
+
+                <div class="roles-chip-list mb-3">
+                    <% for (const roleCode of activeRoles) { %>
+                        <%- include('partials/role_badge', { roleCode }) %>
+                    <% } %>
+                </div>
+
+                <%- include('pagepart/menue', { permissions, activeSection: section }) %>
             </div>
 
             <div class="sidebar-card">
-                <p id="firebase-auth-status" class="sidebar-status-text">Initialisation Firebase...</p>
+                <p id="firebase-auth-status" class="sidebar-status-text">Espace paroissial sécurisé</p>
                 <div class="sidebar-actions">
-                    <button id="firebase-auth-action" type="button" class="btn btn-outline btn-sm btn-block">
-                        Connexion Google (Firebase)
-                    </button>
-                    <button id="settings-btn" type="button" class="btn btn-ghost btn-sm btn-block">
-                        <span class="material-symbols-rounded icon-sm" aria-hidden="true">settings</span>
-                        <span>Paramètres</span>
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-danger btn-sm btn-block"
-                        onclick="(window.missaFirebase ? window.missaFirebase.signOutFirebase() : Promise.resolve()).finally(() => { window.location.href='/page/logout'; })"
-                    >
+                    <a href="/demande-intention" class="btn btn-outline btn-sm btn-block">
+                        <span class="material-symbols-rounded icon-sm" aria-hidden="true">volunteer_activism</span>
+                        <span>Portail intentions public</span>
+                    </a>
+                    <a href="/page/changer-mot-de-passe" class="btn btn-ghost btn-sm btn-block">
+                        <span class="material-symbols-rounded icon-sm" aria-hidden="true">key</span>
+                        <span>Mot de passe</span>
+                    </a>
+                    <button type="button" class="btn btn-danger btn-sm btn-block" data-logout-btn>
                         <span class="material-symbols-rounded icon-sm" aria-hidden="true">logout</span>
                         <span>Déconnecter</span>
                     </button>
@@ -51,29 +69,42 @@
             </div>
         </aside>
 
-        <!-- MAIN -->
         <main id="main-content" class="app-main" tabindex="-1">
-            <%- include('pagepart/contenue1', { stats }) %>
+            <%
+              const initialSection = typeof section !== 'undefined' ? section : 'overview';
+              if (initialSection === 'intentions' && permissions.includes('parish.intentions.view')) {
+            %>
+                <%- include('pagepart/contenue2', { stats, permissions }) %>
+            <% } else if (initialSection === 'masses' && permissions.includes('parish.masses.view')) { %>
+                <%- include('pagepart/contenue3', { stats, permissions }) %>
+            <% } else if (initialSection === 'announcements' && permissions.includes('parish.announcements.view')) { %>
+                <%- include('pagepart/contenue4', { stats, permissions }) %>
+            <% } else if (initialSection === 'reports' && permissions.includes('parish.reports.view')) { %>
+                <%- include('pagepart/parish_reports', { stats, activeParish }) %>
+            <% } else if (initialSection === 'users' && permissions.includes('parish.users.view')) { %>
+                <%- include('pagepart/parish_users', { activeParish, permissions, members, roleCatalog, roleCodes }) %>
+            <% } else if (initialSection === 'roles' && permissions.includes('parish.roles.view')) { %>
+                <%- include('pagepart/parish_roles', { activeParish, permissions, members, roleCatalog, roleCodes }) %>
+            <% } else if (initialSection === 'settings' && permissions.includes('parish.settings.view')) { %>
+                <%- include('pagepart/parish_settings', { activeParish, permissions }) %>
+            <% } else if (initialSection === 'audit' && permissions.includes('parish.audit.view')) { %>
+                <%- include('pagepart/parish_audit', { activeParish, auditLogs }) %>
+            <% } else { %>
+                <%- include('pagepart/contenue1', { stats, permissions }) %>
+            <% } %>
         </main>
     </div>
 
-    <div id="confirm-dialog" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
-        <div class="modal-dialog">
-            <div class="modal-header">
-                <h2 id="confirm-dialog-title" class="modal-title">Confirmer la suppression</h2>
-            </div>
-            <p id="confirm-dialog-message" class="modal-body">
-                Voulez-vous vraiment supprimer cette intention de messe ? Cette action est irréversible.
-            </p>
-            <div class="modal-footer">
-                <button id="confirm-dialog-cancel" type="button" class="btn btn-outline btn-sm">Annuler</button>
-                <button id="confirm-dialog-confirm" type="button" class="btn btn-danger btn-sm">Supprimer</button>
-            </div>
-        </div>
-    </div>
+    <%- include('partials/confirm_dialog', {
+        id: 'confirm-dialog',
+        title: 'Confirmer l’action',
+        message: 'Voulez-vous vraiment confirmer cette opération ?',
+        confirmLabel: 'Confirmer'
+    }) %>
 
     <script src="/static/js/ui-interactions.js"></script>
-    <script type="module" src="/static/js/firebase-client.js"></script>
+    <script src="/static/js/dashboard-nav.js"></script>
+    <script src="/static/js/parish-admin.js"></script>
 </body>
 
 </html>

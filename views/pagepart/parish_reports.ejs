@@ -1,0 +1,45 @@
+<%- include('../partials/page_header', {
+    title: 'Statistiques & Rapports',
+    subtitle: `Activité liturgique et pastorale de ${activeParish.name}`,
+    actions: []
+}) %>
+
+<%
+  const intentions = stats.allIntentions || [];
+  const byStatus = {
+    PENDING: intentions.filter((i) => i.status === 'PENDING').length,
+    PROCESSING: intentions.filter((i) => i.status === 'PROCESSING').length,
+    ACCEPTED: intentions.filter((i) => i.status === 'ACCEPTED').length,
+    SCHEDULED: intentions.filter((i) => i.status === 'SCHEDULED').length,
+    CELEBRATED: intentions.filter((i) => i.status === 'CELEBRATED').length,
+    REJECTED: intentions.filter((i) => i.status === 'REJECTED').length,
+    CANCELLED: intentions.filter((i) => i.status === 'CANCELLED').length,
+  };
+%>
+
+<section class="kpi-grid">
+    <%- include('../partials/stat_card', { label: 'En attente / Traitement', value: byStatus.PENDING + byStatus.PROCESSING, meta: `${byStatus.PENDING} attente · ${byStatus.PROCESSING} traitement` }) %>
+    <%- include('../partials/stat_card', { label: 'Acceptées / Programmées', value: byStatus.ACCEPTED + byStatus.SCHEDULED, meta: `${byStatus.ACCEPTED} acceptées · ${byStatus.SCHEDULED} programmées` }) %>
+    <%- include('../partials/stat_card', { label: 'Célébrées', value: byStatus.CELEBRATED, meta: 'Confirmées célébrées par le clergé' }) %>
+    <%- include('../partials/stat_card', { label: 'Refusées / Annulées', value: byStatus.REJECTED + byStatus.CANCELLED, meta: `${byStatus.REJECTED} refusées · ${byStatus.CANCELLED} annulées` }) %>
+</section>
+
+<section class="panel-soft">
+    <h2 class="section-title mb-3">Synthèse paroissiale</h2>
+    <div class="table-responsive">
+        <table class="data-table data-table-compact">
+            <thead>
+                <tr>
+                    <th>Indicateur</th>
+                    <th>Volume</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>Total des intentions reçues</td><td><strong><%= intentions.length %></strong></td></tr>
+                <tr><td>Messes à venir</td><td><strong><%= stats.messesCount %></strong></td></tr>
+                <tr><td>Total des messes enregistrées</td><td><strong><%= (stats.allMesses || []).length %></strong></td></tr>
+                <tr><td>Annonces paroissiales</td><td><strong><%= stats.annoncesCount %></strong></td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>

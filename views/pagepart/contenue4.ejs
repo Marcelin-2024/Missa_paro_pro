@@ -1,14 +1,21 @@
+<%
+  const perms = typeof permissions !== 'undefined' && Array.isArray(permissions) ? permissions : [];
+  const annonces = (stats && stats.allAnnonces) ? stats.allAnnonces : [];
+%>
 <div class="page-header">
     <div class="page-header-meta">
         <h1 class="page-title">Gestion des annonces</h1>
-        <p class="page-subtitle">Consultez et publiez les communications paroissiales</p>
+        <p class="page-subtitle">Consultez, publiez et approuvez les communications paroissiales</p>
     </div>
     <div class="page-actions">
-        <a href="/page/annonces" class="btn btn-gold">Ajouter une annonce</a>
+        <% if (perms.includes('parish.announcements.publish')) { %>
+            <a href="/page/annonces" class="btn btn-gold">Ajouter une annonce</a>
+        <% } %>
     </div>
 </div>
 
-<% const annonces = (stats && stats.allAnnonces) ? stats.allAnnonces : []; %>
+<div id="parish-annonces-feedback" class="alert hidden mb-4" role="status"></div>
+
 <section class="table-card" aria-label="Liste des annonces paroissiales">
     <div class="table-toolbar">
         <div class="table-filters">
@@ -41,20 +48,31 @@
                 <article class="annonce-card" data-filter-type="<%= String(item.type || '').toLowerCase() %>">
                     <div class="annonce-card-meta">
                         <span class="badge badge-info"><%= item.type %></span>
-                        <span><%= item.date_annonce %></span>
+                        <span><%= item.dateAnnonce %></span>
                     </div>
-                    <% if (item.image) { %>
-                        <img src="<%= item.image %>" alt="<%= item.titre %>" class="annonce-card-image">
+                    <div class="mb-2">
+                        <%- include('../partials/status_badge', { statut: item.statut }) %>
+                    </div>
+                    <% if (item.imageUrl) { %>
+                        <img src="<%= item.imageUrl %>" alt="<%= item.titre %>" class="annonce-card-image">
                     <% } %>
                     <h2 class="annonce-card-title"><%= item.titre %></h2>
                     <p class="annonce-card-content"><%= item.contenu %></p>
+                    <% if (item.statut === 'PENDING_APPROVAL' && perms.includes('parish.announcements.approve')) { %>
+                        <div class="mt-3">
+                            <button type="button" class="btn btn-primary btn-sm" data-approve-annonce="<%= item.id %>">
+                                Approuver et publier
+                            </button>
+                        </div>
+                    <% } %>
                 </article>
             <% } %>
         <% } else { %>
-            <div class="empty-state empty-state-full">
-                <p class="empty-state-title">Aucune annonce publiée</p>
-                <p>Publiez une première annonce pour informer les fidèles de la paroisse.</p>
-            </div>
+            <%- include('../partials/empty_state', {
+                title: 'Aucune annonce publiée',
+                description: 'Publiez une première annonce pour informer les fidèles de la paroisse.',
+                icon: 'campaign'
+            }) %>
         <% } %>
     </div>
 

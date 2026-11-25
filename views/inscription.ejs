@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <link rel="shortcut icon" href="/static/image/logomissaparo.png" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Inscription d'une paroisse sur Missa Paro.">
-    <title>Missa Paro - Inscription</title>
+    <meta name="description" content="Création d’un compte Fidèle sur Missa Paro.">
+    <title>Missa Paro - Inscription Fidèle</title>
     <%- include('partials/styles') %>
 </head>
 
@@ -14,8 +14,10 @@
     <main class="auth-card auth-card-wide" aria-labelledby="register-title">
         <div class="auth-brand">
             <img src="/static/image/logomissaparo.png" alt="Logo Missa Paro" class="auth-logo">
-            <h1 id="register-title" class="page-title">Création de votre espace paroisse</h1>
-            <p class="auth-subtitle">Enregistrez votre paroisse pour gérer messes, annonces et intentions</p>
+            <h1 id="register-title" class="page-title">Création de votre compte Fidèle</h1>
+            <p class="auth-subtitle">
+                Suivez vos demandes d’intentions de messe. Les espaces paroissiaux sont créés par la Super Administration.
+            </p>
         </div>
 
         <% if (typeof error !== 'undefined' && error) { %>
@@ -26,7 +28,7 @@
 
         <form action="/page/valide" method="POST" data-loading-form data-validate-passwords>
             <fieldset class="ecclesiastical-section">
-                <legend class="ecclesiastical-section-title">Rattachement ecclésiastique (Côte d’Ivoire)</legend>
+                <legend class="ecclesiastical-section-title">Paroisse habituelle de référence (Côte d’Ivoire)</legend>
 
                 <div class="form-grid-2">
                     <div class="form-group">
@@ -109,10 +111,14 @@
             <p id="password-match-error" class="alert alert-error mb-3 hidden" role="alert">
                 Les mots de passe ne correspondent pas.
             </p>
-            <%- include('partials/bouton_envoi', { name: "S'inscrire" }) %>
+            <%- include('partials/bouton_envoi', { name: "Créer mon compte fidèle" }) %>
         </form>
 
         <div class="auth-divider">ou</div>
+
+        <a href="/demande-intention" class="btn btn-gold btn-block mb-3">
+            Déposer une intention sans compte
+        </a>
 
         <button id="google-signin-btn" type="button" class="btn btn-secondary btn-block">
             S'inscrire avec Google (Firebase)

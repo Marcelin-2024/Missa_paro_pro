@@ -65,6 +65,27 @@ service cloud.firestore {
         data.updatedAt is timestamp;
     }
 
+    function isValidParish(data) {
+      return data.keys().hasAll(['id', 'provinceId', 'dioceseId', 'name', 'status', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'provinceId', 'dioceseId', 'name', 'status', 'createdAt']) &&
+        isValidId(data.id) &&
+        isValidId(data.provinceId) &&
+        isValidId(data.dioceseId) &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 160 &&
+        data.status in ['PENDING_ACTIVATION', 'ACTIVE', 'SUSPENDED', 'INACTIVE'] &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidParishMembership(data) {
+      return data.keys().hasAll(['userId', 'parishId', 'status', 'roles', 'updatedAt']) &&
+        data.keys().hasOnly(['userId', 'parishId', 'status', 'roles', 'updatedAt']) &&
+        isValidId(data.userId) &&
+        isValidId(data.parishId) &&
+        data.status in ['ACTIVE', 'SUSPENDED', 'REMOVED'] &&
+        data.roles is list && data.roles.size() <= 8 &&
+        data.updatedAt is timestamp;
+    }
+
     function isValidMesse(data) {
       return data.keys().hasAll(['date', 'horaire', 'celebrant', 'paroisse', 'statut', 'createdBy', 'createdAt']) &&
         data.keys().hasOnly(['date', 'horaire', 'celebrant', 'paroisse', 'statut', 'createdBy', 'createdAt']) &&
@@ -95,11 +116,12 @@ service cloud.firestore {
         ]) &&
         data.keys().hasOnly([
           'fideleId', 'fideleNom', 'messeId', 'messeDate', 'messeHoraire',
-          'celebrant', 'objetIntention', 'detailIntention', 'statut', 'createdAt', 'updatedAt'
+          'celebrant', 'objetIntention', 'detailIntention', 'statut', 'createdAt', 'updatedAt', 'parishId'
         ]) &&
         isValidId(data.fideleId) &&
         data.fideleNom is string && data.fideleNom.size() >= 1 && data.fideleNom.size() <= 120 &&
         isValidId(data.messeId) &&
+        (!('parishId' in data) || isValidId(data.parishId)) &&
         data.messeDate is string && data.messeDate.size() >= 1 && data.messeDate.size() <= 40 &&
         data.messeHoraire is string && data.messeHoraire.size() >= 1 && data.messeHoraire.size() <= 40 &&
         data.celebrant is string && data.celebrant.size() >= 1 && data.celebrant.size() <= 120 &&
@@ -108,6 +130,18 @@ service cloud.firestore {
         data.statut in ['en attente', 'validé', 'annulée'] &&
         data.createdAt is timestamp &&
         data.updatedAt is timestamp;
+    }
+
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['actorUid', 'scope', 'action', 'summary', 'createdAt']) &&
+        data.keys().hasOnly(['actorUid', 'scope', 'parishId', 'action', 'summary', 'createdAt']) &&
+        isValidId(data.actorUid) &&
+        data.actorUid == request.auth.uid &&
+        data.scope in ['GLOBAL', 'PARISH', 'PUBLIC'] &&
+        (!('parishId' in data) || isValidId(data.parishId)) &&
+        data.action is string && data.action.size() >= 1 && data.action.size() <= 80 &&
+        data.summary is string && data.summary.size() >= 1 && data.summary.size() <= 400 &&
+        data.createdAt is timestamp;
     }
 
     // --- Connection Health Check (testConnection) ---
@@ -119,6 +153,36 @@ service cloud.firestore {
     match /admins/{adminId} {
       allow get: if isValidId(adminId) && (isOwner(adminId) || isAdmin());
       allow list, write: if false;
+    }
+
+    // --- Multi-Tenant Parishes (Super Admin managed) ---
+    match /parishes/{parishId} {
+      allow get: if isValidId(parishId) && isSignedIn();
+      allow list: if isSignedIn() && resource.data.status in ['ACTIVE', 'PENDING_ACTIVATION', 'SUSPENDED', 'INACTIVE'];
+      allow create: if isBootstrappedAdmin() && isValidId(parishId) &&
+        isValidParish(incoming()) &&
+        incoming().id == parishId &&
+        incoming().createdAt == request.time;
+      allow update: if isBootstrappedAdmin() && isValidId(parishId) &&
+        isValidParish(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'status']);
+      allow delete: if false;
+    }
+
+    // --- Parish Memberships & Cumulated Roles (Tenant-scoped) ---
+    match /parishMemberships/{membershipId} {
+      allow get: if isValidId(membershipId) && isSignedIn() && (
+        existing().userId == request.auth.uid || isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || isBootstrappedAdmin()
+      );
+      allow create, update: if isAdmin() && isValidId(membershipId) &&
+        isValidParishMembership(incoming()) &&
+        incoming().updatedAt == request.time;
+      allow delete: if false;
     }
 
     // --- User Profiles (No PII) ---
@@ -206,10 +270,8 @@ service cloud.firestore {
         incoming().messeId == existing().messeId &&
         incoming().createdAt == existing().createdAt &&
         incoming().updatedAt == request.time && (
-          // Tier 1: Admin can validate or cancel intentions (or correct status)
           (isAdmin() &&
             incoming().diff(existing()).affectedKeys().hasOnly(['statut', 'updatedAt'])) ||
-          // Tier 2: Owner can edit intention details only while still 'en attente'
           (isOwner(existing().fideleId) &&
             existing().statut == 'en attente' &&
             incoming().statut == 'en attente' &&
@@ -219,6 +281,15 @@ service cloud.firestore {
         (isOwner(existing().fideleId) && existing().statut == 'en attente') ||
         isAdmin()
       );
+    }
+
+    // --- Audit Logs (Append-Only) ---
+    match /auditLogs/{logId} {
+      allow get, list: if isBootstrappedAdmin();
+      allow create: if isAdmin() && isValidId(logId) &&
+        isValidAuditLog(incoming()) &&
+        incoming().createdAt == request.time;
+      allow update, delete: if false;
     }
   }
 }

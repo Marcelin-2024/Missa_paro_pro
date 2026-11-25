@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" href="/static/image/logomissaparo.png" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Annuaire des diocèses et paroisses catholiques de Côte d’Ivoire sur Missa Paro.">
+    <title>Missa Paro - Annuaire des paroisses</title>
+    <%- include('partials/styles') %>
+</head>
+
+<body class="public-page">
+    <header class="public-topbar">
+        <a href="/" class="header-brand flex items-center gap-3">
+            <img src="/static/image/logomissaparo.png" alt="Logo Missa Paro" class="header-logo">
+            <span class="header-brand-name">Missa Paro</span>
+        </a>
+        <nav class="public-nav" aria-label="Navigation publique">
+            <a href="/annuaire" class="btn btn-primary btn-sm">Annuaire des paroisses</a>
+            <a href="/demande-intention" class="btn btn-gold btn-sm">Demander une intention</a>
+            <a href="/" class="btn btn-outline btn-sm">Connexion</a>
+        </nav>
+    </header>
+
+    <main class="form-page">
+        <div class="public-directory-shell">
+            <section class="form-card form-card-full mb-4">
+                <div class="card-header-gradient">
+                    <div>
+                        <h1 class="section-title">Paroisses actives sur Missa Paro</h1>
+                        <p class="text-muted">Consultez les horaires de messes et coordonnées des paroisses connectées</p>
+                    </div>
+                    <a href="/demande-intention" class="btn btn-primary btn-sm">Déposer une intention</a>
+                </div>
+                <div class="form-body">
+                    <div class="cards-grid">
+                        <% for (const parish of activeParishes) { %>
+                            <article class="annonce-card">
+                                <div class="annonce-card-meta">
+                                    <span class="badge badge-success">Active</span>
+                                    <span><%= parish.dioceseName %></span>
+                                </div>
+                                <h2 class="annonce-card-title"><%= parish.name %></h2>
+                                <p class="annonce-card-content">
+                                    <strong>Localité :</strong> <%= parish.location %><br>
+                                    <strong>Horaires :</strong> <%= parish.massScheduleSummary || 'Voir secrétariat paroissial' %><br>
+                                    <% if (parish.phone) { %><strong>Téléphone :</strong> <%= parish.phone %><br><% } %>
+                                    <% if (parish.chapelsEnabled && parish.chapels && parish.chapels.length > 0) { %>
+                                        <strong>Chapelles :</strong> <%= parish.chapels.join(', ') %>
+                                    <% } %>
+                                </p>
+                            </article>
+                        <% } %>
+                    </div>
+                </div>
+            </section>
+
+            <section class="form-card form-card-full">
+                <div class="card-header-gradient">
+                    <div>
+                        <h2 class="section-title">Explorer l’annuaire ecclésiastique de Côte d’Ivoire</h2>
+                        <p class="text-muted">4 provinces ecclésiastiques et 15 diocèses</p>
+                    </div>
+                </div>
+                <div class="form-body" data-ecclesiastical-picker="directory">
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="provinceId" class="form-label">Province ecclésiastique</label>
+                            <select id="provinceId" name="provinceId" class="form-select">
+                                <option value="">Sélectionnez une province</option>
+                                <% for (const prov of provinces) { %>
+                                    <option value="<%= prov.id %>"><%= prov.name %></option>
+                                <% } %>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="dioceseId" class="form-label">Diocèse</label>
+                            <select id="dioceseId" name="dioceseId" class="form-select" disabled>
+                                <option value="">Sélectionnez un diocèse</option>
+                            </select>
+                            <small id="diocese-helper" class="form-helper">Choisissez d’abord une province.</small>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="parishId" class="form-label">Paroisses du diocèse</label>
+                        <div class="parish-search-wrap">
+                            <input id="parish-search-input" type="search" class="form-control" placeholder="Filtrer par nom ou ville..." disabled>
+                        </div>
+                        <select id="parishId" name="parishId" class="form-select" disabled>
+                            <option value="">Sélectionnez une paroisse</option>
+                        </select>
+                        <small id="parish-helper" class="form-helper">Choisissez d’abord un diocèse.</small>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="/static/js/ecclesiastical-selector.js"></script>
+    <script src="/static/js/ui-interactions.js"></script>
+</body>
+
+</html>

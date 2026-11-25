@@ -1,14 +1,56 @@
 <%
-  const normalized = String(statut || '').toLowerCase();
+  const raw = String(statut || '').trim();
+  const upper = raw.toUpperCase();
+  const lower = raw.toLowerCase();
+
+  const labelMap = {
+    PENDING: 'En attente',
+    PROCESSING: 'En traitement',
+    ACCEPTED: 'Acceptée',
+    SCHEDULED: 'Programmée',
+    CELEBRATED: 'Célébrée',
+    REJECTED: 'Refusée',
+    CANCELLED: 'Annulée',
+    PENDING_ACTIVATION: 'En attente d’activation',
+    PENDING_APPROVAL: 'En attente d’approbation',
+    ACTIVE: 'Actif',
+    SUSPENDED: 'Suspendu',
+    INACTIVE: 'Inactif',
+    DISABLED: 'Désactivé',
+    REMOVED: 'Retiré',
+    REVOKED: 'Révoqué',
+    EXPIRED: 'Expiré',
+    APPROVED: 'Approuvée',
+    PUBLISHED: 'Publiée',
+    ARCHIVED: 'Archivée',
+  };
+
+  let displayLabel = typeof label !== 'undefined' && label ? label : (labelMap[upper] || raw);
   let badgeClass = 'badge-warning';
-  if (normalized === 'a venir') {
+
+  if (
+    ['A VENIR', 'PROCESSING', 'ACCEPTED', 'SCHEDULED'].includes(upper) ||
+    lower === 'a venir'
+  ) {
     badgeClass = 'badge-info';
-  } else if (normalized === 'validé' || normalized === 'validée') {
+  } else if (
+    ['CELEBRATED', 'ACTIVE', 'APPROVED', 'PUBLISHED'].includes(upper) ||
+    lower === 'validé' ||
+    lower === 'validée'
+  ) {
     badgeClass = 'badge-success';
-  } else if (normalized === 'annulée' || normalized === 'annulee') {
+  } else if (
+    ['REJECTED', 'CANCELLED', 'SUSPENDED', 'DISABLED', 'REVOKED'].includes(upper) ||
+    lower === 'annulée' ||
+    lower === 'annulee'
+  ) {
     badgeClass = 'badge-danger';
-  } else if (normalized === 'passée' || normalized === 'passee') {
+  } else if (
+    ['INACTIVE', 'EXPIRED', 'REMOVED', 'ARCHIVED', 'PASSÉE', 'PASSEE'].includes(upper) ||
+    lower === 'passée' ||
+    lower === 'passee'
+  ) {
     badgeClass = 'badge-neutral';
   }
 %>
-<span class="badge <%= badgeClass %>"><%= statut %></span>
+<span class="badge <%= badgeClass %>"><%= displayLabel %></span>

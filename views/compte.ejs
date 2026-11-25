@@ -20,6 +20,13 @@
             <p class="auth-subtitle">Heureux de vous revoir sur Missa Paro</p>
         </div>
 
+        <% if (typeof needsSuperAdminSetup !== 'undefined' && needsSuperAdminSetup) { %>
+            <div class="alert alert-info mb-4" role="status">
+                <strong>Première configuration :</strong> le compte Super Administrateur n’a pas encore de mot de passe initial.
+                <a href="/setup-super-admin" class="auth-link">Initialiser maintenant</a>
+            </div>
+        <% } %>
+
         <% if (typeof error !== 'undefined' && error) { %>
             <div class="alert alert-error mb-4" role="alert">
                 <%= error %>
@@ -37,16 +44,24 @@
             <%- include('partials/bouton_envoi', { name: 'Se connecter' }) %>
         </form>
 
-        <div class="auth-divider">ou</div>
+        <div class="auth-divider">Accès fidèles &amp; annuaire</div>
 
-        <button id="google-signin-btn" type="button" class="btn btn-secondary btn-block">
-            Continuer avec Google (Firebase)
-        </button>
+        <div class="auth-quick-links">
+            <a href="/demande-intention" class="btn btn-gold btn-block">
+                Demander une intention de messe
+            </a>
+            <a href="/annuaire" class="btn btn-outline btn-block">
+                Consulter l’annuaire des paroisses
+            </a>
+            <button id="google-signin-btn" type="button" class="btn btn-secondary btn-block">
+                Continuer avec Google (Firebase)
+            </button>
+        </div>
         <p id="firebase-login-error" class="alert alert-error mt-3 hidden" role="alert"></p>
 
         <div class="auth-footer">
-            <span>Vous n'avez pas encore de compte ?</span>
-            <a class="auth-link" href="/page/inscription">Créer un compte paroisse</a>
+            <span>Vous êtes fidèle et souhaitez créer un compte ?</span>
+            <a class="auth-link" href="/page/inscription">Créer un compte fidèle</a>
         </div>
     </main>
 

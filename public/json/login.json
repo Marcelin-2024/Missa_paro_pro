@@ -8,26 +8,6 @@
       "required": true
     },
     {
-      "name": "poste",
-      "label": "Poste",
-      "type": "select",
-      "options": [
-        [
-          "cure",
-          "Curé"
-        ],
-        [
-          "vicaire",
-          "Vicaire"
-        ],
-        [
-          "secretaire",
-          "Secrétaire"
-        ]
-      ],
-      "required": true
-    },
-    {
       "name": "telephone",
       "label": "Téléphone",
       "placeholder": "+225 07XXXXXXXX",

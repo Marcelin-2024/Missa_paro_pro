@@ -18,10 +18,13 @@
                     <h1 class="section-title">Ajouter une messe</h1>
                     <p class="text-muted">Programmez une nouvelle célébration paroissiale</p>
                 </div>
-                <a href="/page/tableau_bords" class="btn btn-outline btn-sm">Retour</a>
+                <a href="/page/tableau_bords?section=masses" class="btn btn-outline btn-sm">Retour</a>
             </div>
 
             <form id="ajoute-messe-form" action="/page/ajoute_messe" method="POST" class="form-body" data-loading-form>
+                <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <% } %>
                 <% for (const champ of champs) { %>
                     <% if (champ.type === 'select') { %>
                         <%- include('partials/select_field', { name: champ.name, label: champ.label, options: champ.options, requit: champ.required }) %>
@@ -44,7 +47,7 @@
 
                 <%- include('partials/bouton_envoi', { name: 'Ajouter la messe' }) %>
 
-                <a href="/page/tableau_bords" class="btn btn-outline btn-block">
+                <a href="/page/tableau_bords?section=masses" class="btn btn-outline btn-block">
                     Annuler et retourner au tableau de bord
                 </a>
             </form>
@@ -52,24 +55,6 @@
     </main>
 
     <script src="/static/js/ui-interactions.js"></script>
-    <script type="module" src="/static/js/firebase-client.js"></script>
-    <script>
-        document.getElementById('ajoute-messe-form').addEventListener('submit', async function (e) {
-            if (window.missaFirebase) {
-                e.preventDefault();
-                const form = this;
-                const celebrant = form.querySelector('[name="Celebrant_messe"]')?.value || '';
-                const date = form.querySelector('[name="date_messe"]')?.value || '';
-                const horaire = form.querySelector('[name="heure_messe"]')?.value || '';
-                try {
-                    await window.missaFirebase.createMesseFirestore(celebrant, date, horaire);
-                } catch (err) {
-                    console.warn(err);
-                }
-                form.submit();
-            }
-        });
-    </script>
 </body>
 
 </html>

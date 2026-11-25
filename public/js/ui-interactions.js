@@ -13,6 +13,11 @@ function closeMobileDrawer(restoreFocus = false) {
   }
 }
 
+function getCsrfToken() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  return meta ? meta.getAttribute('content') || '' : '';
+}
+
 function normalizeFilterText(value) {
   return String(value || '')
     .toLowerCase()
@@ -103,6 +108,7 @@ function applyAllFilters() {
 
 window.missaUI = {
   applyFilters: applyAllFilters,
+  getCsrfToken,
 };
 
 document.addEventListener('click', (event) => {
@@ -144,24 +150,59 @@ document.addEventListener('click', (event) => {
     return;
   }
 
-  if (target.id === 'settings-btn') {
-    const feedback = document.getElementById('sidebar-feedback');
-    if (feedback) {
-      feedback.textContent = 'Paramètres paroisse : utilisez votre compte Google Firebase pour gérer la synchronisation.';
-      feedback.classList.remove('hidden');
+  if (target.closest('#notification-btn')) {
+    const drawer = document.getElementById('notifications-drawer');
+    if (drawer) {
+      drawer.classList.toggle('hidden');
     }
     return;
   }
 
-  if (target.closest('#notification-btn') || target.closest('[data-goto-intentions]')) {
-    const intentionsLink = document.getElementById('reload-btn1');
-    if (intentionsLink) intentionsLink.click();
+  if (target.closest('[data-close-notifications]')) {
+    const drawer = document.getElementById('notifications-drawer');
+    if (drawer) {
+      drawer.classList.add('hidden');
+    }
     return;
   }
 
-  if (target.closest('[data-close-edit-form]')) {
-    const editForm = document.getElementById('intention-edit-form');
-    if (editForm) editForm.classList.add('hidden');
+  const markReadBtn = target.closest('[data-mark-notif-read]');
+  if (markReadBtn) {
+    const notifId = markReadBtn.getAttribute('data-mark-notif-read');
+    if (notifId) {
+      fetch(`/api/parish/notifications/${encodeURIComponent(notifId)}/read`, {
+        method: 'PATCH',
+        headers: { 'x-csrf-token': getCsrfToken() },
+      })
+        .then((r) => {
+          if (r.ok) {
+            const item = markReadBtn.closest('[data-notification-id]');
+            if (item) item.classList.replace('is-unread', 'is-read');
+            markReadBtn.remove();
+          }
+        })
+        .catch(() => {});
+    }
+    return;
+  }
+
+  if (target.id === 'remove-image-btn') {
+    const input = document.getElementById('image_annonce');
+    const previewBox = document.getElementById('upload-preview-box');
+    const output = document.getElementById('apercu-image');
+    const filenameEl = document.getElementById('image_annonce-filename');
+    if (input instanceof HTMLInputElement) input.value = '';
+    if (output instanceof HTMLImageElement) output.src = '#';
+    if (previewBox) previewBox.classList.add('hidden');
+    if (filenameEl) filenameEl.textContent = 'Formats acceptés : JPG, PNG (Max 2 Mo)';
+    return;
+  }
+
+  const dialogCloseBtn = target.closest('[data-dialog-close]');
+  if (dialogCloseBtn) {
+    const dlgId = dialogCloseBtn.getAttribute('data-dialog-close');
+    const dlg = dlgId ? document.getElementById(dlgId) : null;
+    if (dlg) dlg.classList.add('hidden');
   }
 });
 
@@ -185,6 +226,32 @@ document.addEventListener('change', (event) => {
   const target = event.target;
   if (!(target instanceof Element)) return;
 
+  if (target.hasAttribute('data-auto-submit-select')) {
+    const form = target.closest('form');
+    if (form instanceof HTMLFormElement) {
+      form.submit();
+    }
+    return;
+  }
+
+  if (target.hasAttribute('data-preview-upload') && target instanceof HTMLInputElement) {
+    const previewBox = document.getElementById('upload-preview-box');
+    const output = document.getElementById('apercu-image');
+    const filenameEl = document.getElementById('image_annonce-filename');
+    if (!target.files || !target.files[0]) return;
+    const file = target.files[0];
+    if (filenameEl) filenameEl.textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (output instanceof HTMLImageElement && typeof reader.result === 'string') {
+        output.src = reader.result;
+        if (previewBox) previewBox.classList.remove('hidden');
+      }
+    };
+    reader.readAsDataURL(file);
+    return;
+  }
+
   const tableId = target.getAttribute('data-table-filter');
   if (tableId) {
     applyTableFilters(tableId);
@@ -200,6 +267,8 @@ document.addEventListener('change', (event) => {
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     closeMobileDrawer(true);
+    const drawer = document.getElementById('notifications-drawer');
+    if (drawer) drawer.classList.add('hidden');
   }
 });
 
@@ -238,5 +307,20 @@ document.addEventListener('submit', (event) => {
       submitBtn.disabled = true;
       submitBtn.textContent = 'Chargement...';
     }
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  const verifyLink = document.querySelector('[data-verify-session-link]');
+  const warningBox = document.getElementById('session-cookie-warning');
+  if (verifyLink && warningBox) {
+    fetch('/api/auth/session-status', { credentials: 'include' })
+      .then((res) => (res.ok ? res.json() : { authenticated: false }))
+      .then((data) => {
+        if (!data || !data.authenticated) {
+          warningBox.classList.remove('hidden');
+        }
+      })
+      .catch(() => {});
   }
 });

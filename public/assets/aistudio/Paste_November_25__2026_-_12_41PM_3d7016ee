@@ -1,0 +1,984 @@
+# MISSION : ÉVOLUTION COMPLÈTE DE MISSA PARO — GESTION MULTI-PAROISSES, SUPER ADMINISTRATEUR, RÔLES CUMULÉS ET EXPÉRIENCE UTILISATEUR
+
+Tu interviens sur un projet existant nommé **Missa Paro**.
+
+Ton rôle est celui d'un Senior Software Architect, Senior Product Designer et Full-Stack Developer spécialisé dans les applications web multi-utilisateurs.
+
+Ta mission est d'analyser le code existant, de comprendre son fonctionnement, puis de faire évoluer l'application pour en faire une véritable plateforme de gestion paroissiale multi-tenant, adaptée aux réalités des paroisses catholiques de Côte d'Ivoire.
+
+**IMPORTANT : il ne s'agit pas de créer une nouvelle application. Tu dois faire évoluer l'application existante, conserver son identité visuelle et réutiliser au maximum ses composants.**
+
+Tu peux modifier les structures, les parcours, les routes, les modèles de données et les interfaces lorsque cela est nécessaire pour obtenir une application cohérente, sécurisée et évolutive.
+
+Ne te contente pas de produire des recommandations : après ton audit, implémente réellement les modifications dans le projet.
+
+---
+
+# 1. CONTEXTE DU PROJET EXISTANT
+
+Missa Paro est une application web de gestion paroissiale destinée aux paroisses catholiques et aux fidèles de Côte d'Ivoire.
+
+Elle permet actuellement de gérer :
+
+- Les intentions de messe.
+- Les messes et célébrations.
+- Les annonces paroissiales.
+- Les informations des paroisses.
+- L'annuaire ecclésiastique catholique.
+- L'authentification et les comptes utilisateurs.
+
+## 1.1 Stack technique existante
+
+Ne remplace pas cette stack sans justification technique sérieuse.
+
+- Backend : Node.js.
+- Framework : Express 5.3.
+- Langage : TypeScript.
+- Moteur de templates : EJS.
+- Frontend : JavaScript natif modulaire.
+- Styles : CSS modulaire.
+- Icônes : Material Symbols Rounded.
+- Authentification : express-session et Firebase Auth.
+- Base de données cible : Cloud Firestore.
+- Stockage de démonstration actuel : src/store/inMemoryDb.ts.
+- Annuaire ecclésiastique : src/data/catholicDirectory.json.
+
+## 1.2 Organisation du projet
+
+Principaux fichiers et dossiers :
+
+- server.ts
+- src/routes/pageRoutes.ts
+- src/routes/apiRoutes.ts
+- src/routes/refreshRoutes.ts
+- src/modules/ecclesiastical/
+- src/store/inMemoryDb.ts
+- src/client/firebaseClient.ts
+- src/data/catholicDirectory.json
+- src/data/parishRequests.json
+- views/
+- views/pagepart/
+- views/partials/
+- public/css/
+- public/js/
+- firebase-blueprint.json
+- firestore.rules
+- firestore.rules.test.ts
+
+Avant toute modification, inspecte l'intégralité des structures concernées et identifie les dépendances existantes.
+
+Ne suppose pas que les fichiers correspondent exactement à leur description : vérifie leur contenu réel.
+
+---
+
+# 2. NOUVELLE ORGANISATION DES UTILISATEURS
+
+La plateforme doit désormais fonctionner avec cinq profils principaux.
+
+## PROFIL 1 — SUPER ADMINISTRATEUR MISSA PARO
+
+C'est le responsable central de la plateforme.
+
+Il ne représente pas une paroisse particulière.
+
+Il est chargé de créer, configurer et superviser les espaces paroissiaux.
+
+### Ses responsabilités
+
+1. Créer les comptes des administrateurs paroissiaux.
+2. Rattacher chaque administrateur à une paroisse précise.
+3. Générer un compte sécurisé pour chaque administrateur.
+4. Générer un mot de passe temporaire sécurisé ou un lien d'activation.
+5. Imposer la modification du mot de passe lors de la première connexion.
+6. Activer, suspendre ou réactiver les comptes administrateurs.
+7. Consulter la liste de toutes les paroisses enregistrées.
+8. Consulter l'état d'activation de chaque espace paroissial.
+9. Consulter les statistiques globales de la plateforme.
+10. Vérifier les informations administratives des paroisses.
+11. Gérer les demandes de nouvelles paroisses.
+12. Consulter les historiques d'administration.
+13. Réinitialiser les accès des administrateurs.
+14. Contrôler les accès et les comptes de la plateforme.
+
+### Tableau de bord du super administrateur
+
+Créer un espace indépendant avec les indicateurs suivants :
+
+- Nombre total de paroisses.
+- Nombre de paroisses actives.
+- Nombre de paroisses en attente d'activation.
+- Nombre de paroisses suspendues.
+- Nombre total d'administrateurs paroissiaux.
+- Nombre total de comptes utilisateurs.
+- Nombre total d'intentions enregistrées.
+- Activité récente de la plateforme.
+
+### Menu du super administrateur
+
+- Tableau de bord global.
+- Gestion des paroisses.
+- Gestion des administrateurs paroissiaux.
+- Annuaire ecclésiastique.
+- Demandes de nouvelles paroisses.
+- Statistiques globales.
+- Historique et journal d'audit.
+- Paramètres de la plateforme.
+- Déconnexion.
+
+### Création d'un administrateur paroissial
+
+Le super administrateur doit pouvoir :
+
+1. Sélectionner la province ecclésiastique.
+2. Sélectionner le diocèse.
+3. Sélectionner la paroisse.
+4. Saisir le nom et les coordonnées du futur administrateur.
+5. Créer son compte.
+6. Générer ses identifiants de connexion.
+7. Envoyer un lien sécurisé d'activation ou fournir un mot de passe temporaire.
+8. Activer l'espace paroissial.
+
+Ne jamais stocker ni afficher les mots de passe en clair.
+
+Le système doit utiliser un mécanisme sécurisé d'initialisation des comptes, avec expiration des liens ou des mots de passe temporaires.
+
+Le super administrateur doit pouvoir administrer les comptes et les espaces paroissiaux, mais ses actions doivent être journalisées.
+
+Il ne doit pas devenir automatiquement curé, vicaire ou secrétaire d'une paroisse.
+
+Il faut séparer clairement l'administration globale de la plateforme et les responsabilités ecclésiastiques locales.
+
+---
+
+## PROFIL 2 — ADMINISTRATEUR PAROISSIAL
+
+C'est le responsable administratif de l'espace numérique d'une paroisse.
+
+Son compte est créé par le super administrateur.
+
+Il ne peut administrer que sa propre paroisse.
+
+### Ses responsabilités
+
+- Gérer les utilisateurs de sa paroisse.
+- Créer ou rattacher les comptes autorisés.
+- Attribuer les rôles autorisés.
+- Gérer les rôles cumulés.
+- Consulter les permissions.
+- Gérer les informations de la paroisse.
+- Configurer les horaires et les informations pratiques.
+- Gérer les responsables.
+- Consulter les historiques.
+- Gérer les chapelles rattachées, si cette fonctionnalité est activée.
+- Contrôler les accès à l'espace paroissial.
+
+Il ne peut pas :
+
+- Créer un autre super administrateur.
+- Créer ou administrer une autre paroisse.
+- Modifier les données d'une autre paroisse.
+- Modifier les paramètres globaux de Missa Paro.
+- Attribuer des privilèges globaux.
+
+### Menu
+
+- Tableau de bord.
+- Utilisateurs.
+- Rôles et permissions.
+- Responsables paroissiaux.
+- Gestion des intentions.
+- Messes et célébrations.
+- Annonces.
+- Informations paroissiales.
+- Paramètres.
+- Historique.
+
+---
+
+## PROFIL 3 — CURÉ
+
+Le curé est le responsable pastoral de la paroisse.
+
+Il utilise la plateforme pour superviser les activités et suivre les opérations.
+
+### Ses parcours
+
+- Consulter le tableau de bord.
+- Suivre les intentions de messe.
+- Consulter les intentions en attente, validées et traitées.
+- Superviser le calendrier des messes.
+- Suivre les célébrations.
+- Consulter les annonces.
+- Approuver les annonces lorsque la procédure paroissiale le prévoit.
+- Suivre les demandes des fidèles.
+- Consulter les statistiques paroissiales.
+- Superviser les activités des différents services.
+- Consulter les rapports.
+- Valider les opérations nécessitant son approbation.
+
+Le curé peut cumuler le rôle d'administrateur paroissial si cette responsabilité lui est attribuée.
+
+Il ne doit pas obtenir automatiquement les permissions d'administration du simple fait qu'il est curé.
+
+---
+
+## PROFIL 4 — VICAIRE
+
+Le vicaire accompagne le curé dans les activités pastorales.
+
+### Ses parcours
+
+- Consulter son tableau de bord.
+- Consulter les informations paroissiales.
+- Consulter le calendrier des messes.
+- Suivre les célébrations.
+- Consulter les intentions de messe.
+- Traiter les tâches qui lui sont attribuées.
+- Participer à la préparation des célébrations.
+- Consulter les annonces.
+- Suivre les activités pastorales.
+- Consulter les rapports auxquels il est autorisé.
+
+Ses droits de modification et de validation dépendent des permissions qui lui sont attribuées.
+
+---
+
+## PROFIL 5 — SECRÉTAIRE PAROISSIALE
+
+La secrétaire est responsable de la gestion administrative quotidienne.
+
+### Ses parcours
+
+- Consulter le tableau de bord.
+- Enregistrer les messes.
+- Modifier les informations des messes.
+- Consulter et traiter les intentions.
+- Enregistrer les intentions reçues.
+- Gérer les statuts des intentions.
+- Publier les annonces.
+- Gérer le calendrier paroissial.
+- Actualiser les coordonnées et informations pratiques.
+- Consulter les demandes des fidèles.
+- Organiser les informations administratives.
+- Consulter les rapports autorisés.
+
+La secrétaire peut cumuler le rôle d'administrateur paroissial.
+
+---
+
+# 3. GESTION DES RÔLES CUMULÉS
+
+Implémenter un véritable système RBAC.
+
+Un utilisateur peut posséder plusieurs rôles dans une même paroisse.
+
+Exemples :
+
+- Curé + Administrateur paroissial.
+- Secrétaire + Administrateur paroissial.
+- Vicaire + Responsable liturgique.
+- Secrétaire + Responsable liturgique.
+
+Principe :
+
+UN COMPTE UTILISATEUR = PLUSIEURS RÔLES = PLUSIEURS PERMISSIONS.
+
+Ne crée pas un compte différent pour chaque fonction.
+
+## Structure métier recommandée
+
+Séparer :
+
+- users : identité du compte.
+- parishes : paroisses.
+- parish_memberships : rattachement des utilisateurs aux paroisses.
+- roles : référentiel des rôles.
+- permissions : référentiel des permissions.
+- role_permissions : association des permissions aux rôles.
+- membership_roles : rôles attribués à une appartenance paroissiale.
+- audit_logs : historique des opérations sensibles.
+
+Les rôles doivent être attribués à une appartenance paroissiale et non directement au compte utilisateur.
+
+Un utilisateur peut ainsi être secrétaire dans une paroisse et vicaire dans une autre.
+
+Les permissions effectives correspondent à l'union des permissions de tous les rôles actifs de l'appartenance concernée.
+
+Attention : les autorisations du super administrateur doivent être gérées dans un espace global séparé.
+
+## Règles obligatoires
+
+- Retirer un rôle ne doit pas retirer les autres.
+- Suspendre un compte doit bloquer tous ses accès.
+- Retirer une appartenance doit bloquer l'accès à la paroisse concernée.
+- Les rôles expirés ne donnent plus de permissions.
+- Les changements doivent être journalisés.
+- Aucun administrateur paroissial ne doit pouvoir administrer une autre paroisse.
+- Le dernier administrateur paroissial ne doit pas pouvoir être supprimé sans remplacement.
+
+---
+
+# 4. NOUVELLE LOGIQUE DE GESTION DES INTENTIONS DE MESSE
+
+C'est une modification fonctionnelle importante.
+
+Actuellement, Missa Paro possède un module d'intentions de messe.
+
+Il faut faire évoluer ce module pour que les intentions soient gérées directement par chaque paroisse.
+
+## 4.1 Principe fondamental
+
+Un fidèle n'a PAS besoin de demander à être ajouté à une liste de la paroisse pour pouvoir déposer une intention de messe.
+
+Il peut déposer une intention auprès d'une paroisse en la sélectionnant dans l'annuaire ecclésiastique.
+
+Le système doit ensuite rattacher automatiquement cette intention à la paroisse concernée.
+
+La paroisse reçoit la demande dans son espace de gestion.
+
+Le fidèle peut être membre d'une paroisse ou ne pas avoir de compte.
+
+Ne conditionne jamais le dépôt d'une intention à une appartenance paroissiale.
+
+## 4.2 Parcours du fidèle
+
+Créer un parcours simple et accessible.
+
+1. Le fidèle ouvre la fonctionnalité « Demander une intention de messe ».
+2. Il sélectionne une province ecclésiastique.
+3. Il sélectionne un diocèse.
+4. Il sélectionne une paroisse.
+5. Il choisit le type ou l'objet de l'intention.
+6. Il saisit les informations nécessaires.
+7. Il indique ses coordonnées.
+8. Il choisit éventuellement une date ou une célébration souhaitée si cette option est proposée.
+9. Il soumet sa demande.
+10. Le système enregistre l'intention avec le statut EN_ATTENTE.
+11. La demande apparaît automatiquement dans l'espace de la paroisse sélectionnée.
+12. Le fidèle reçoit une confirmation et une référence de suivi.
+
+Ne pas demander au fidèle de rejoindre une liste de membres de la paroisse.
+
+## 4.3 Informations d'une intention
+
+Prévoir les champs suivants :
+
+- Identifiant de l'intention.
+- Identifiant de la paroisse.
+- Nom du demandeur.
+- Téléphone du demandeur.
+- Adresse e-mail facultative.
+- Objet de l'intention.
+- Détails de l'intention.
+- Date de la demande.
+- Date de messe souhaitée, facultative.
+- Messe associée, facultative.
+- Statut.
+- Commentaire interne de la paroisse, non visible par le fidèle.
+- Date de traitement.
+- Référence de suivi.
+
+Les informations personnelles doivent être protégées.
+
+## 4.4 Gestion des intentions côté paroisse
+
+Dans le tableau de bord paroissial, créer un espace de gestion des intentions.
+
+Prévoir :
+
+- Toutes les intentions.
+- Nouvelles demandes.
+- Intentions en attente.
+- Intentions acceptées ou validées.
+- Intentions programmées.
+- Intentions célébrées ou traitées.
+- Intentions refusées ou annulées.
+
+Les statuts doivent être définis précisément et ne pas être confondus.
+
+Proposer un système de filtres :
+
+- Par statut.
+- Par date.
+- Par objet.
+- Par demandeur.
+- Par messe associée.
+
+Le secrétaire peut traiter les demandes selon ses permissions.
+
+Le curé peut superviser et valider les opérations qui nécessitent son approbation.
+
+## 4.5 Gestion des intentions par paroisse
+
+Chaque intention doit obligatoirement être rattachée à une paroisse.
+
+Exemple :
+
+Un fidèle sélectionne la paroisse Saint-Paul.
+
+L'intention est enregistrée avec le parish_id de Saint-Paul.
+
+Elle apparaît uniquement dans l'espace autorisé de cette paroisse.
+
+Elle ne doit jamais apparaître dans les listes d'une autre paroisse.
+
+Le super administrateur peut consulter des statistiques globales agrégées, mais ne doit pas disposer automatiquement d'un accès opérationnel à toutes les données personnelles des intentions.
+
+## 4.6 Important : séparer les demandes des intentions confirmées
+
+Une intention soumise n'est pas automatiquement une intention acceptée ou une messe programmée.
+
+Prévoir une distinction claire entre :
+
+- Demande reçue.
+- Demande en cours de traitement.
+- Intention acceptée.
+- Intention programmée.
+- Intention célébrée.
+- Demande refusée.
+- Demande annulée.
+
+Ne pas marquer automatiquement une intention comme célébrée après sa validation.
+
+La célébration effective doit être enregistrée explicitement.
+
+---
+
+# 5. MODIFICATION DE L'INSCRIPTION PAROISSIALE
+
+Actuellement, l'écran views/inscription.ejs permet de créer un compte paroissial avec les informations du responsable.
+
+Cette logique doit évoluer.
+
+Le super administrateur est désormais le responsable de la création des comptes administrateurs paroissiaux.
+
+Le parcours public d'inscription ne doit plus permettre à n'importe quel visiteur de devenir automatiquement administrateur d'une paroisse.
+
+## Nouveau fonctionnement
+
+Un visiteur peut :
+
+- Consulter l'annuaire.
+- Rechercher une paroisse.
+- Déposer une intention de messe.
+- Consulter les informations paroissiales.
+- Créer un compte fidèle si cette fonctionnalité est conservée.
+- Soumettre une demande de correction ou d'ajout d'une paroisse à l'annuaire.
+
+Pour obtenir un compte administrateur paroissial :
+
+- La personne doit être désignée par l'autorité compétente.
+- Le super administrateur crée ou active son compte.
+- Le rattachement à la paroisse est vérifié.
+- Les identifiants sont générés de façon sécurisée.
+
+Conserve le mécanisme existant des demandes de paroisses manquantes dans parishRequests.json, mais sépare-le clairement de la création des comptes administrateurs.
+
+---
+
+# 6. NOUVELLE ARCHITECTURE DE L'INFORMATION
+
+Repenser la navigation en fonction des utilisateurs et de leurs tâches.
+
+Ne crée pas quatre interfaces complètement différentes.
+
+Créer une structure commune et afficher les menus en fonction des permissions.
+
+## Navigation de l'espace paroissial
+
+1. Tableau de bord.
+2. Vie paroissiale.
+   - Messes.
+   - Intentions de messe.
+   - Calendrier des célébrations.
+3. Communication.
+   - Annonces.
+4. Demandes et services.
+   - Demandes des fidèles.
+5. Suivi et rapports.
+6. Administration.
+   - Utilisateurs.
+   - Rôles et permissions.
+   - Responsables.
+   - Informations paroissiales.
+   - Paramètres.
+
+## Navigation du super administrateur
+
+1. Tableau de bord global.
+2. Paroisses.
+3. Administrateurs paroissiaux.
+4. Annuaire ecclésiastique.
+5. Demandes de paroisses.
+6. Statistiques globales.
+7. Journal d'audit.
+8. Paramètres de la plateforme.
+
+La navigation doit être dynamique.
+
+Un utilisateur ne doit voir que les rubriques correspondant à ses permissions.
+
+---
+
+# 7. REFONTE DES TABLEAUX DE BORD
+
+## Tableau de bord paroissial
+
+Conserver le design actuel et les composants visuels existants.
+
+Adapter les indicateurs en fonction du rôle.
+
+Indicateurs possibles :
+
+- Intentions en attente.
+- Intentions acceptées.
+- Messes programmées.
+- Annonces publiées.
+- Demandes à traiter.
+- Activités récentes.
+
+Le curé doit privilégier les informations de supervision.
+
+Le secrétaire doit privilégier les demandes et les opérations à traiter.
+
+L'administrateur doit privilégier les utilisateurs, les accès et les informations de configuration.
+
+Le vicaire doit privilégier ses tâches et les célébrations.
+
+## Tableau de bord global du super administrateur
+
+Créer un espace distinct avec :
+
+- Nombre de paroisses.
+- Paroisses actives.
+- Paroisses suspendues.
+- Administrateurs créés.
+- Comptes en attente d'activation.
+- Total des intentions enregistrées.
+- Activité globale.
+- Dernières opérations administratives.
+
+Ne mélange jamais les données globales et les données d'une seule paroisse.
+
+---
+
+# 8. DESIGN SYSTEM ET COMPOSANTS RÉUTILISABLES
+
+C'est une exigence majeure.
+
+Je veux conserver l'identité visuelle actuelle de Missa Paro.
+
+Ne fais pas une refonte graphique arbitraire.
+
+Conserve :
+
+- Les couleurs existantes.
+- Les typographies.
+- Les Material Symbols Rounded.
+- Les styles de cartes.
+- Les boutons.
+- Les tableaux.
+- Les formulaires.
+- Les modales.
+- Les espacements.
+- Le comportement responsive.
+
+Tu peux améliorer les incohérences visuelles et ergonomiques, mais sans dénaturer le design.
+
+## 8.1 Créer ou renforcer les composants réutilisables
+
+Inspecte views/partials/ et développe une bibliothèque de composants EJS réutilisables.
+
+Composants souhaités :
+
+- Header.
+- Sidebar.
+- Breadcrumb.
+- PageHeader.
+- StatCard.
+- DataTable.
+- SearchBar.
+- FilterBar.
+- StatusBadge.
+- EmptyState.
+- LoadingState.
+- ErrorState.
+- ConfirmDialog.
+- FormField.
+- InputField.
+- SelectField.
+- TextareaField.
+- PasswordField.
+- RoleBadge.
+- RoleSelector.
+- UserCard.
+- UserAvatar.
+- Pagination.
+- Notification.
+- Modal.
+- DatePicker si nécessaire.
+
+Les composants doivent être paramétrables.
+
+Exemple conceptuel :
+
+<%- include('partials/stat-card', {
+    title: 'Intentions en attente',
+    value: 24,
+    icon: 'event_note'
+}) %>
+
+Adapte cette convention à la structure réelle du projet.
+
+Ne duplique pas les mêmes structures HTML dans plusieurs vues.
+
+## 8.2 JavaScript
+
+Organise les interactions dans des modules réutilisables.
+
+Évite les scripts inline dans les templates.
+
+Prévoir des modules pour :
+
+- Gestion des modales.
+- Gestion des formulaires.
+- Gestion des filtres.
+- Gestion des tableaux.
+- Gestion des notifications.
+- Gestion des sélecteurs ecclésiastiques.
+- Gestion des rôles.
+- Gestion des intentions.
+- Gestion des comptes.
+
+## 8.3 CSS
+
+Respecte l'architecture CSS modulaire actuelle.
+
+N'ajoute pas de styles inline.
+
+Évite les répétitions.
+
+Utilise les variables et tokens existants.
+
+---
+
+# 9. ARCHITECTURE BACKEND ET SÉCURITÉ
+
+Conserve Express et TypeScript.
+
+Organise les nouveaux modules dans src/modules/.
+
+Modules recommandés :
+
+- auth/
+- users/
+- parishes/
+- roles/
+- permissions/
+- intentions/
+- masses/
+- announcements/
+- ecclesiastical/
+- audit/
+
+Sépare clairement :
+
+- routes ;
+- services métier ;
+- repositories ;
+- types ;
+- validateurs ;
+- middlewares.
+
+Ne mets pas toute la logique dans apiRoutes.ts.
+
+## 9.1 Sécurité des sessions
+
+- Sécuriser les cookies.
+- Configurer SESSION_SECRET via les variables d'environnement.
+- Protéger les routes sensibles.
+- Vérifier les rôles et permissions côté serveur.
+- Ne jamais faire confiance aux données de rôle envoyées par le navigateur.
+- Vérifier les appartenances paroissiales à chaque opération.
+- Protéger contre les attaques CSRF sur les formulaires utilisant les sessions.
+- Valider les entrées côté serveur.
+- Limiter les tentatives de connexion.
+- Ne jamais exposer les mots de passe ou les secrets Firebase.
+
+## 9.2 Firebase et Firestore
+
+Inspecte les mécanismes existants.
+
+Évite les doubles enregistrements incohérents entre le backend en mémoire et Firestore.
+
+Le serveur doit utiliser Firebase Admin SDK pour les opérations privilégiées, si ce n'est pas déjà le cas.
+
+Les règles Firestore doivent empêcher :
+
+- Un fidèle de modifier les intentions d'un autre.
+- Un utilisateur d'accéder aux données d'une autre paroisse.
+- Un administrateur paroissial de modifier les données globales.
+- Un utilisateur de s'attribuer lui-même des rôles.
+- Un utilisateur non autorisé de modifier les permissions.
+
+Ne fais pas confiance à une vérification effectuée uniquement dans le JavaScript client.
+
+Les opérations critiques doivent être réalisées et contrôlées côté serveur.
+
+---
+
+# 10. PERSISTANCE ET MIGRATION DES DONNÉES
+
+Le store src/store/inMemoryDb.ts ne doit plus être la source principale de données en production.
+
+Préparer une migration progressive vers Firestore.
+
+Les données suivantes doivent être persistantes :
+
+- Comptes utilisateurs.
+- Paroisses.
+- Appartenances.
+- Rôles.
+- Permissions.
+- Intentions.
+- Messes.
+- Annonces.
+- Historique des opérations.
+
+Conserver les fichiers JSON pour les données statiques appropriées, notamment l'annuaire ecclésiastique, tant que cela reste pertinent.
+
+Ne supprime pas les données existantes.
+
+Prévoir un mécanisme de migration et de compatibilité.
+
+---
+
+# 11. GESTION DES STATUTS
+
+Définir des statuts cohérents.
+
+## Paroisse
+
+- PENDING_ACTIVATION
+- ACTIVE
+- SUSPENDED
+- INACTIVE
+
+## Compte utilisateur
+
+- PENDING_ACTIVATION
+- ACTIVE
+- SUSPENDED
+- DISABLED
+
+## Attribution de rôle
+
+- ACTIVE
+- REVOKED
+- EXPIRED
+
+## Intention
+
+- PENDING
+- PROCESSING
+- ACCEPTED
+- SCHEDULED
+- CELEBRATED
+- REJECTED
+- CANCELLED
+
+Vérifie les transitions autorisées entre ces statuts.
+
+Ne laisse pas les changements de statut être effectués arbitrairement depuis le frontend.
+
+---
+
+# 12. NOTIFICATIONS
+
+Prévoir des notifications adaptées aux événements.
+
+Pour les administrateurs paroissiaux :
+
+- Compte créé.
+- Compte activé.
+- Mot de passe à renouveler.
+- Rôle attribué ou retiré.
+
+Pour les responsables paroissiaux :
+
+- Nouvelle intention reçue.
+- Intention acceptée.
+- Intention refusée.
+- Demande à traiter.
+- Célébration programmée.
+
+Pour les fidèles :
+
+- Confirmation de dépôt.
+- Demande reçue par la paroisse.
+- Intention acceptée ou refusée.
+- Messe programmée.
+- Notification de changement de programmation.
+
+Ne révèle jamais au fidèle les commentaires internes de la paroisse.
+
+---
+
+# 13. TESTS ET VALIDATION
+
+Créer ou compléter les tests automatisés.
+
+Scénarios indispensables :
+
+1. Le super administrateur peut créer un administrateur paroissial.
+2. Un administrateur paroissial ne peut pas créer un super administrateur.
+3. Un administrateur paroissial ne peut pas accéder à une autre paroisse.
+4. Un curé peut cumuler le rôle administrateur.
+5. Le retrait du rôle administrateur ne supprime pas le rôle curé.
+6. Un utilisateur suspendu ne peut plus accéder à son espace.
+7. Un fidèle peut déposer une intention sans appartenir à la paroisse.
+8. Une intention est rattachée à la paroisse sélectionnée.
+9. Une paroisse ne peut pas consulter les intentions d'une autre.
+10. Le secrétaire peut traiter les intentions selon ses permissions.
+11. Le curé peut superviser les intentions.
+12. Une intention acceptée n'est pas automatiquement célébrée.
+13. Les changements de rôles sont journalisés.
+14. Les mots de passe temporaires expirent.
+15. Les permissions expirées sont révoquées.
+
+Compléter firestore.rules.test.ts et les tests d'intégration existants.
+
+---
+
+# 14. MÉTHODE DE TRAVAIL OBLIGATOIRE
+
+Ne commence pas à modifier tous les fichiers simultanément.
+
+Travaille en phases.
+
+## PHASE 1 — AUDIT
+
+- Explorer le projet.
+- Identifier les composants existants.
+- Vérifier les routes.
+- Examiner les modèles de données.
+- Examiner les règles Firestore.
+- Identifier les doublons.
+- Identifier les risques de régression.
+- Établir la liste précise des fichiers à modifier et à créer.
+
+## PHASE 2 — CONCEPTION
+
+- Définir le modèle multi-paroisses.
+- Définir le super administrateur.
+- Définir les quatre rôles paroissiaux.
+- Définir le RBAC.
+- Définir le nouveau parcours des intentions.
+- Définir les menus et tableaux de bord.
+- Préparer le plan de migration.
+
+## PHASE 3 — BACKEND
+
+- Implémenter les modèles.
+- Créer les services.
+- Créer les repositories.
+- Créer les middlewares.
+- Créer les routes.
+- Mettre en place les contrôles de sécurité.
+
+## PHASE 4 — FRONTEND
+
+- Créer l'espace super administrateur.
+- Adapter l'espace paroissial.
+- Adapter les parcours des utilisateurs.
+- Créer les composants réutilisables.
+- Améliorer les interfaces existantes.
+- Maintenir la cohérence du design.
+
+## PHASE 5 — TESTS
+
+- Compiler.
+- Lancer les tests.
+- Vérifier les règles Firestore.
+- Tester les parcours utilisateurs.
+- Tester l'isolation des paroisses.
+- Corriger les régressions.
+
+## PHASE 6 — LIVRAISON
+
+Fournir un rapport détaillé indiquant :
+
+- Les fonctionnalités implémentées.
+- Les nouveaux fichiers.
+- Les fichiers modifiés.
+- Les routes ajoutées.
+- Les structures Firestore ajoutées.
+- Les composants réutilisables créés.
+- Les tests exécutés.
+- Les éventuelles limitations.
+- Les variables d'environnement nécessaires.
+- Les opérations manuelles restantes.
+
+---
+
+# 15. CONTRAINTES DE QUALITÉ DU CODE
+
+Respecter impérativement :
+
+- TypeScript strict.
+- Fonctions courtes et spécialisées.
+- Une responsabilité principale par fonction.
+- Pas de logique métier dans les templates EJS.
+- Pas de logique d'autorisation uniquement dans le frontend.
+- Pas de duplication de composants.
+- Pas de styles inline.
+- Pas de secrets dans le code source.
+- Pas de mots de passe en clair.
+- Pas de données paroissiales mélangées.
+- Pas de suppression de données existantes sans migration.
+- Pas de routes dupliquées.
+- Pas de contournement des règles Firestore.
+
+Préférer des fonctions de moins de 50 lignes et des fichiers de moins de 250 lignes lorsque cela est raisonnable.
+
+Utiliser des noms explicites pour les variables, fonctions et fichiers.
+
+---
+
+# 16. RÉSULTAT ATTENDU
+
+À la fin du travail, Missa Paro doit disposer de :
+
+1. Un espace global de super administration.
+2. Une gestion centralisée des administrateurs paroissiaux.
+3. Des espaces paroissiaux indépendants.
+4. Quatre rôles paroissiaux principaux.
+5. Un système de rôles cumulés.
+6. Un moteur central de permissions.
+7. Une gestion sécurisée des comptes.
+8. Une gestion des intentions indépendante de l'appartenance du fidèle à une paroisse.
+9. Un rattachement automatique de chaque intention à la paroisse choisie.
+10. Des parcours utilisateurs adaptés.
+11. Des composants UI réutilisables.
+12. Une architecture backend modulaire.
+13. Une persistance cohérente des données.
+14. Des règles Firestore sécurisées.
+15. Une suite de tests vérifiant les règles métier.
+
+# CONSIGNE FINALE
+
+Commence par auditer le code existant avant de modifier quoi que ce soit.
+
+Ne détruis pas le fonctionnement actuel pour imposer une nouvelle architecture.
+
+Réutilise ce qui est sain, corrige ce qui est incohérent et restructure ce qui est nécessaire.
+
+Conserve l'identité visuelle actuelle de Missa Paro.
+
+Priorise la sécurité, la simplicité des parcours, la cohérence métier et la réutilisation des composants.
+
+Si une fonctionnalité existante contredit les nouvelles règles métier, identifie le conflit et corrige-la proprement.
+
+Ne prétends jamais qu'une fonctionnalité est terminée si elle n'est pas réellement implémentée et testée.
+
+**L'objectif est de transformer le Missa Paro existant en une plateforme paroissiale multi-tenant réellement opérationnelle, et non de produire une simple maquette visuelle.**

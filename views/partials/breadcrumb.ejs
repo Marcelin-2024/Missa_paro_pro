@@ -1,0 +1,19 @@
+<%
+  const trail = typeof items !== 'undefined' && Array.isArray(items) ? items : [];
+%>
+<% if (trail.length > 0) { %>
+<nav class="breadcrumb" aria-label="Fil d’Ariane">
+    <ol class="breadcrumb-list">
+        <% trail.forEach((item, index) => { %>
+            <li class="breadcrumb-item">
+                <% if (item.href && index < trail.length - 1) { %>
+                    <a href="<%= item.href %>" class="breadcrumb-link"><%= item.label %></a>
+                    <span class="breadcrumb-sep" aria-hidden="true">/</span>
+                <% } else { %>
+                    <span aria-current="page"><%= item.label %></span>
+                <% } %>
+            </li>
+        <% }) %>
+    </ol>
+</nav>
+<% } %>

@@ -144,4 +144,42 @@ export const dirtyDozenCases: DirtyDozenCase[] = [
       email_verified: false,
     },
   },
+  {
+    id: 13,
+    name: 'Unauthorized Parish Creation by Non-Super-Admin',
+    collection: '/parishes/parish_evil',
+    operation: 'create',
+    expected: 'PERMISSION_DENIED',
+    payload: {
+      id: 'parish_evil',
+      provinceId: 'province_abidjan',
+      dioceseId: 'diocese_abidjan',
+      name: 'Paroisse Non Autorisée',
+      status: 'ACTIVE',
+    },
+  },
+  {
+    id: 14,
+    name: 'Self-Assigned Parish Membership Role Escalation',
+    collection: '/parishMemberships/mem_evil',
+    operation: 'create',
+    expected: 'PERMISSION_DENIED',
+    payload: {
+      userId: 'caller-uid',
+      parishId: 'parish_sainte_rita',
+      status: 'ACTIVE',
+      roles: ['PARISH_ADMIN', 'CURE'],
+    },
+  },
+  {
+    id: 15,
+    name: 'Audit Log Modification Attempt',
+    collection: '/auditLogs/log-1',
+    operation: 'update',
+    expected: 'PERMISSION_DENIED',
+    payload: {
+      summary: 'Tampered entry',
+    },
+  },
 ];
+

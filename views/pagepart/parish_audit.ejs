@@ -1,0 +1,36 @@
+<%- include('../partials/page_header', {
+    title: 'Journal historique de la paroisse',
+    subtitle: `Traçabilité des actions sur ${activeParish.name}`,
+    actions: []
+}) %>
+
+<section class="table-card">
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date &amp; Heure</th>
+                    <th>Acteur</th>
+                    <th>Action</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (auditLogs && auditLogs.length > 0) { %>
+                    <% for (const log of auditLogs) { %>
+                        <tr>
+                            <td><%= new Date(log.createdAt).toLocaleString('fr-FR') %></td>
+                            <td><%= log.actorEmail %></td>
+                            <td><code><%= log.action %></code></td>
+                            <td><%= log.summary %></td>
+                        </tr>
+                    <% } %>
+                <% } else { %>
+                    <tr>
+                        <td colspan="4" class="empty-state">Aucune entrée d’audit enregistrée pour cette paroisse.</td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+</section>

@@ -1,0 +1,31 @@
+<%
+  const list = typeof notifications !== 'undefined' && Array.isArray(notifications) ? notifications : [];
+%>
+<div id="notifications-drawer" class="notifications-panel hidden" role="region" aria-label="Centre de notifications">
+    <div class="notifications-panel-header">
+        <h2 class="section-title">Notifications</h2>
+        <button type="button" class="btn btn-ghost btn-sm" data-close-notifications aria-label="Fermer les notifications">
+            <span class="material-symbols-rounded icon-sm" aria-hidden="true">close</span>
+        </button>
+    </div>
+    <div class="notifications-panel-body">
+        <% if (list.length > 0) { %>
+            <ul class="notifications-list">
+                <% for (const n of list.slice(0, 12)) { %>
+                    <li class="notification-item <%= n.read ? 'is-read' : 'is-unread' %>" data-notification-id="<%= n.id %>">
+                        <div class="notification-item-top">
+                            <strong><%= n.title %></strong>
+                            <% if (!n.read) { %>
+                                <button type="button" class="btn btn-ghost btn-sm" data-mark-notif-read="<%= n.id %>">Marquer lu</button>
+                            <% } %>
+                        </div>
+                        <p class="notification-item-msg"><%= n.message %></p>
+                        <small class="text-muted"><%= new Date(n.createdAt).toLocaleString('fr-FR') %></small>
+                    </li>
+                <% } %>
+            </ul>
+        <% } else { %>
+            <p class="text-muted">Aucune notification récente.</p>
+        <% } %>
+    </div>
+</div>

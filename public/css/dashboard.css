@@ -336,3 +336,38 @@
 .bar-h-55 { height: 55%; }
 .bar-h-65 { height: 65%; }
 .bar-h-80 { height: 80%; }
+
+.kpi-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.kpi-icon {
+  font-size: 20px;
+  color: var(--color-primary);
+}
+
+.intention-workflow-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 240px;
+}
+
+.intention-messe-picker,
+.intention-comment-input {
+  min-height: 34px;
+  padding: 6px var(--space-3);
+  font-size: var(--font-sm);
+}
+
+.table-cell-note {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--font-xs);
+  color: var(--color-gold-hover);
+  font-weight: var(--font-medium);
+}
+

@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" href="/static/image/logomissaparo.png" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Super Administration Missa Paro — Gouvernance multi-paroisses Côte d’Ivoire.">
+    <title>Missa Paro - Super Administration</title>
+    <%- include('partials/styles') %>
+</head>
+
+<body class="dashboard-body">
+    <a href="#main-content" class="skip-link">Aller au contenu principal</a>
+
+    <header class="app-header">
+        <div class="flex items-center gap-2">
+            <button
+                type="button"
+                class="icon-btn mobile-menu-toggle"
+                data-drawer-toggle
+                aria-label="Ouvrir le menu de navigation"
+                aria-expanded="false"
+                aria-controls="app-sidebar"
+            >
+                <span class="material-symbols-rounded" aria-hidden="true">menu</span>
+            </button>
+            <a href="/super-admin" class="header-card header-brand">
+                <img src="/static/image/logomissaparo.png" alt="Logo Missa Paro" class="header-logo">
+                <span class="header-brand-name">Missa Paro</span>
+            </a>
+        </div>
+
+        <div class="header-card header-parish">
+            <img src="/static/icon/eglise.svg" alt="" class="header-avatar">
+            <div class="header-parish-info">
+                <p class="header-parish-title">Super Administration Nationale</p>
+                <p class="header-parish-welcome"><%= user.displayName %> · <%= user.email %></p>
+            </div>
+        </div>
+
+        <div class="header-card header-actions">
+            <a href="/annuaire" class="btn btn-outline btn-sm">Annuaire public</a>
+            <button
+                id="notification-btn"
+                type="button"
+                class="icon-btn"
+                aria-label="Afficher les notifications"
+                title="Notifications"
+            >
+                <span class="material-symbols-rounded" aria-hidden="true">notifications</span>
+            </button>
+        </div>
+    </header>
+
+    <%- include('partials/notification_list', { notifications }) %>
+
+    <div class="app-shell">
+        <div id="sidebar-backdrop" class="sidebar-backdrop" aria-hidden="true"></div>
+
+        <aside id="app-sidebar" class="app-sidebar" aria-label="Navigation Super Admin">
+            <div class="sidebar-card">
+                <nav class="sidebar-nav" aria-label="Sections Super Administration">
+                    <a class="nav-link <%= section === 'overview' ? 'active' : '' %>" href="/super-admin?section=overview">
+                        <span class="material-symbols-rounded nav-icon" aria-hidden="true">dashboard</span>
+                        <span>Vue d’ensemble</span>
+                    </a>
+                    <a class="nav-link <%= section === 'parishes' ? 'active' : '' %>" href="/super-admin?section=parishes">
+                        <span class="material-symbols-rounded nav-icon" aria-hidden="true">church</span>
+                        <span>Paroisses</span>
+                    </a>
+                    <a class="nav-link <%= section === 'admins' ? 'active' : '' %>" href="/super-admin?section=admins">
+                        <span class="material-symbols-rounded nav-icon" aria-hidden="true">admin_panel_settings</span>
+                        <span>Admins paroissiaux</span>
+                    </a>
+                    <a class="nav-link <%= section === 'directory' ? 'active' : '' %>" href="/super-admin?section=directory">
+                        <span class="material-symbols-rounded nav-icon" aria-hidden="true">account_tree</span>
+                        <span>Annuaire Côte d’Ivoire</span>
+                    </a>
+                    <a class="nav-link <%= section === 'parish-requests' ? 'active' : '' %>" href="/super-admin?section=parish-requests">
+                        <span class="material-symbols-rounded nav-icon" aria-hidden="true">pending_actions</span>
+                        <span>Demandes de paroisses</span>
+                    </a>
+                    <a class="nav-link <%= section === 'stats' ? 'active' : '' %>" href="/super-admin?section=stats">
+                        <span class="material-symbols-rounded nav-icon" aria-hidden="true">bar_chart</span>
+                        <span>Statistiques</span>
+                    </a>
+                    <a class="nav-link <%= section === 'audit' ? 'active' : '' %>" href="/super-admin?section=audit">
+                        <span class="material-symbols-rounded nav-icon" aria-hidden="true">history</span>
+                        <span>Audit global</span>
+                    </a>
+                    <a class="nav-link <%= section === 'settings' ? 'active' : '' %>" href="/super-admin?section=settings">
+                        <span class="material-symbols-rounded nav-icon" aria-hidden="true">settings</span>
+                        <span>Paramètres plateforme</span>
+                    </a>
+                </nav>
+            </div>
+
+            <div class="sidebar-card">
+                <p class="sidebar-status-text">
+                    Gouvernance plateforme · Aucune auto-attribution de rôle curé/secrétaire.
+                </p>
+                <div class="sidebar-actions">
+                    <a href="/page/changer-mot-de-passe" class="btn btn-outline btn-sm btn-block">
+                        <span class="material-symbols-rounded icon-sm" aria-hidden="true">key</span>
+                        <span>Mot de passe</span>
+                    </a>
+                    <a href="/page/logout" class="btn btn-danger btn-sm btn-block">
+                        <span class="material-symbols-rounded icon-sm" aria-hidden="true">logout</span>
+                        <span>Déconnecter</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <main id="main-content" class="app-main" tabindex="-1">
+            <div id="super-admin-feedback" class="alert hidden mb-4" role="status"></div>
+
+            <% if (section === 'overview' || !['parishes', 'admins', 'directory', 'parish-requests', 'stats', 'audit', 'settings'].includes(section)) { %>
+                <%- include('partials/page_header', {
+                    title: 'Super Administration Missa Paro',
+                    subtitle: 'Provisionnement des espaces paroissiaux et gouvernance nationale',
+                    actions: [
+                        { label: 'Créer un Admin Paroissial', href: '/super-admin?section=admins', variant: 'btn-primary', icon: 'person_add' },
+                        { label: 'Gérer les paroisses', href: '/super-admin?section=parishes', variant: 'btn-gold', icon: 'church' }
+                    ]
+                }) %>
+
+                <section class="kpi-grid" aria-label="Indicateurs nationaux">
+                    <%- include('partials/stat_card', { label: 'Paroisses actives', value: stats.activeParishes, meta: `Sur ${stats.totalParishes} espace(s) créé(s)`, icon: 'church' }) %>
+                    <%- include('partials/stat_card', { label: 'Admins paroissiaux', value: stats.totalParishAdmins, meta: `${stats.pendingAdmins} activation(s) en attente`, icon: 'admin_panel_settings' }) %>
+                    <%- include('partials/stat_card', { label: 'Intentions reçues', value: stats.totalIntentions, meta: 'Toutes paroisses confondues', icon: 'description' }) %>
+                    <%- include('partials/stat_card', { label: 'Demandes paroisses', value: stats.pendingParishRequests, meta: 'En attente de revue', icon: 'pending_actions' }) %>
+                </section>
+
+                <section class="dashboard-grid">
+                    <article class="panel-soft">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="section-title">Paroisses provisionnées</h2>
+                            <a href="/super-admin?section=parishes" class="btn btn-ghost btn-sm text-primary-brand">Tout voir</a>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table data-table-compact">
+                                <thead>
+                                    <tr>
+                                        <th>Paroisse</th>
+                                        <th>Diocèse</th>
+                                        <th>Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% for (const p of parishes.slice(0, 6)) { %>
+                                        <tr>
+                                            <td><strong><%= p.name %></strong><br><small class="text-muted"><%= p.location %></small></td>
+                                            <td><%= p.dioceseName %></td>
+                                            <td><%- include('partials/status_badge', { statut: p.status }) %></td>
+                                        </tr>
+                                    <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+
+                    <article class="panel-soft">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="section-title">Journal récent</h2>
+                            <a href="/super-admin?section=audit" class="btn btn-ghost btn-sm text-primary-brand">Audit</a>
+                        </div>
+                        <ul class="audit-compact-list">
+                            <% for (const log of recentAudit.slice(0, 6)) { %>
+                                <li class="audit-compact-item">
+                                    <span class="audit-compact-action"><%= log.summary %></span>
+                                    <small class="text-muted"><%= log.actorEmail %> · <%= new Date(log.createdAt).toLocaleString('fr-FR') %></small>
+                                </li>
+                            <% } %>
+                        </ul>
+                    </article>
+                </section>
+            <% } %>
+
+            <% if (section === 'parishes') { %>
+                <%- include('partials/page_header', {
+                    title: 'Gestion des paroisses',
+                    subtitle: 'Provisionnez un espace paroissial depuis l’annuaire ecclésiastique de Côte d’Ivoire',
+                    actions: [{ label: 'Retour vue globale', href: '/super-admin?section=overview', variant: 'btn-outline' }]
+                }) %>
+
+                <form id="sa-create-parish-form" class="card-soft mb-4" data-ecclesiastical-picker="sa-parish">
+                    <h2 class="section-title mb-3">Provisionner ou activer une paroisse</h2>
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="provinceId" class="form-label">Province ecclésiastique</label>
+                            <select id="provinceId" name="provinceId" class="form-select" required>
+                                <option value="">Sélectionnez votre province</option>
+                                <% for (const prov of provinces) { %>
+                                    <option value="<%= prov.id %>"><%= prov.name %></option>
+                                <% } %>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="dioceseId" class="form-label">Diocèse</label>
+                            <select id="dioceseId" name="dioceseId" class="form-select" required disabled>
+                                <option value="">Sélectionnez votre diocèse</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="parish-search-input" class="form-label">Filtrer l’annuaire</label>
+                            <input id="parish-search-input" type="search" class="form-control" placeholder="Nom ou localité..." disabled>
+                        </div>
+                        <div class="form-group">
+                            <label for="parishId" class="form-label">Paroisse officielle</label>
+                            <select id="parishId" name="directoryParishId" class="form-select" required disabled>
+                                <option value="">Sélectionnez une paroisse</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="missing-parish-box" class="form-grid-2 hidden">
+                        <div class="form-group">
+                            <label for="missing_parish_name" class="form-label">Nom personnalisé de la paroisse</label>
+                            <input id="missing_parish_name" name="customParishName" type="text" class="form-control" placeholder="Ex. Paroisse Saint-Luc">
+                        </div>
+                        <div class="form-group">
+                            <label for="sa-parish-location" class="form-label">Localité / Commune</label>
+                            <input id="sa-parish-location" name="location" type="text" class="form-control" placeholder="Ville ou quartier">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Activer l’espace paroisse</button>
+                    </div>
+                </form>
+
+                <section class="table-card">
+                    <div class="table-toolbar">
+                        <div class="table-filters">
+                            <input type="search" class="form-control table-search" placeholder="Rechercher une paroisse..." data-table-search="sa-parishes-tbody">
+                            <select class="form-select table-search" data-table-filter="sa-parishes-tbody">
+                                <option value="">Tous les statuts</option>
+                                <option value="actif">Actif</option>
+                                <option value="suspendu">Suspendu</option>
+                                <option value="attente">En attente</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Paroisse</th>
+                                    <th>Province / Diocèse</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sa-parishes-tbody">
+                                <% for (const p of parishes) { %>
+                                    <tr>
+                                        <td>
+                                            <span class="table-cell-title"><%= p.name %></span>
+                                            <span class="table-cell-sub"><%= p.location %> · <%= p.email || 'Email non défini' %></span>
+                                        </td>
+                                        <td>
+                                            <span class="table-cell-title"><%= p.dioceseName %></span>
+                                            <span class="table-cell-sub"><%= p.provinceName %></span>
+                                        </td>
+                                        <td><%- include('partials/status_badge', { statut: p.status }) %></td>
+                                        <td>
+                                            <div class="table-actions">
+                                                <% if (p.status !== 'ACTIVE') { %>
+                                                    <button type="button" class="btn btn-primary btn-sm" data-sa-parish-status="ACTIVE" data-parish-id="<%= p.id %>">Activer</button>
+                                                <% } %>
+                                                <% if (p.status === 'ACTIVE') { %>
+                                                    <button type="button" class="btn btn-danger btn-sm" data-sa-parish-status="SUSPENDED" data-parish-id="<%= p.id %>">Suspendre</button>
+                                                <% } %>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            <% } %>
+
+            <% if (section === 'admins') { %>
+                <%- include('partials/page_header', {
+                    title: 'Administrateurs paroissiaux',
+                    subtitle: 'Créez un compte Administrateur Paroissial et rattachez-le uniquement au rôle PARISH_ADMIN sur sa paroisse',
+                    actions: [{ label: 'Retour vue globale', href: '/super-admin?section=overview', variant: 'btn-outline' }]
+                }) %>
+
+                <div id="sa-credential-reveal" class="card-soft card-soft-gold mb-4 hidden" role="region" aria-live="polite">
+                    <h2 class="section-title mb-2">Accès temporaire généré (à transmettre de façon sécurisée)</h2>
+                    <p class="mb-3">Ce mot de passe temporaire expire automatiquement et devra être modifié dès la première connexion.</p>
+                    <div class="credential-grid">
+                        <div><strong>Paroisse :</strong> <span id="reveal-parish"></span></div>
+                        <div><strong>Mot de passe temporaire :</strong> <code id="reveal-password" class="credential-code"></code></div>
+                        <div><strong>Lien d’activation :</strong> <code id="reveal-link" class="credential-code"></code></div>
+                        <div><strong>Expiration :</strong> <span id="reveal-expires"></span></div>
+                    </div>
+                </div>
+
+                <form id="sa-create-admin-form" class="card-soft mb-4" data-ecclesiastical-picker="sa-admin">
+                    <h2 class="section-title mb-3">Créer un Administrateur Paroissial</h2>
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="provinceId" class="form-label">Province ecclésiastique</label>
+                            <select id="provinceId" name="provinceId" class="form-select" required>
+                                <option value="">Sélectionnez la province</option>
+                                <% for (const prov of provinces) { %>
+                                    <option value="<%= prov.id %>"><%= prov.name %></option>
+                                <% } %>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="dioceseId" class="form-label">Diocèse</label>
+                            <select id="dioceseId" name="dioceseId" class="form-select" required disabled>
+                                <option value="">Sélectionnez le diocèse</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="parish-search-input" class="form-label">Rechercher la paroisse</label>
+                            <input id="parish-search-input" type="search" class="form-control" placeholder="Filtrer les paroisses..." disabled>
+                        </div>
+                        <div class="form-group">
+                            <label for="parishId" class="form-label">Paroisse ciblée</label>
+                            <select id="parishId" name="directoryParishId" class="form-select" required disabled>
+                                <option value="">Sélectionnez la paroisse</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="missing-parish-box" class="form-group hidden">
+                        <label for="missing_parish_name" class="form-label">Nom de la paroisse (hors annuaire)</label>
+                        <input id="missing_parish_name" name="customParishName" type="text" class="form-control" placeholder="Nom complet de la paroisse">
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="sa-admin-name" class="form-label">Nom complet</label>
+                            <input id="sa-admin-name" name="displayName" type="text" class="form-control" required placeholder="Ex. Jean-Paul Konan">
+                        </div>
+                        <div class="form-group">
+                            <label for="sa-admin-email" class="form-label">Email professionnel</label>
+                            <input id="sa-admin-email" name="email" type="email" class="form-control" required placeholder="admin@paroisse.ci">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sa-admin-phone" class="form-label">Téléphone</label>
+                        <input id="sa-admin-phone" name="phone" type="tel" class="form-control" placeholder="+225 07 00 00 00 00">
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Créer l’Administrateur Paroissial</button>
+                    </div>
+                </form>
+
+                <section class="table-card">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Compte</th>
+                                    <th>Paroisses &amp; Rôles</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% for (const adminUser of parishAdmins) { %>
+                                    <tr>
+                                        <td>
+                                            <span class="table-cell-title"><%= adminUser.displayName %></span>
+                                            <span class="table-cell-sub"><%= adminUser.email %> · <%= adminUser.phone || 'Sans téléphone' %></span>
+                                        </td>
+                                        <td>
+                                            <% if (adminUser.memberships && adminUser.memberships.length > 0) { %>
+                                                <% for (const m of adminUser.memberships) { %>
+                                                    <div class="mb-1">
+                                                        <strong><%= m.parishName %></strong> :
+                                                        <% for (const r of m.roles) { %>
+                                                            <%- include('partials/role_badge', { roleCode: r }) %>
+                                                        <% } %>
+                                                    </div>
+                                                <% } %>
+                                            <% } else { %>
+                                                <span class="text-muted">Aucune paroisse active</span>
+                                            <% } %>
+                                        </td>
+                                        <td><%- include('partials/status_badge', { statut: adminUser.status }) %></td>
+                                        <td>
+                                            <div class="table-actions">
+                                                <button type="button" class="btn btn-outline btn-sm" data-sa-reset-admin="<%= adminUser.id %>">Réinitialiser accès</button>
+                                                <% if (adminUser.status === 'ACTIVE' || adminUser.status === 'PENDING_ACTIVATION') { %>
+                                                    <button type="button" class="btn btn-danger btn-sm" data-sa-admin-status="SUSPENDED" data-user-id="<%= adminUser.id %>">Suspendre</button>
+                                                <% } else { %>
+                                                    <button type="button" class="btn btn-primary btn-sm" data-sa-admin-status="ACTIVE" data-user-id="<%= adminUser.id %>">Réactiver</button>
+                                                <% } %>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            <% } %>
+
+            <% if (section === 'directory') { %>
+                <%- include('partials/page_header', {
+                    title: 'Annuaire ecclésiastique de Côte d’Ivoire',
+                    subtitle: '4 provinces ecclésiastiques, 15 diocèses et paroisses vérifiées',
+                    actions: [{ label: 'Ouvrir annuaire public', href: '/annuaire', variant: 'btn-outline' }]
+                }) %>
+
+                <div class="directory-provinces-grid">
+                    <% for (const prov of directoryProvinces) { %>
+                        <section class="panel-soft mb-4">
+                            <h2 class="section-title mb-2"><%= prov.name %></h2>
+                            <div class="table-responsive">
+                                <table class="data-table data-table-compact">
+                                    <thead>
+                                        <tr>
+                                            <th>Diocèse</th>
+                                            <th>Type</th>
+                                            <th>Paroisses répertoriées</th>
+                                            <th>Couverture</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% for (const d of prov.dioceses) { %>
+                                            <tr>
+                                                <td><strong><%= d.name %></strong></td>
+                                                <td><%= d.type === 'ARCHDIOCESE' ? 'Archidiocèse' : 'Diocèse' %></td>
+                                                <td><%= d.parishes.length %></td>
+                                                <td><%- include('partials/status_badge', { statut: d.directoryCompleteness === 'COMPLETE' ? 'ACTIVE' : 'PENDING_APPROVAL', label: d.directoryCompleteness === 'COMPLETE' ? 'Complet' : 'Partiel' }) %></td>
+                                            </tr>
+                                        <% } %>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    <% } %>
+                </div>
+            <% } %>
+
+            <% if (section === 'parish-requests') { %>
+                <%- include('partials/page_header', {
+                    title: 'Demandes de paroisses manquantes',
+                    subtitle: 'Approuvez une demande pour provisionner automatiquement la paroisse correspondante',
+                    actions: []
+                }) %>
+
+                <section class="table-card">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Paroisse soumise</th>
+                                    <th>Diocèse</th>
+                                    <th>Statut</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% if (parishRequests && parishRequests.length > 0) { %>
+                                    <% for (const reqItem of parishRequests) { %>
+                                        <tr>
+                                            <td><strong><%= reqItem.parishName %></strong></td>
+                                            <td><%= reqItem.dioceseId %></td>
+                                            <td><%- include('partials/status_badge', { statut: reqItem.status }) %></td>
+                                            <td><%= new Date(reqItem.submittedAt).toLocaleDateString('fr-FR') %></td>
+                                            <td>
+                                                <% if (reqItem.status === 'PENDING') { %>
+                                                    <div class="table-actions">
+                                                        <button type="button" class="btn btn-primary btn-sm" data-sa-review-request="APPROVED" data-request-id="<%= reqItem.id %>">Approuver</button>
+                                                        <button type="button" class="btn btn-danger btn-sm" data-sa-review-request="REJECTED" data-request-id="<%= reqItem.id %>">Rejeter</button>
+                                                    </div>
+                                                <% } else { %>
+                                                    <span class="text-muted">Traitée</span>
+                                                <% } %>
+                                            </td>
+                                        </tr>
+                                    <% } %>
+                                <% } else { %>
+                                    <tr>
+                                        <td colspan="5" class="empty-state">Aucune demande de paroisse enregistrée.</td>
+                                    </tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            <% } %>
+
+            <% if (section === 'stats') { %>
+                <%- include('partials/page_header', {
+                    title: 'Statistiques globales',
+                    subtitle: 'Indicateurs agrégés multi-paroisses (sans ingérence dans les intentions internes)',
+                    actions: []
+                }) %>
+                <section class="kpi-grid">
+                    <%- include('partials/stat_card', { label: 'Total paroisses', value: stats.totalParishes, meta: `${stats.suspendedParishes} suspendue(s)` }) %>
+                    <%- include('partials/stat_card', { label: 'Comptes utilisateurs', value: stats.totalUsers, meta: 'Admins, clergé, secrétaires, fidèles' }) %>
+                    <%- include('partials/stat_card', { label: 'Intentions déposées', value: stats.totalIntentions, meta: 'Volume national' }) %>
+                    <%- include('partials/stat_card', { label: 'Paroisses en attente', value: stats.pendingParishes, meta: 'À activer' }) %>
+                </section>
+            <% } %>
+
+            <% if (section === 'audit') { %>
+                <%- include('partials/page_header', {
+                    title: 'Journal d’audit global',
+                    subtitle: 'Traçabilité des actions de gouvernance Super Admin',
+                    actions: []
+                }) %>
+                <section class="table-card">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Horodatage</th>
+                                    <th>Acteur</th>
+                                    <th>Action</th>
+                                    <th>Détails</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% for (const log of auditLogs) { %>
+                                    <tr>
+                                        <td><%= new Date(log.createdAt).toLocaleString('fr-FR') %></td>
+                                        <td><%= log.actorEmail %></td>
+                                        <td><code><%= log.action %></code></td>
+                                        <td><%= log.summary %></td>
+                                    </tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            <% } %>
+
+            <% if (section === 'settings') { %>
+                <%- include('partials/page_header', {
+                    title: 'Paramètres globaux de la plateforme',
+                    subtitle: 'Politique de sécurité et gouvernance Missa Paro',
+                    actions: []
+                }) %>
+                <form id="sa-settings-form" class="card-soft">
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="sa-platform-name" class="form-label">Nom de la plateforme</label>
+                            <input id="sa-platform-name" name="platformName" type="text" class="form-control" value="<%= settings.platformName %>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="sa-support-email" class="form-label">Email de support</label>
+                            <input id="sa-support-email" name="supportEmail" type="email" class="form-control" value="<%= settings.supportEmail %>" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="sa-temp-ttl" class="form-label">Durée de validité des mots de passe temporaires (heures)</label>
+                        <input id="sa-temp-ttl" name="tempPasswordTtlHours" type="number" min="1" max="168" class="form-control" value="<%= settings.tempPasswordTtlHours %>">
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="allowPublicFideleSignup" <%= settings.allowPublicFideleSignup ? 'checked' : '' %>>
+                            <span>Autoriser l’inscription publique des fidèles</span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="requireCureAnnouncementApproval" <%= settings.requireCureAnnouncementApproval ? 'checked' : '' %>>
+                            <span>Exiger la validation du Curé avant publication des annonces</span>
+                        </label>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Enregistrer les paramètres</button>
+                    </div>
+                </form>
+            <% } %>
+        </main>
+    </div>
+
+    <script src="/static/js/ui-interactions.js"></script>
+    <script src="/static/js/ecclesiastical-selector.js"></script>
+    <script src="/static/js/super-admin.js"></script>
+</body>
+
+</html>

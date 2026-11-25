@@ -1,12 +1,20 @@
+<%
+  const perms = typeof permissions !== 'undefined' && Array.isArray(permissions) ? permissions : [];
+  const messes = (stats && stats.allMesses) ? stats.allMesses : [];
+%>
 <div class="page-header">
     <div class="page-header-meta">
         <h1 class="page-title">Gestion des messes</h1>
-        <p class="page-subtitle">Consultez le calendrier des célébrations et leurs horaires</p>
+        <p class="page-subtitle">Calendrier des célébrations de votre paroisse</p>
     </div>
     <div class="page-actions">
-        <a href="/page/messes" class="btn btn-gold">Ajouter une messe</a>
+        <% if (perms.includes('parish.masses.manage')) { %>
+            <a href="/page/messes" class="btn btn-gold">Ajouter une messe</a>
+        <% } %>
     </div>
 </div>
+
+<div id="parish-masses-feedback" class="alert hidden mb-4" role="status"></div>
 
 <section class="table-card" aria-label="Calendrier des messes">
     <div class="table-toolbar">
@@ -26,7 +34,7 @@
                 data-table-filter="messes-table-body"
             >
                 <option value="">Tous les statuts</option>
-                <option value="a venir">À venir</option>
+                <option value="à venir">À venir</option>
                 <option value="passée">Passée</option>
                 <option value="annulée">Annulée</option>
             </select>
@@ -39,24 +47,32 @@
                 <tr>
                     <th>Date</th>
                     <th>Horaire</th>
-                    <th>Célébrant</th>
+                    <th>Célébrant &amp; Type</th>
                     <th>Statut</th>
                     <th>Action</th>
                 </tr>
             </thead>
             <tbody id="messes-table-body">
-                <% const messes = (stats && stats.allMesses) ? stats.allMesses : []; %>
                 <% if (messes.length > 0) { %>
                     <% for (const item of messes) { %>
                         <tr>
                             <td><%= item.date %></td>
                             <td><%= item.horaire %></td>
-                            <td><%= item.celebrant %></td>
+                            <td>
+                                <span class="table-cell-title"><%= item.celebrant %></span>
+                                <span class="table-cell-sub"><%= item.type || 'Messe paroissiale' %></span>
+                            </td>
                             <td><%- include('../partials/status_badge', { statut: item.statut }) %></td>
                             <td>
-                                <button type="button" class="btn btn-ghost btn-sm" data-goto-intentions>
-                                    Voir intentions
-                                </button>
+                                <div class="table-actions">
+                                    <% if (perms.includes('parish.intentions.view')) { %>
+                                        <button type="button" class="btn btn-ghost btn-sm" data-nav-target="intentions">Intentions</button>
+                                    <% } %>
+                                    <% if (perms.includes('parish.masses.manage') && item.statut === 'A venir') { %>
+                                        <button type="button" class="btn btn-outline btn-sm" data-messe-status="Passée" data-messe-id="<%= item.id %>">Clôturer</button>
+                                        <button type="button" class="btn btn-danger btn-sm" data-messe-status="Annulée" data-messe-id="<%= item.id %>">Annuler</button>
+                                    <% } %>
+                                </div>
                             </td>
                         </tr>
                     <% } %>

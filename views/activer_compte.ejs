@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" href="/static/image/logomissaparo.png" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Activation de compte paroissial sur Missa Paro.">
+    <title>Missa Paro - Activation de compte</title>
+    <%- include('partials/styles') %>
+</head>
+
+<body class="auth-page">
+    <main class="auth-card" aria-labelledby="activate-title">
+        <div class="auth-brand">
+            <img src="/static/image/logomissaparo.png" alt="Logo Missa Paro" class="auth-logo">
+            <h1 id="activate-title" class="page-title">Activation de votre compte</h1>
+            <p class="auth-subtitle">Définissez votre mot de passe définitif pour activer votre accès</p>
+        </div>
+
+        <% if (typeof error !== 'undefined' && error) { %>
+            <div class="alert alert-error mb-4" role="alert"><%= error %></div>
+        <% } %>
+
+        <% if (success) { %>
+            <div class="alert alert-success mb-4" role="status">
+                Votre compte est désormais activé. Vous pouvez vous connecter avec votre email et votre nouveau mot de passe.
+            </div>
+            <a href="/" class="btn btn-primary btn-block">Aller à la connexion</a>
+        <% } else { %>
+            <form action="/activer-compte" method="POST" data-loading-form>
+                <input type="hidden" name="token" value="<%= token %>">
+                <%- include('partials/input_field', { name: 'password', label: 'Mot de passe personnel', placeholder: 'Au moins 8 caractères', type: 'password', value: '', requit: true }) %>
+                <%- include('partials/input_field', { name: 'confirmation', label: 'Confirmer le mot de passe', placeholder: 'Répétez le mot de passe', type: 'password', value: '', requit: true }) %>
+                <%- include('partials/bouton_envoi', { name: 'Activer mon compte' }) %>
+            </form>
+        <% } %>
+
+        <div class="auth-footer">
+            <a class="auth-link" href="/">Retour à la connexion</a>
+        </div>
+    </main>
+
+    <script src="/static/js/ui-interactions.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" href="/static/image/logomissaparo.png" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Déposez et suivez une demande d’intention de messe dans votre paroisse en Côte d’Ivoire.">
+    <title>Missa Paro - Demande d’intention de messe</title>
+    <%- include('partials/styles') %>
+</head>
+
+<body class="public-page">
+    <header class="public-topbar">
+        <a href="/" class="header-brand flex items-center gap-3">
+            <img src="/static/image/logomissaparo.png" alt="Logo Missa Paro" class="header-logo">
+            <span class="header-brand-name">Missa Paro</span>
+        </a>
+        <nav class="public-nav" aria-label="Navigation publique">
+            <a href="/annuaire" class="btn btn-outline btn-sm">Annuaire des paroisses</a>
+            <a href="/demande-intention" class="btn btn-primary btn-sm">Demande d’intention</a>
+            <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+                <% if (currentUser.isSuperAdmin) { %>
+                    <a href="/super-admin" class="btn btn-gold btn-sm">Super Admin</a>
+                <% } else if (currentUser.accountType === 'PARISH_STAFF') { %>
+                    <a href="/page/tableau_bords" class="btn btn-gold btn-sm">Espace paroisse</a>
+                <% } %>
+                <a href="/page/logout" class="btn btn-ghost btn-sm">Déconnexion</a>
+            <% } else { %>
+                <a href="/" class="btn btn-secondary btn-sm">Connexion</a>
+            <% } %>
+        </nav>
+    </header>
+
+    <main class="form-page">
+        <div class="public-grid-shell">
+            <section class="form-card form-card-full" aria-labelledby="intention-public-title">
+                <div class="card-header-gradient">
+                    <div>
+                        <h1 id="intention-public-title" class="section-title">Demander une intention de messe</h1>
+                        <p class="text-muted">Accessible librement à tous les fidèles, sans rattachement obligatoire à une paroisse</p>
+                    </div>
+                </div>
+
+                <div class="form-body">
+                    <% if (typeof error !== 'undefined' && error) { %>
+                        <div class="alert alert-error mb-4" role="alert"><%= error %></div>
+                    <% } %>
+
+                    <% if (typeof confirmation !== 'undefined' && confirmation) { %>
+                        <div class="alert alert-success mb-4" role="status">
+                            <strong>Intention enregistrée avec succès !</strong><br>
+                            Référence de suivi : <code class="credential-code"><%= confirmation.trackingRef %></code><br>
+                            Paroisse destinataire : <strong><%= confirmation.parishName %></strong> · Statut : <strong><%= confirmation.statusLabel %></strong><br>
+                            <a href="/demande-intention?ref=<%= encodeURIComponent(confirmation.trackingRef) %>" class="auth-link">Suivre ma demande</a>
+                        </div>
+                    <% } %>
+
+                    <form action="/page/demande-intention" method="POST" data-ecclesiastical-picker="intention" data-loading-form>
+                        <fieldset class="ecclesiastical-section">
+                            <legend class="ecclesiastical-section-title">Paroisse destinataire</legend>
+                            <div class="form-grid-2">
+                                <div class="form-group">
+                                    <label for="provinceId" class="form-label">Province ecclésiastique</label>
+                                    <select id="provinceId" name="provinceId" class="form-select" required>
+                                        <option value="">Sélectionnez votre province</option>
+                                        <% for (const prov of provinces) { %>
+                                            <option value="<%= prov.id %>"><%= prov.name %></option>
+                                        <% } %>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="dioceseId" class="form-label">Diocèse</label>
+                                    <select id="dioceseId" name="dioceseId" class="form-select" required disabled>
+                                        <option value="">Sélectionnez votre diocèse</option>
+                                    </select>
+                                    <small id="diocese-helper" class="form-helper">Choisissez d’abord une province.</small>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="parishId" class="form-label">Paroisse</label>
+                                <div class="parish-search-wrap">
+                                    <label for="parish-search-input" class="sr-only">Rechercher une paroisse</label>
+                                    <input id="parish-search-input" type="search" class="form-control" placeholder="Rechercher par nom ou ville..." disabled>
+                                </div>
+                                <select id="parishId" name="parishId" class="form-select" required disabled>
+                                    <option value="">Sélectionnez votre paroisse</option>
+                                </select>
+                                <small id="parish-helper" class="form-helper">Choisissez d’abord un diocèse.</small>
+                            </div>
+                            <p id="ecclesiastical-error" class="alert alert-error mb-3 hidden" role="alert"></p>
+                        </fieldset>
+
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="requesterName" class="form-label">Nom et prénoms du demandeur</label>
+                                <input id="requesterName" name="requesterName" type="text" class="form-control" required maxlength="120" value="<%= (typeof currentUser !== 'undefined' && currentUser) ? currentUser.displayName : '' %>" placeholder="Ex. Koné Marie">
+                            </div>
+                            <div class="form-group">
+                                <label for="requesterPhone" class="form-label">Téléphone de contact</label>
+                                <input id="requesterPhone" name="requesterPhone" type="tel" class="form-control" required maxlength="40" value="<%= (typeof currentUser !== 'undefined' && currentUser && currentUser.phone) ? currentUser.phone : '' %>" placeholder="+225 07 00 00 00 00">
+                            </div>
+                        </div>
+
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="requesterEmail" class="form-label">Email (optionnel)</label>
+                                <input id="requesterEmail" name="requesterEmail" type="email" class="form-control" maxlength="150" value="<%= (typeof currentUser !== 'undefined' && currentUser) ? currentUser.email : '' %>" placeholder="fidele@exemple.ci">
+                            </div>
+                            <div class="form-group">
+                                <label for="desiredDate" class="form-label">Date souhaitée (optionnel)</label>
+                                <input id="desiredDate" name="desiredDate" type="date" class="form-control">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="objet" class="form-label">Objet de l’intention</label>
+                            <input id="objet" name="objet" type="text" class="form-control" required maxlength="150" placeholder="Ex. Action de grâce, Repos de l’âme, Guérison, Protection...">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="details" class="form-label">Précisions de prière</label>
+                            <textarea id="details" name="details" class="form-textarea" required maxlength="1000" rows="3" placeholder="Indiquez le nom des personnes concernées ou le motif de prière..."></textarea>
+                        </div>
+
+                        <%- include('partials/bouton_envoi', { name: 'Envoyer ma demande d’intention' }) %>
+                    </form>
+                </div>
+            </section>
+
+            <aside class="form-card form-card-full" aria-labelledby="tracking-title">
+                <div class="card-header-gradient">
+                    <div>
+                        <h2 id="tracking-title" class="section-title">Suivre une demande</h2>
+                        <p class="text-muted">Consultez l’état de votre intention avec sa référence</p>
+                    </div>
+                </div>
+                <div class="form-body">
+                    <form action="/demande-intention" method="GET" class="mb-4">
+                        <div class="form-group">
+                            <label for="ref-lookup" class="form-label">Référence de suivi</label>
+                            <input id="ref-lookup" name="ref" type="text" class="form-control" placeholder="Ex. INT-2026-1002" value="<%= trackingResult ? trackingResult.trackingRef : '' %>" required>
+                        </div>
+                        <button type="submit" class="btn btn-gold btn-block">Rechercher</button>
+                    </form>
+
+                    <% if (typeof trackingResult !== 'undefined' && trackingResult) { %>
+                        <div class="card-soft">
+                            <div class="flex items-center justify-between mb-3">
+                                <strong><%= trackingResult.trackingRef %></strong>
+                                <%- include('partials/status_badge', { statut: trackingResult.status, label: trackingResult.statusLabel }) %>
+                            </div>
+                            <p><strong>Paroisse :</strong> <%= trackingResult.parishName %></p>
+                            <p><strong>Objet :</strong> <%= trackingResult.objet %></p>
+                            <% if (trackingResult.desiredDate) { %>
+                                <p><strong>Date souhaitée :</strong> <%= trackingResult.desiredDate %></p>
+                            <% } %>
+                            <% if (trackingResult.messe) { %>
+                                <p><strong>Messe associée :</strong> <%= trackingResult.messe.date %> · <%= trackingResult.messe.horaire %> (<%= trackingResult.messe.celebrant %>)</p>
+                            <% } %>
+                            <% if (trackingResult.celebratedAt) { %>
+                                <p><strong>Célébrée le :</strong> <%= new Date(trackingResult.celebratedAt).toLocaleString('fr-FR') %></p>
+                            <% } %>
+                        </div>
+                    <% } %>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <script src="/static/js/ecclesiastical-selector.js"></script>
+    <script src="/static/js/ui-interactions.js"></script>
+</body>
+
+</html>
