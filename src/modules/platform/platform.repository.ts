@@ -319,6 +319,84 @@ function createInitialSeedState(): PlatformState {
         updatedAt: now,
       },
     ],
+    payments: [
+      {
+        id: 'pay-seed-1',
+        transactionReference: 'TXN-2026-SR1001',
+        intentionId: 'int-sr-1',
+        intentionTrackingRef: 'INT-2026-1001',
+        parishId: 'parish_sainte_rita',
+        parishName: 'Paroisse Sainte Rita',
+        faithfulUserId: null,
+        faithfulName: 'Famille Yao',
+        faithfulPhone: '+225 0708091011',
+        provider: 'WAVE',
+        amount: 2000,
+        currency: 'XOF',
+        status: 'SUCCESS',
+        simulationMode: true,
+        scenario: 'SUCCESS',
+        createdAt: now,
+        updatedAt: now,
+        confirmedAt: now,
+        failureReason: null,
+        attemptNumber: 1,
+      },
+      {
+        id: 'pay-seed-2',
+        transactionReference: 'TXN-2026-SR1002',
+        intentionId: 'int-sr-2',
+        intentionTrackingRef: 'INT-2026-1002',
+        parishId: 'parish_sainte_rita',
+        parishName: 'Paroisse Sainte Rita',
+        faithfulUserId: null,
+        faithfulName: 'Adeline Bamba',
+        faithfulPhone: '+225 0504030201',
+        provider: 'ORANGE_MONEY',
+        amount: 3000,
+        currency: 'XOF',
+        status: 'PENDING',
+        simulationMode: true,
+        scenario: 'PENDING',
+        createdAt: now,
+        updatedAt: now,
+        confirmedAt: null,
+        failureReason: null,
+        attemptNumber: 1,
+      },
+    ],
+    paymentEvents: [
+      {
+        id: 'pevt-seed-1',
+        paymentId: 'pay-seed-1',
+        parishId: 'parish_sainte_rita',
+        eventType: 'CREATED',
+        previousStatus: null,
+        newStatus: 'PENDING',
+        description: 'Transaction simulée initialisée pour INT-2026-1001 (Wave).',
+        createdAt: now,
+      },
+      {
+        id: 'pevt-seed-2',
+        paymentId: 'pay-seed-1',
+        parishId: 'parish_sainte_rita',
+        eventType: 'PAYMENT_CONFIRMED',
+        previousStatus: 'PENDING',
+        newStatus: 'SUCCESS',
+        description: 'Confirmation simulée validée par Wave (TXN-2026-SR1001).',
+        createdAt: now,
+      },
+      {
+        id: 'pevt-seed-3',
+        paymentId: 'pay-seed-2',
+        parishId: 'parish_sainte_rita',
+        eventType: 'PAYMENT_PENDING',
+        previousStatus: null,
+        newStatus: 'PENDING',
+        description: 'Validation simulée en attente auprès de Orange Money (TXN-2026-SR1002).',
+        createdAt: now,
+      },
+    ],
     auditLogs: [
       {
         id: 'audit-seed-1',
@@ -369,6 +447,11 @@ export function getPlatformState(): PlatformState {
 
   const raw = fs.readFileSync(STATE_FILE, 'utf-8');
   const parsed = JSON.parse(raw) as PlatformState;
+  parsed.payments = Array.isArray(parsed.payments) ? parsed.payments : [];
+  parsed.paymentEvents = Array.isArray(parsed.paymentEvents) ? parsed.paymentEvents : [];
+  parsed.notifications = Array.isArray(parsed.notifications) ? parsed.notifications : [];
+  parsed.auditLogs = Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [];
+
   const superAdminEnvPass = (process.env.SUPER_ADMIN_PASSWORD || '').trim();
   if (!parsed.superAdminClaimed && superAdminEnvPass) {
     const sa = parsed.users.find((u) => u.isSuperAdmin);

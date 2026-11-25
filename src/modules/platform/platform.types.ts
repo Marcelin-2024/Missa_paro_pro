@@ -22,6 +22,23 @@ export type RoleCode =
   | 'SECRETAIRE'
   | 'RESPONSABLE_LITURGIQUE';
 
+export type PaymentProviderCode = 'WAVE' | 'ORANGE_MONEY' | 'MTN_MONEY' | 'MOOV_MONEY';
+
+export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED' | 'EXPIRED';
+
+export type PaymentScenario = 'SUCCESS' | 'FAILED' | 'CANCELLED' | 'PENDING';
+
+export type PaymentEventType =
+  | 'CREATED'
+  | 'OPERATOR_REQUEST_SENT'
+  | 'OPERATOR_VALIDATION_RECEIVED'
+  | 'PAYMENT_CONFIRMED'
+  | 'PAYMENT_FAILED'
+  | 'PAYMENT_CANCELLED'
+  | 'PAYMENT_PENDING'
+  | 'RETRY_INITIATED'
+  | 'EXCEPTIONAL_CORRECTION';
+
 export type PermissionCode =
   | 'parish.dashboard.view'
   | 'parish.users.view'
@@ -40,7 +57,9 @@ export type PermissionCode =
   | 'parish.announcements.publish'
   | 'parish.announcements.approve'
   | 'parish.reports.view'
-  | 'parish.audit.view';
+  | 'parish.audit.view'
+  | 'parish.payments.view'
+  | 'parish.payments.statistics';
 
 export interface UserEntity {
   id: string;
@@ -119,6 +138,9 @@ export interface IntentionEntity {
   requesterName: string;
   requesterPhone: string;
   requesterEmail: string;
+  intentionType?: string;
+  amount?: number;
+  currency?: 'XOF';
   objet: string;
   details: string;
   requestedAt: string;
@@ -131,6 +153,40 @@ export interface IntentionEntity {
   celebratedAt: string | null;
   celebratedBy: string | null;
   updatedAt: string;
+}
+
+export interface PaymentEntity {
+  id: string;
+  transactionReference: string;
+  intentionId: string;
+  intentionTrackingRef: string;
+  parishId: string;
+  parishName: string;
+  faithfulUserId: string | null;
+  faithfulName: string;
+  faithfulPhone: string;
+  provider: PaymentProviderCode;
+  amount: number;
+  currency: 'XOF';
+  status: PaymentStatus;
+  simulationMode: true;
+  scenario: PaymentScenario;
+  createdAt: string;
+  updatedAt: string;
+  confirmedAt: string | null;
+  failureReason: string | null;
+  attemptNumber: number;
+}
+
+export interface PaymentEventEntity {
+  id: string;
+  paymentId: string;
+  parishId: string;
+  eventType: PaymentEventType;
+  previousStatus: PaymentStatus | null;
+  newStatus: PaymentStatus;
+  description: string;
+  createdAt: string;
 }
 
 export interface MesseEntity {
@@ -203,6 +259,8 @@ export interface PlatformState {
   memberships: ParishMembershipEntity[];
   membershipRoles: MembershipRoleEntity[];
   intentions: IntentionEntity[];
+  payments: PaymentEntity[];
+  paymentEvents: PaymentEventEntity[];
   messes: MesseEntity[];
   annonces: AnnonceEntity[];
   auditLogs: AuditLogEntity[];

@@ -15,7 +15,14 @@ import {
 import { provisionOrActivateParish, updateParishStatus } from '../parishes/parishes.service.js';
 import { listAuditLogs, recordAuditLog } from '../audit/audit.service.js';
 import { listNotificationsForSuperAdmin } from '../notifications/notifications.service.js';
-import type { ParishStatus, UserAccountStatus } from './platform.types.js';
+import {
+  applyExceptionalPaymentCorrection,
+  getPaymentDetailsForStaff,
+  listPaymentsFiltered,
+} from '../payments/payments.service.js';
+import { computePaymentStatistics } from '../payments/payments.stats.js';
+import { PAYMENT_PROVIDERS_META, PAYMENT_STATUS_LABELS } from '../payments/payment.config.js';
+import type { ParishStatus, PaymentStatus, UserAccountStatus } from './platform.types.js';
 
 export const superAdminRouter = Router();
 export const superAdminApiRouter = Router();
@@ -76,6 +83,24 @@ superAdminRouter.get('/', requireSuperAdmin, (req: Request, res: Response) => {
   const recentAudit = listAuditLogs({ limit: 15 });
   const notifications = listNotificationsForSuperAdmin();
 
+  const paymentParishFilter = typeof req.query.parishId === 'string' ? req.query.parishId.trim() : '';
+  const paymentQuery = {
+    parishId: paymentParishFilter || undefined,
+    q: typeof req.query.q === 'string' ? req.query.q : undefined,
+    provider: typeof req.query.provider === 'string' ? req.query.provider : undefined,
+    status: typeof req.query.status === 'string' ? req.query.status : undefined,
+    dateFrom: typeof req.query.dateFrom === 'string' ? req.query.dateFrom : undefined,
+    dateTo: typeof req.query.dateTo === 'string' ? req.query.dateTo : undefined,
+    page: typeof req.query.page === 'string' ? Number(req.query.page) : 1,
+    limit: 10,
+  };
+  const paymentStats = computePaymentStatistics({
+    parishId: paymentParishFilter || undefined,
+    dateFrom: paymentQuery.dateFrom,
+    dateTo: paymentQuery.dateTo,
+  });
+  const paymentList = listPaymentsFiltered(paymentQuery);
+
   res.render('super_admin', {
     section,
     user: req.authContext!.user,
@@ -90,6 +115,11 @@ superAdminRouter.get('/', requireSuperAdmin, (req: Request, res: Response) => {
     recentAudit,
     notifications,
     settings: state.settings,
+    paymentStats,
+    paymentList,
+    paymentFilters: paymentQuery,
+    paymentProviders: PAYMENT_PROVIDERS_META,
+    paymentStatusLabels: PAYMENT_STATUS_LABELS,
   });
 });
 
@@ -293,4 +323,57 @@ superAdminApiRouter.post('/settings', (req: Request, res: Response) => {
   });
 
   res.json({ success: true, settings: state.settings });
+});
+
+superAdminApiRouter.get('/payments/statistics', (req: Request, res: Response) => {
+  const parishId = typeof req.query.parishId === 'string' ? req.query.parishId : undefined;
+  const dateFrom = typeof req.query.dateFrom === 'string' ? req.query.dateFrom : undefined;
+  const dateTo = typeof req.query.dateTo === 'string' ? req.query.dateTo : undefined;
+  const statistics = computePaymentStatistics({ parishId, dateFrom, dateTo });
+  res.json({ success: true, statistics });
+});
+
+superAdminApiRouter.get('/payments', (req: Request, res: Response) => {
+  const result = listPaymentsFiltered({
+    parishId: typeof req.query.parishId === 'string' ? req.query.parishId : undefined,
+    q: typeof req.query.q === 'string' ? req.query.q : undefined,
+    provider: typeof req.query.provider === 'string' ? req.query.provider : undefined,
+    status: typeof req.query.status === 'string' ? req.query.status : undefined,
+    dateFrom: typeof req.query.dateFrom === 'string' ? req.query.dateFrom : undefined,
+    dateTo: typeof req.query.dateTo === 'string' ? req.query.dateTo : undefined,
+    page: typeof req.query.page === 'string' ? Number(req.query.page) : 1,
+    limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : 10,
+  });
+  res.json({
+    success: true,
+    statusLabels: PAYMENT_STATUS_LABELS,
+    providers: PAYMENT_PROVIDERS_META,
+    ...result,
+  });
+});
+
+superAdminApiRouter.get('/payments/:id', (req: Request, res: Response) => {
+  const detail = getPaymentDetailsForStaff(String(req.params.id || ''), null);
+  if (!detail) {
+    res.status(404).json({ success: false, error: 'Transaction introuvable.' });
+    return;
+  }
+  res.json({ success: true, ...detail });
+});
+
+superAdminApiRouter.post('/payments/:id/correction', (req: Request, res: Response) => {
+  const actor = req.authContext!.user;
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const result = applyExceptionalPaymentCorrection({
+    actorUserId: actor.id,
+    actorEmail: actor.email,
+    paymentId: String(req.params.id || ''),
+    nextStatus: String(body.nextStatus || '').toUpperCase() as PaymentStatus,
+    reason: String(body.reason || ''),
+  });
+  if (!result.ok) {
+    res.status(result.status).json({ success: false, error: result.error });
+    return;
+  }
+  res.json({ success: true, payment: result.payment });
 });

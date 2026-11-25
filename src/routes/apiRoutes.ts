@@ -199,6 +199,7 @@ apiRouter.post('/intentions', (req: Request, res: Response) => {
     requesterName: payload.requesterName || payload.nom_demandeur || 'Fidèle',
     requesterPhone: payload.requesterPhone || payload.telephone || '+22500000000',
     requesterEmail: payload.requesterEmail || payload.email || '',
+    intentionType: payload.intentionType || payload.type_intention || '',
     objet: payload.objet || payload.objet_intention || payload.type_intention || '',
     details: payload.details || payload.detail_intention || '',
     desiredDate: payload.desiredDate || null,
@@ -215,6 +216,8 @@ apiRouter.post('/intentions', (req: Request, res: Response) => {
     data: 'donnée envoyée',
     trackingRef: result.intention.trackingRef,
     intentionId: result.intention.id,
+    amount: result.intention.amount,
+    currency: result.intention.currency,
   });
 });
 

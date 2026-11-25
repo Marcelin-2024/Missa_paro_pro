@@ -1,0 +1,34 @@
+<section id="payment-failure-panel" class="payment-result-card payment-result-failure hidden" aria-live="polite">
+    <div class="payment-result-head">
+        <span class="material-symbols-rounded payment-result-icon" aria-hidden="true">error</span>
+        <div>
+            <span class="simulation-chip">Transaction simulée</span>
+            <h3 id="failure-panel-title" class="section-title">Paiement non finalisé</h3>
+            <p id="failure-panel-message" class="text-muted">La transaction simulée n’a pas abouti. Votre intention reste conservée.</p>
+        </div>
+    </div>
+
+    <dl class="payment-receipt-grid">
+        <div><dt>Statut actuel</dt><dd id="failure-status-label">-</dd></div>
+        <div><dt>Référence de transaction</dt><dd><code id="failure-txn-ref">-</code></dd></div>
+        <div><dt>Référence de l’intention</dt><dd><code id="failure-intention-ref">-</code></dd></div>
+        <div><dt>Opérateur</dt><dd id="failure-provider">-</dd></div>
+    </dl>
+
+    <div class="retry-scenario-box">
+        <label for="retry-scenario-select" class="form-label">Scénario pour la nouvelle tentative (simulation)</label>
+        <div class="form-grid-2">
+            <select id="retry-scenario-select" class="form-select">
+                <option value="SUCCESS">Paiement réussi</option>
+                <option value="FAILED">Paiement refusé</option>
+                <option value="CANCELLED">Paiement annulé</option>
+                <option value="PENDING">Paiement en attente</option>
+            </select>
+            <button id="retry-payment-btn" type="button" class="btn btn-gold" data-retry-payment-id="">
+                <span class="material-symbols-rounded icon-sm" aria-hidden="true">refresh</span>
+                <span>Réessayer le paiement</span>
+            </button>
+        </div>
+        <small class="form-helper">Cette relance utilise la même intention sans créer de doublon.</small>
+    </div>
+</section>

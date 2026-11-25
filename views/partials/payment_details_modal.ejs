@@ -1,0 +1,54 @@
+<div id="payment-details-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="payment-detail-title">
+    <div class="modal-dialog modal-dialog-lg">
+        <div class="modal-header payment-modal-header">
+            <div>
+                <span class="simulation-chip">Transaction simulée</span>
+                <h2 id="payment-detail-title" class="modal-title mt-1">Détails de la transaction</h2>
+            </div>
+            <button type="button" class="icon-btn" data-dialog-close="payment-details-modal" aria-label="Fermer les détails">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </button>
+        </div>
+
+        <div id="payment-detail-body" class="modal-body payment-modal-body">
+            <div class="payment-detail-grid">
+                <div class="payment-detail-card">
+                    <h3>Transaction &amp; Opérateur</h3>
+                    <dl class="payment-detail-dl">
+                        <div><dt>Référence</dt><dd><code id="pd-ref">-</code></dd></div>
+                        <div><dt>Opérateur</dt><dd id="pd-provider">-</dd></div>
+                        <div><dt>Montant</dt><dd id="pd-amount">-</dd></div>
+                        <div><dt>Statut actuel</dt><dd id="pd-status">-</dd></div>
+                        <div><dt>Créée le</dt><dd id="pd-created">-</dd></div>
+                        <div><dt>Confirmée le</dt><dd id="pd-confirmed">-</dd></div>
+                        <div><dt>Tentative</dt><dd id="pd-attempt">-</dd></div>
+                        <div><dt>Mode</dt><dd><strong>Transaction simulée (aucun transfert réel)</strong></dd></div>
+                    </dl>
+                </div>
+
+                <div class="payment-detail-card">
+                    <h3>Fidèle &amp; Intention</h3>
+                    <dl class="payment-detail-dl">
+                        <div><dt>Fidèle</dt><dd id="pd-faithful-name">-</dd></div>
+                        <div><dt>Téléphone Mobile Money</dt><dd id="pd-faithful-phone">-</dd></div>
+                        <div><dt>Paroisse</dt><dd id="pd-parish">-</dd></div>
+                        <div><dt>Référence intention</dt><dd><code id="pd-intention-ref">-</code></dd></div>
+                        <div><dt>Objet</dt><dd id="pd-intention-objet">-</dd></div>
+                        <div><dt>Statut de l’intention</dt><dd id="pd-intention-status">-</dd></div>
+                    </dl>
+                </div>
+            </div>
+
+            <div id="pd-failure-box" class="alert alert-error hidden mt-3"></div>
+
+            <div class="payment-events-section mt-4">
+                <h3>Historique des événements</h3>
+                <ul id="pd-events-list" class="payment-events-list"></ul>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-dialog-close="payment-details-modal">Fermer</button>
+        </div>
+    </div>
+</div>

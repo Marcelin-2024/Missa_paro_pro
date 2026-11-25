@@ -1,0 +1,68 @@
+<%
+  const f = typeof paymentFilters !== 'undefined' && paymentFilters ? paymentFilters : {};
+  const scopeMode = typeof scope !== 'undefined' ? scope : 'parish';
+  const showParishFilter = scopeMode === 'super_admin' && typeof parishes !== 'undefined' && Array.isArray(parishes);
+%>
+<form id="<%= scopeMode %>-payments-filter-form" class="payment-filters-bar" data-payments-filter-form="<%= scopeMode %>">
+    <div class="payment-filter-field payment-filter-search">
+        <label for="<%= scopeMode %>-pay-q" class="sr-only">Rechercher par nom, téléphone ou référence</label>
+        <input
+            id="<%= scopeMode %>-pay-q"
+            name="q"
+            type="search"
+            class="form-control"
+            value="<%= f.q || '' %>"
+            placeholder="Nom fidèle, téléphone, réf. transaction ou intention..."
+        >
+    </div>
+
+    <% if (showParishFilter) { %>
+        <div class="payment-filter-field">
+            <label for="sa-pay-parish" class="sr-only">Filtrer par paroisse</label>
+            <select id="sa-pay-parish" name="parishId" class="form-select">
+                <option value="">Toutes les paroisses</option>
+                <% for (const pr of parishes) { %>
+                    <option value="<%= pr.id %>" <%= f.parishId === pr.id ? 'selected' : '' %>><%= pr.name %></option>
+                <% } %>
+            </select>
+        </div>
+    <% } %>
+
+    <div class="payment-filter-field">
+        <label for="<%= scopeMode %>-pay-provider" class="sr-only">Opérateur</label>
+        <select id="<%= scopeMode %>-pay-provider" name="provider" class="form-select">
+            <option value="">Tous opérateurs</option>
+            <option value="WAVE" <%= f.provider === 'WAVE' ? 'selected' : '' %>>Wave</option>
+            <option value="ORANGE_MONEY" <%= f.provider === 'ORANGE_MONEY' ? 'selected' : '' %>>Orange Money</option>
+            <option value="MTN_MONEY" <%= f.provider === 'MTN_MONEY' ? 'selected' : '' %>>MTN Mobile Money</option>
+            <option value="MOOV_MONEY" <%= f.provider === 'MOOV_MONEY' ? 'selected' : '' %>>Moov Money</option>
+        </select>
+    </div>
+
+    <div class="payment-filter-field">
+        <label for="<%= scopeMode %>-pay-status" class="sr-only">Statut</label>
+        <select id="<%= scopeMode %>-pay-status" name="status" class="form-select">
+            <option value="">Tous statuts</option>
+            <option value="SUCCESS" <%= f.status === 'SUCCESS' ? 'selected' : '' %>>Réussi</option>
+            <option value="PENDING" <%= f.status === 'PENDING' ? 'selected' : '' %>>En attente</option>
+            <option value="FAILED" <%= f.status === 'FAILED' ? 'selected' : '' %>>Échoué</option>
+            <option value="CANCELLED" <%= f.status === 'CANCELLED' ? 'selected' : '' %>>Annulé</option>
+            <option value="EXPIRED" <%= f.status === 'EXPIRED' ? 'selected' : '' %>>Expiré</option>
+        </select>
+    </div>
+
+    <div class="payment-filter-field">
+        <label for="<%= scopeMode %>-pay-from" class="sr-only">Du</label>
+        <input id="<%= scopeMode %>-pay-from" name="dateFrom" type="date" class="form-control" value="<%= f.dateFrom || '' %>" title="Date début">
+    </div>
+
+    <div class="payment-filter-field">
+        <label for="<%= scopeMode %>-pay-to" class="sr-only">Au</label>
+        <input id="<%= scopeMode %>-pay-to" name="dateTo" type="date" class="form-control" value="<%= f.dateTo || '' %>" title="Date fin">
+    </div>
+
+    <div class="payment-filter-actions">
+        <button type="submit" class="btn btn-primary btn-sm">Filtrer</button>
+        <button type="button" class="btn btn-outline btn-sm" data-payments-reset="<%= scopeMode %>">Réinitialiser</button>
+    </div>
+</form>

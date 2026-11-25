@@ -1,0 +1,16 @@
+<%
+  const prov = String(provider || 'WAVE').trim().toUpperCase();
+  const map = {
+    WAVE: { cls: 'provider-badge-wave', short: 'W', label: 'Wave' },
+    ORANGE_MONEY: { cls: 'provider-badge-orange', short: 'OM', label: 'Orange Money' },
+    MTN_MONEY: { cls: 'provider-badge-mtn', short: 'MTN', label: 'MTN Mobile Money' },
+    MOOV_MONEY: { cls: 'provider-badge-moov', short: 'MOOV', label: 'Moov Money' },
+  };
+  const info = map[prov] || map.WAVE;
+%>
+<span class="provider-pill <%= info.cls %>">
+    <span class="provider-emblem" aria-hidden="true"><%= info.short %></span>
+    <% if (typeof showName === 'undefined' || showName) { %>
+        <span><%= info.label %></span>
+    <% } %>
+</span>

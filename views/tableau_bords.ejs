@@ -75,6 +75,8 @@
               if (initialSection === 'intentions' && permissions.includes('parish.intentions.view')) {
             %>
                 <%- include('pagepart/contenue2', { stats, permissions }) %>
+            <% } else if (initialSection === 'payments' && permissions.includes('parish.payments.view')) { %>
+                <%- include('pagepart/parish_payments', { activeParish, paymentStats, paymentList, paymentFilters, paymentProviders, paymentStatusLabels }) %>
             <% } else if (initialSection === 'masses' && permissions.includes('parish.masses.view')) { %>
                 <%- include('pagepart/contenue3', { stats, permissions }) %>
             <% } else if (initialSection === 'announcements' && permissions.includes('parish.announcements.view')) { %>
@@ -105,6 +107,7 @@
     <script src="/static/js/ui-interactions.js"></script>
     <script src="/static/js/dashboard-nav.js"></script>
     <script src="/static/js/parish-admin.js"></script>
+    <script src="/static/js/payments-dashboard.js"></script>
 </body>
 
 </html>

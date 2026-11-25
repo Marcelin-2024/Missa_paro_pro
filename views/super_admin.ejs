@@ -85,6 +85,10 @@
                         <span class="material-symbols-rounded nav-icon" aria-hidden="true">bar_chart</span>
                         <span>Statistiques</span>
                     </a>
+                    <a class="nav-link <%= section === 'payments' ? 'active' : '' %>" href="/super-admin?section=payments">
+                        <span class="material-symbols-rounded nav-icon" aria-hidden="true">payments</span>
+                        <span>Paiements (supervision)</span>
+                    </a>
                     <a class="nav-link <%= section === 'audit' ? 'active' : '' %>" href="/super-admin?section=audit">
                         <span class="material-symbols-rounded nav-icon" aria-hidden="true">history</span>
                         <span>Audit global</span>
@@ -116,7 +120,7 @@
         <main id="main-content" class="app-main" tabindex="-1">
             <div id="super-admin-feedback" class="alert hidden mb-4" role="status"></div>
 
-            <% if (section === 'overview' || !['parishes', 'admins', 'directory', 'parish-requests', 'stats', 'audit', 'settings'].includes(section)) { %>
+            <% if (section === 'overview' || !['parishes', 'admins', 'directory', 'parish-requests', 'stats', 'payments', 'audit', 'settings'].includes(section)) { %>
                 <%- include('partials/page_header', {
                     title: 'Super Administration Missa Paro',
                     subtitle: 'Provisionnement des espaces paroissiaux et gouvernance nationale',
@@ -516,6 +520,64 @@
                 </section>
             <% } %>
 
+            <% if (section === 'payments') { %>
+                <%- include('partials/page_header', {
+                    title: 'Supervision globale des paiements simulés',
+                    subtitle: 'Vue consolidée en lecture seule toutes paroisses confondues (Mode simulation Mobile Money)',
+                    actions: []
+                }) %>
+
+                <section class="kpi-grid" aria-label="Indicateurs globaux des paiements">
+                    <%- include('partials/stat_card', { id: 'sa-pay-total', label: 'Transactions globales', value: paymentStats.totalCount, meta: `${paymentStats.successCount} réussie(s) · ${paymentStats.pendingCount} attente`, icon: 'receipt_long' }) %>
+                    <%- include('partials/stat_card', { id: 'sa-pay-collected', label: 'Volume simulé encaissé', value: `${Number(paymentStats.collectedAmount).toLocaleString('fr-FR')} XOF`, meta: 'Paiements SUCCESS uniquement', icon: 'payments' }) %>
+                    <%- include('partials/stat_card', { id: 'sa-pay-pending', label: 'Volume en attente', value: `${Number(paymentStats.pendingAmount).toLocaleString('fr-FR')} XOF`, meta: `${paymentStats.pendingCount} en attente`, icon: 'hourglass_top' }) %>
+                    <%- include('partials/stat_card', { id: 'sa-pay-failed', label: 'Volume échoué / annulé', value: `${Number(paymentStats.failedAmount).toLocaleString('fr-FR')} XOF`, meta: `${paymentStats.failedCount + paymentStats.cancelledCount + paymentStats.expiredCount} non aboutie(s)`, icon: 'cancel' }) %>
+                </section>
+
+                <section class="payment-analytics-grid mb-5">
+                    <article class="panel-soft">
+                        <h2 class="section-title mb-3">Répartition par opérateur</h2>
+                        <div class="provider-breakdown-list">
+                            <% for (const item of paymentStats.byProvider) { %>
+                                <div class="provider-breakdown-row">
+                                    <div class="provider-breakdown-head">
+                                        <%- include('partials/payment_provider_icon', { provider: item.provider, showName: true }) %>
+                                        <strong><%= Number(item.collectedAmount).toLocaleString('fr-FR') %> XOF</strong>
+                                    </div>
+                                    <div class="provider-breakdown-meta">
+                                        <span><%= item.count %> tx · <%= item.successCount %> réussies</span>
+                                        <span><%= item.sharePct %>%</span>
+                                    </div>
+                                </div>
+                            <% } %>
+                        </div>
+                    </article>
+
+                    <article class="panel-soft">
+                        <h2 class="section-title mb-3">Statuts globaux</h2>
+                        <ul class="status-breakdown-list">
+                            <% for (const st of paymentStats.byStatus) { %>
+                                <li class="status-breakdown-item">
+                                    <%- include('partials/payment_status_badge', { statut: st.status, label: st.label }) %>
+                                    <span><strong><%= st.count %></strong> · <%= Number(st.amount).toLocaleString('fr-FR') %> XOF</span>
+                                </li>
+                            <% } %>
+                        </ul>
+                    </article>
+                </section>
+
+                <section class="table-card" aria-label="Supervision des transactions">
+                    <div class="table-toolbar">
+                        <%- include('partials/payment_filters', { scope: 'super_admin', paymentFilters, parishes }) %>
+                    </div>
+                    <div id="super_admin-payments-table-container">
+                        <%- include('partials/payment_transaction_table', { scope: 'super_admin', paymentList, paymentStatusLabels }) %>
+                    </div>
+                </section>
+
+                <%- include('partials/payment_details_modal') %>
+            <% } %>
+
             <% if (section === 'audit') { %>
                 <%- include('partials/page_header', {
                     title: 'Journal d’audit global',
@@ -592,6 +654,7 @@
     <script src="/static/js/ui-interactions.js"></script>
     <script src="/static/js/ecclesiastical-selector.js"></script>
     <script src="/static/js/super-admin.js"></script>
+    <script src="/static/js/payments-dashboard.js"></script>
 </body>
 
 </html>

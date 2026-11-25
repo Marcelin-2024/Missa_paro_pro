@@ -5,6 +5,12 @@ import { ensureDirectoryParishTenant, getParishById } from '../parishes/parishes
 import { findParishById } from '../ecclesiastical/ecclesiastical.repository.js';
 import { recordAuditLog } from '../audit/audit.service.js';
 import { createNotification } from '../notifications/notifications.service.js';
+import {
+  PAYMENT_PROVIDERS_META,
+  PAYMENT_STATUS_LABELS,
+  resolveIntentionTariff,
+} from '../payments/payment.config.js';
+import { getLatestPaymentForIntention } from '../payments/payments.service.js';
 
 export const ALLOWED_INTENTION_TRANSITIONS: Record<IntentionStatus, IntentionStatus[]> = {
   PENDING: ['PROCESSING', 'ACCEPTED', 'REJECTED', 'CANCELLED'],
@@ -40,6 +46,7 @@ export function submitPublicIntention(input: {
   requesterName: string;
   requesterPhone: string;
   requesterEmail?: string;
+  intentionType?: string;
   objet: string;
   details: string;
   desiredDate?: string | null;
@@ -47,7 +54,8 @@ export function submitPublicIntention(input: {
 }): { ok: true; intention: IntentionEntity } | { ok: false; status: number; error: string } {
   const cleanName = String(input.requesterName || '').trim().slice(0, 120);
   const cleanPhone = String(input.requesterPhone || '').trim().slice(0, 40);
-  const cleanObjet = String(input.objet || '').trim().slice(0, 150);
+  const tariff = resolveIntentionTariff(input.intentionType, input.objet);
+  const cleanObjet = String(input.objet || tariff.label || '').trim().slice(0, 150);
   const cleanDetails = String(input.details || '').trim().slice(0, 1000);
 
   if (cleanName.length < 2 || cleanPhone.length < 6 || cleanObjet.length < 2 || cleanDetails.length < 3) {
@@ -98,6 +106,9 @@ export function submitPublicIntention(input: {
     requesterName: cleanName,
     requesterPhone: cleanPhone,
     requesterEmail: String(input.requesterEmail || '').trim().slice(0, 150),
+    intentionType: tariff.code,
+    amount: tariff.amount,
+    currency: 'XOF',
     objet: cleanObjet,
     details: cleanDetails,
     requestedAt: now,
@@ -281,11 +292,23 @@ export function getPublicIntentionTracking(trackingRef: string) {
     ? state.messes.find((m) => m.id === item.messeId && m.parishId === item.parishId)
     : null;
 
+  const latestPayment = getLatestPaymentForIntention(item.id);
+  const amount =
+    typeof item.amount === 'number' && item.amount > 0
+      ? item.amount
+      : resolveIntentionTariff(item.intentionType, item.objet).amount;
+
   return {
+    id: item.id,
     trackingRef: item.trackingRef,
     parishId: item.parishId,
     parishName: item.parishName,
+    requesterName: item.requesterName,
+    requesterPhone: item.requesterPhone,
     objet: item.objet,
+    details: item.details,
+    amount,
+    currency: 'XOF' as const,
     requestedAt: item.requestedAt,
     desiredDate: item.desiredDate,
     status: item.status,
@@ -293,6 +316,22 @@ export function getPublicIntentionTracking(trackingRef: string) {
     celebratedAt: item.celebratedAt,
     messe: linkedMesse
       ? { date: linkedMesse.date, horaire: linkedMesse.horaire, celebrant: linkedMesse.celebrant }
+      : null,
+    payment: latestPayment
+      ? {
+          id: latestPayment.id,
+          transactionReference: latestPayment.transactionReference,
+          provider: latestPayment.provider,
+          providerName: PAYMENT_PROVIDERS_META[latestPayment.provider].name,
+          amount: latestPayment.amount,
+          currency: latestPayment.currency,
+          status: latestPayment.status,
+          statusLabel: PAYMENT_STATUS_LABELS[latestPayment.status],
+          simulationMode: latestPayment.simulationMode,
+          confirmedAt: latestPayment.confirmedAt,
+          createdAt: latestPayment.createdAt,
+          attemptNumber: latestPayment.attemptNumber,
+        }
       : null,
   };
 }

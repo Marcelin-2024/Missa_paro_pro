@@ -35,6 +35,13 @@ import {
 import { ALL_ROLE_CODES, PERMISSION_LABELS, ROLE_CATALOG } from '../modules/roles/rbac.catalog.js';
 import { listAuditLogs } from '../modules/audit/audit.service.js';
 import { listNotificationsForParish } from '../modules/notifications/notifications.service.js';
+import {
+  INTENTION_TARIFFS,
+  PAYMENT_PROVIDERS_META,
+  PAYMENT_STATUS_LABELS,
+} from '../modules/payments/payment.config.js';
+import { listPaymentsFiltered } from '../modules/payments/payments.service.js';
+import { computePaymentStatistics } from '../modules/payments/payments.stats.js';
 import type { AnnonceEntity } from '../modules/platform/platform.types.js';
 
 const upload = multer({
@@ -289,6 +296,23 @@ pageRouter.get('/tableau_bords', requireAuth, (req: Request, res: Response) => {
     : [];
   const notifications = listNotificationsForParish(ctx.activeParish.id, ctx.user.id);
 
+  const canViewPayments = ctx.permissions.includes('parish.payments.view');
+  const paymentFilters = {
+    q: typeof req.query.q === 'string' ? req.query.q : '',
+    provider: typeof req.query.provider === 'string' ? req.query.provider : '',
+    status: typeof req.query.status === 'string' ? req.query.status : '',
+    dateFrom: typeof req.query.dateFrom === 'string' ? req.query.dateFrom : '',
+    dateTo: typeof req.query.dateTo === 'string' ? req.query.dateTo : '',
+    page: typeof req.query.page === 'string' ? Number(req.query.page) : 1,
+    limit: 10,
+  };
+  const paymentStats = canViewPayments
+    ? computePaymentStatistics({ parishId: ctx.activeParish.id })
+    : null;
+  const paymentList = canViewPayments
+    ? listPaymentsFiltered({ parishId: ctx.activeParish.id, ...paymentFilters })
+    : null;
+
   res.render('tableau_bords', {
     user: {
       uid: ctx.user.id,
@@ -307,6 +331,11 @@ pageRouter.get('/tableau_bords', requireAuth, (req: Request, res: Response) => {
     members,
     auditLogs,
     notifications,
+    paymentStats,
+    paymentList,
+    paymentFilters,
+    paymentProviders: PAYMENT_PROVIDERS_META,
+    paymentStatusLabels: PAYMENT_STATUS_LABELS,
     section: String(req.query.section || 'overview'),
   });
 });
@@ -404,6 +433,7 @@ pageRouter.post('/demande-intention', (req: Request, res: Response) => {
     requesterName: body.requesterName || '',
     requesterPhone: body.requesterPhone || '',
     requesterEmail: body.requesterEmail || '',
+    intentionType: body.intentionType || '',
     objet: body.objet || '',
     details: body.details || '',
     desiredDate: body.desiredDate || null,
@@ -413,6 +443,7 @@ pageRouter.post('/demande-intention', (req: Request, res: Response) => {
   if (!result.ok) {
     res.status(result.status).render('demande_intention', {
       provinces: listProvincesSummary(),
+      tariffs: INTENTION_TARIFFS,
       error: result.error,
       confirmation: null,
       trackingResult: null,
@@ -422,11 +453,15 @@ pageRouter.post('/demande-intention', (req: Request, res: Response) => {
 
   res.status(201).render('demande_intention', {
     provinces: listProvincesSummary(),
+    tariffs: INTENTION_TARIFFS,
     error: null,
     confirmation: {
+      id: result.intention.id,
       trackingRef: result.intention.trackingRef,
       parishName: result.intention.parishName,
       objet: result.intention.objet,
+      amount: result.intention.amount || 2000,
+      currency: result.intention.currency || 'XOF',
       statusLabel: INTENTION_STATUS_LABELS[result.intention.status],
     },
     trackingResult: null,

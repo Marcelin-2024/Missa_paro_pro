@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" href="/static/image/logomissaparo.png" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Paiement simulé par Mobile Money pour votre intention de messe Missa Paro.">
+    <title>Missa Paro - Paiement Mobile Money (Simulation)</title>
+    <%- include('partials/styles') %>
+</head>
+
+<body class="public-page">
+    <header class="public-topbar">
+        <a href="/" class="header-brand flex items-center gap-3">
+            <img src="/static/image/logomissaparo.png" alt="Logo Missa Paro" class="header-logo">
+            <span class="header-brand-name">Missa Paro</span>
+        </a>
+        <nav class="public-nav" aria-label="Navigation publique">
+            <a href="/annuaire" class="btn btn-outline btn-sm">Annuaire des paroisses</a>
+            <a href="/demande-intention" class="btn btn-primary btn-sm">Demande d’intention</a>
+            <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+                <a href="/page/logout" class="btn btn-ghost btn-sm">Déconnexion</a>
+            <% } else { %>
+                <a href="/" class="btn btn-secondary btn-sm">Connexion</a>
+            <% } %>
+        </nav>
+    </header>
+
+    <main class="form-page">
+        <div class="payment-checkout-shell">
+            <div class="simulation-banner mb-4" role="note">
+                <span class="material-symbols-rounded" aria-hidden="true">science</span>
+                <div>
+                    <strong>Mode simulation Mobile Money activé</strong>
+                    <p>Le parcours reproduit un paiement Wave, Orange Money, MTN MoMo ou Moov Money. Aucun argent réel n’est débité et aucun code PIN n’est demandé.</p>
+                </div>
+            </div>
+
+            <% if (typeof error !== 'undefined' && error) { %>
+                <div class="alert alert-error mb-4" role="alert"><%= error %></div>
+            <% } %>
+
+            <% if (!intention) { %>
+                <section class="form-card form-card-full">
+                    <div class="card-header-gradient">
+                        <div>
+                            <h1 class="section-title">Régler une intention existante</h1>
+                            <p class="text-muted">Entrez la référence de votre intention de messe pour accéder au paiement simulé</p>
+                        </div>
+                    </div>
+                    <div class="form-body">
+                        <form action="/paiement" method="GET" class="form-grid-2">
+                            <div class="form-group">
+                                <label for="lookup-ref" class="form-label">Référence de l’intention</label>
+                                <input id="lookup-ref" name="ref" type="text" class="form-control" placeholder="Ex. INT-2026-1002" required>
+                            </div>
+                            <div class="form-group flex items-end">
+                                <button type="submit" class="btn btn-primary btn-block">Continuer vers le paiement</button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+            <% } else { %>
+                <%- include('partials/payment_summary_card', { intention }) %>
+
+                <% const isPaid = intention.payment && intention.payment.status === 'SUCCESS'; %>
+
+                <% if (isPaid) { %>
+                    <section class="payment-result-card payment-result-success mb-4" aria-live="polite">
+                        <div class="payment-result-head">
+                            <span class="material-symbols-rounded payment-result-icon" aria-hidden="true">check_circle</span>
+                            <div>
+                                <span class="simulation-chip">Transaction simulée</span>
+                                <h2 class="section-title">Intention déjà réglée (simulé)</h2>
+                                <p class="text-muted">Une transaction réussie existe déjà pour cette intention. Aucun second paiement n’est possible.</p>
+                            </div>
+                        </div>
+                        <dl class="payment-receipt-grid">
+                            <div><dt>Montant payé</dt><dd><%= Number(intention.payment.amount).toLocaleString('fr-FR') %> <%= intention.payment.currency %></dd></div>
+                            <div><dt>Opérateur</dt><dd><%= intention.payment.providerName %></dd></div>
+                            <div><dt>Référence de transaction</dt><dd><code><%= intention.payment.transactionReference %></code></dd></div>
+                            <div><dt>Référence intention</dt><dd><code><%= intention.trackingRef %></code></dd></div>
+                            <div><dt>Date de confirmation</dt><dd><%= intention.payment.confirmedAt ? new Date(intention.payment.confirmedAt).toLocaleString('fr-FR') : '-' %></dd></div>
+                            <div><dt>Paroisse destinataire</dt><dd><%= intention.parishName %></dd></div>
+                        </dl>
+                        <div class="form-actions">
+                            <a href="/demande-intention?ref=<%= encodeURIComponent(intention.trackingRef) %>" class="btn btn-primary">Consulter le récapitulatif</a>
+                            <a href="/demande-intention" class="btn btn-outline">Nouvelle intention</a>
+                        </div>
+                    </section>
+                <% } else { %>
+                    <div id="checkout-feedback" class="alert hidden mb-4" role="alert"></div>
+
+                    <% if (intention.payment && ['FAILED', 'CANCELLED', 'EXPIRED', 'PENDING'].includes(intention.payment.status)) { %>
+                        <div class="alert alert-info mb-4">
+                            Dernière tentative (<code><%= intention.payment.transactionReference %></code>) :
+                            <strong><%= intention.payment.statusLabel %></strong> via <%= intention.payment.providerName %>.
+                            Vous pouvez réessayer ci-dessous sans créer une deuxième intention.
+                        </div>
+                    <% } %>
+
+                    <section id="payment-step-providers" class="card-soft mb-4">
+                        <h2 class="section-title mb-1">Étape 2 — Choisir le moyen de paiement Mobile Money</h2>
+                        <p class="text-muted mb-4">Sélectionnez un opérateur disponible en mode simulation :</p>
+
+                        <div class="payment-methods-grid">
+                            <% for (const provider of providers) { %>
+                                <%- include('partials/payment_method_card', { provider }) %>
+                            <% } %>
+                        </div>
+                    </section>
+
+                    <section id="payment-step-form" class="form-card form-card-full hidden mb-4">
+                        <div class="card-header-gradient">
+                            <div>
+                                <h2 class="section-title">Étape 3 — Effectuer le paiement simulé (<span id="selected-provider-title">-</span>)</h2>
+                                <p id="selected-provider-ussd" class="text-muted">Validation locale simulée</p>
+                            </div>
+                            <span class="simulation-chip">Simulation</span>
+                        </div>
+
+                        <div class="form-body">
+                            <form
+                                id="mobile-money-checkout-form"
+                                data-intention-id="<%= intention.id %>"
+                                data-intention-ref="<%= intention.trackingRef %>"
+                                data-existing-payment-id="<%= intention.payment ? intention.payment.id : '' %>"
+                                data-existing-payment-status="<%= intention.payment ? intention.payment.status : '' %>"
+                            >
+                                <input id="checkout-provider-input" name="provider" type="hidden" value="">
+
+                                <div class="form-grid-2">
+                                    <div class="form-group">
+                                        <label for="checkout-phone" class="form-label">Numéro de téléphone Mobile Money</label>
+                                        <input
+                                            id="checkout-phone"
+                                            name="faithfulPhone"
+                                            type="tel"
+                                            class="form-control"
+                                            required
+                                            maxlength="40"
+                                            value="<%= intention.requesterPhone %>"
+                                            placeholder="+225 07 00 00 00 00"
+                                        >
+                                        <small id="checkout-phone-hint" class="form-helper">Numéro de compte Mobile Money (aucun code PIN requis).</small>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="checkout-amount" class="form-label">Montant à payer (XOF)</label>
+                                        <input
+                                            id="checkout-amount"
+                                            name="amount"
+                                            type="number"
+                                            class="form-control"
+                                            value="<%= intention.amount %>"
+                                            readonly
+                                        >
+                                    </div>
+                                </div>
+
+                                <div class="form-grid-2">
+                                    <div class="form-group">
+                                        <label for="checkout-intention-ref" class="form-label">Référence de l’intention</label>
+                                        <input
+                                            id="checkout-intention-ref"
+                                            type="text"
+                                            class="form-control"
+                                            value="<%= intention.trackingRef %>"
+                                            readonly
+                                        >
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="checkout-scenario" class="form-label">Scénario de simulation (test)</label>
+                                        <select id="checkout-scenario" name="scenario" class="form-select">
+                                            <% for (const [key, label] of Object.entries(scenarios)) { %>
+                                                <option value="<%= key %>"><%= label %></option>
+                                            <% } %>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-actions">
+                                    <button id="confirm-payment-btn" type="submit" class="btn btn-primary">
+                                        <span class="material-symbols-rounded icon-sm" aria-hidden="true">lock</span>
+                                        <span>Confirmer le paiement</span>
+                                    </button>
+                                    <button id="change-provider-btn" type="button" class="btn btn-outline">Changer d’opérateur</button>
+                                </div>
+                            </form>
+                        </div>
+                    </section>
+
+                    <%- include('partials/payment_processing_view') %>
+                    <%- include('partials/payment_success_view') %>
+                    <%- include('partials/payment_failure_view') %>
+                <% } %>
+            <% } %>
+        </div>
+    </main>
+
+    <script src="/static/js/ui-interactions.js"></script>
+    <script src="/static/js/payments-checkout.js"></script>
+</body>
+
+</html>

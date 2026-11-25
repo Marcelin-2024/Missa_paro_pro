@@ -25,6 +25,7 @@ intentionsPublicRouter.post('/public', (req: Request, res: Response) => {
     requesterName: body.requesterName || '',
     requesterPhone: body.requesterPhone || '',
     requesterEmail: body.requesterEmail || '',
+    intentionType: body.intentionType || '',
     objet: body.objet || '',
     details: body.details || '',
     desiredDate: body.desiredDate || null,
@@ -38,9 +39,13 @@ intentionsPublicRouter.post('/public', (req: Request, res: Response) => {
 
   res.status(201).json({
     success: true,
+    intentionId: result.intention.id,
     trackingRef: result.intention.trackingRef,
     parishName: result.intention.parishName,
     status: result.intention.status,
+    amount: result.intention.amount,
+    currency: result.intention.currency,
+    paymentUrl: `/paiement/${result.intention.trackingRef}`,
   });
 });
 

@@ -1,0 +1,26 @@
+<section id="payment-success-panel" class="payment-result-card payment-result-success hidden" aria-live="polite">
+    <div class="payment-result-head">
+        <span class="material-symbols-rounded payment-result-icon" aria-hidden="true">check_circle</span>
+        <div>
+            <span class="simulation-chip">Transaction simulée</span>
+            <h3 class="section-title">Paiement simulé réussi</h3>
+            <p class="text-muted">Votre offrande simulée a bien été enregistrée pour cette intention de messe.</p>
+        </div>
+    </div>
+
+    <dl class="payment-receipt-grid">
+        <div><dt>Montant payé</dt><dd id="receipt-amount">-</dd></div>
+        <div><dt>Moyen de paiement</dt><dd id="receipt-provider">-</dd></div>
+        <div><dt>Téléphone utilisé</dt><dd id="receipt-phone">-</dd></div>
+        <div><dt>Référence de transaction</dt><dd><code id="receipt-txn-ref">-</code></dd></div>
+        <div><dt>Référence de l’intention</dt><dd><code id="receipt-intention-ref">-</code></dd></div>
+        <div><dt>Date et heure</dt><dd id="receipt-date">-</dd></div>
+        <div><dt>Paroisse destinataire</dt><dd id="receipt-parish">-</dd></div>
+        <div><dt>Mode</dt><dd>Simulation locale (aucun débit réel)</dd></div>
+    </dl>
+
+    <div class="form-actions">
+        <a id="receipt-tracking-link" href="/demande-intention" class="btn btn-primary">Consulter le récapitulatif de l’intention</a>
+        <a href="/demande-intention" class="btn btn-outline">Déposer une autre intention</a>
+    </div>
+</section>

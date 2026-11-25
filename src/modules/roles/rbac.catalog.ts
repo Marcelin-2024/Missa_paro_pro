@@ -26,6 +26,8 @@ export const PERMISSION_LABELS: Record<PermissionCode, string> = {
   'parish.announcements.approve': 'Approuver les annonces avant publication',
   'parish.reports.view': 'Consulter les statistiques et rapports paroissiaux',
   'parish.audit.view': 'Consulter le journal historique de la paroisse',
+  'parish.payments.view': 'Consulter les paiements Mobile Money de la paroisse',
+  'parish.payments.statistics': 'Consulter les statistiques financières simulées de la paroisse',
 };
 
 export const ROLE_CATALOG: Record<RoleCode, RoleDefinition> = {
@@ -33,7 +35,7 @@ export const ROLE_CATALOG: Record<RoleCode, RoleDefinition> = {
     code: 'PARISH_ADMIN',
     label: 'Administrateur paroissial',
     description:
-      'Gère les utilisateurs, les rôles cumulés, les accès et les informations de sa paroisse.',
+      'Gère les utilisateurs, les rôles cumulés, les accès, les paiements et les informations de sa paroisse.',
     permissions: [
       'parish.dashboard.view',
       'parish.users.view',
@@ -47,6 +49,8 @@ export const ROLE_CATALOG: Record<RoleCode, RoleDefinition> = {
       'parish.announcements.view',
       'parish.reports.view',
       'parish.audit.view',
+      'parish.payments.view',
+      'parish.payments.statistics',
     ],
   },
   CURE: {
@@ -86,7 +90,7 @@ export const ROLE_CATALOG: Record<RoleCode, RoleDefinition> = {
     code: 'SECRETAIRE',
     label: 'Secrétaire paroissiale',
     description:
-      'Gère au quotidien messes, enregistrement et programmation des intentions, annonces et accueil.',
+      'Gère au quotidien messes, enregistrement et programmation des intentions, suivi des paiements, annonces et accueil.',
     permissions: [
       'parish.dashboard.view',
       'parish.settings.view',
@@ -99,6 +103,8 @@ export const ROLE_CATALOG: Record<RoleCode, RoleDefinition> = {
       'parish.announcements.view',
       'parish.announcements.publish',
       'parish.reports.view',
+      'parish.payments.view',
+      'parish.payments.statistics',
     ],
   },
   RESPONSABLE_LITURGIQUE: {

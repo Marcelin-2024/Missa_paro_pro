@@ -137,6 +137,62 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["actorUid", "scope", "action", "summary", "createdAt"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Simulated Mobile Money payment transaction linked to a mass intention and parish (no PIN or sensitive banking fields).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "transactionReference": { "type": "string", "minLength": 5, "maxLength": 64 },
+        "intentionId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "parishId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "faithfulUserId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "faithfulName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "faithfulPhone": { "type": "string", "minLength": 8, "maxLength": 40 },
+        "provider": { "type": "string", "enum": ["WAVE", "ORANGE_MONEY", "MTN_MONEY", "MOOV_MONEY"] },
+        "amount": { "type": "integer", "minimum": 500, "maximum": 500000 },
+        "currency": { "type": "string", "enum": ["XOF"] },
+        "status": { "type": "string", "enum": ["PENDING", "SUCCESS", "FAILED", "CANCELLED", "EXPIRED"] },
+        "simulationMode": { "type": "boolean" },
+        "attemptNumber": { "type": "integer", "minimum": 1 },
+        "failureReason": { "type": "string", "maxLength": 300 },
+        "confirmedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "transactionReference",
+        "intentionId",
+        "parishId",
+        "faithfulName",
+        "faithfulPhone",
+        "provider",
+        "amount",
+        "currency",
+        "status",
+        "simulationMode",
+        "attemptNumber",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PaymentEvent": {
+      "title": "PaymentEvent",
+      "description": "Immutable status transition event log for a simulated payment transaction.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "paymentId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "parishId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "eventType": { "type": "string", "maxLength": 60 },
+        "previousStatus": { "type": "string", "maxLength": 30 },
+        "newStatus": { "type": "string", "enum": ["PENDING", "SUCCESS", "FAILED", "CANCELLED", "EXPIRED"] },
+        "description": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "paymentId", "parishId", "eventType", "newStatus", "description", "createdAt"]
     }
   },
   "firestore": {
@@ -175,6 +231,14 @@
     "/auditLogs/{logId}": {
       "schema": { "$ref": "#/entities/AuditLog" },
       "description": "Append-only governance and role audit logs."
+    },
+    "/payments/{paymentId}": {
+      "schema": { "$ref": "#/entities/Payment" },
+      "description": "Simulated Mobile Money payments attached to mass intentions and parishes."
+    },
+    "/paymentEvents/{eventId}": {
+      "schema": { "$ref": "#/entities/PaymentEvent" },
+      "description": "Append-only event history for simulated payment status changes."
     }
   }
 }

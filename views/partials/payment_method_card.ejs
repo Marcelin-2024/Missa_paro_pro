@@ -1,0 +1,22 @@
+<button
+    type="button"
+    class="payment-method-card <%= provider.brandClass %>"
+    data-select-provider="<%= provider.code %>"
+    data-provider-name="<%= provider.name %>"
+    data-provider-hint="<%= provider.phoneHint %>"
+    data-provider-ussd="<%= provider.ussdHint %>"
+    aria-pressed="false"
+>
+    <div class="payment-method-card-top">
+        <%- include('./payment_provider_icon', { provider: provider.code, showName: false }) %>
+        <span class="simulation-chip">Mode simulation</span>
+    </div>
+    <div class="payment-method-card-body">
+        <strong class="payment-method-name"><%= provider.name %></strong>
+        <span class="payment-method-sub"><%= provider.ussdHint %></span>
+    </div>
+    <div class="payment-method-card-foot">
+        <span class="material-symbols-rounded icon-sm" aria-hidden="true">verified</span>
+        <span><%= provider.simulationNotice %></span>
+    </div>
+</button>

@@ -1,0 +1,111 @@
+<%
+  const pStats = typeof paymentStats !== 'undefined' && paymentStats ? paymentStats : {
+    totalCount: 0,
+    successCount: 0,
+    pendingCount: 0,
+    failedCount: 0,
+    cancelledCount: 0,
+    expiredCount: 0,
+    collectedAmount: 0,
+    pendingAmount: 0,
+    failedAmount: 0,
+    byProvider: [],
+    byStatus: [],
+    timelineDaily: [],
+    timelineMonthly: [],
+    latestTransactions: [],
+  };
+  const failedTotalCount = (pStats.failedCount || 0) + (pStats.cancelledCount || 0) + (pStats.expiredCount || 0);
+%>
+<div class="page-header">
+    <div class="page-header-meta">
+        <div class="flex items-center gap-2 mb-1">
+            <h1 class="page-title">Paiements Mobile Money</h1>
+            <span class="simulation-chip">Mode simulation</span>
+        </div>
+        <p class="page-subtitle">Suivi des offrandes simulées (Wave, Orange Money, MTN MoMo, Moov Money) — <%= activeParish.name %></p>
+    </div>
+    <div class="page-actions">
+        <a href="/demande-intention" class="btn btn-outline">Portail public fidèles</a>
+    </div>
+</div>
+
+<div id="parish-payments-feedback" class="alert hidden mb-4" role="status"></div>
+
+<section class="kpi-grid" aria-label="Indicateurs des paiements simulés">
+    <%- include('../partials/stat_card', { id: 'pay-kpi-total', label: 'Total transactions', value: pStats.totalCount, meta: `${pStats.successCount} réussie(s) · ${pStats.pendingCount} attente · ${failedTotalCount} échec/annulé`, icon: 'receipt_long' }) %>
+    <%- include('../partials/stat_card', { id: 'pay-kpi-collected', label: 'Montant encaissé (simulé)', value: `${Number(pStats.collectedAmount).toLocaleString('fr-FR')} XOF`, meta: `${pStats.successCount} paiement(s) confirmé(s)`, icon: 'payments' }) %>
+    <%- include('../partials/stat_card', { id: 'pay-kpi-pending', label: 'Montant en attente', value: `${Number(pStats.pendingAmount).toLocaleString('fr-FR')} XOF`, meta: `${pStats.pendingCount} transaction(s) en attente`, icon: 'hourglass_top' }) %>
+    <%- include('../partials/stat_card', { id: 'pay-kpi-failed', label: 'Montant échoué / annulé', value: `${Number(pStats.failedAmount).toLocaleString('fr-FR')} XOF`, meta: `${failedTotalCount} tentative(s) non aboutie(s)`, icon: 'cancel' }) %>
+</section>
+
+<section class="payment-analytics-grid mb-5" aria-label="Répartition et évolution">
+    <article class="panel-soft">
+        <h2 class="section-title mb-3">Répartition par opérateur</h2>
+        <div class="provider-breakdown-list">
+            <% for (const item of pStats.byProvider) { %>
+                <div class="provider-breakdown-row">
+                    <div class="provider-breakdown-head">
+                        <%- include('../partials/payment_provider_icon', { provider: item.provider, showName: true }) %>
+                        <strong><%= Number(item.collectedAmount).toLocaleString('fr-FR') %> XOF</strong>
+                    </div>
+                    <div class="provider-breakdown-meta">
+                        <span><%= item.count %> transaction(s) · <%= item.successCount %> réussie(s)</span>
+                        <span><%= item.sharePct %>%</span>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+    </article>
+
+    <article class="panel-soft">
+        <div class="flex items-center justify-between mb-3">
+            <div>
+                <h2 class="section-title">Évolution journalière</h2>
+                <p class="text-muted">Transactions enregistrées par jour</p>
+            </div>
+            <span class="simulation-chip">Données réelles locales</span>
+        </div>
+        <% if (pStats.timelineDaily && pStats.timelineDaily.length > 0) { %>
+            <div class="chart-bars" role="img" aria-label="Évolution journalière des paiements">
+                <% for (const bucket of pStats.timelineDaily) { %>
+                    <div class="chart-bar-col">
+                        <span class="chart-bar-pct"><%= bucket.count %></span>
+                        <div class="chart-bar pay-bar-h-<%= bucket.barHeightBucket %>" title="<%= bucket.period %> : <%= bucket.count %> transaction(s), <%= Number(bucket.collectedAmount).toLocaleString('fr-FR') %> XOF"></div>
+                        <span class="chart-day"><%= bucket.label %></span>
+                    </div>
+                <% } %>
+            </div>
+        <% } else { %>
+            <p class="empty-state">Aucune donnée d’évolution disponible.</p>
+        <% } %>
+    </article>
+
+    <article class="panel-soft">
+        <h2 class="section-title mb-3">Répartition des statuts</h2>
+        <ul class="status-breakdown-list">
+            <% for (const st of pStats.byStatus) { %>
+                <li class="status-breakdown-item">
+                    <%- include('../partials/payment_status_badge', { statut: st.status, label: st.label }) %>
+                    <span><strong><%= st.count %></strong> · <%= Number(st.amount).toLocaleString('fr-FR') %> XOF</span>
+                </li>
+            <% } %>
+        </ul>
+    </article>
+</section>
+
+<section class="table-card" aria-label="Liste des transactions Mobile Money">
+    <div class="table-toolbar">
+        <%- include('../partials/payment_filters', { scope: 'parish', paymentFilters }) %>
+    </div>
+
+    <div id="parish-payments-table-container">
+        <%- include('../partials/payment_transaction_table', { scope: 'parish', paymentList, paymentStatusLabels }) %>
+    </div>
+</section>
+
+<p class="form-helper mt-3">
+    Règle d’intégrité : aucune modification directe du statut d’une transaction réussie ou échouée n’est autorisée depuis le secrétariat ou l’administration paroissiale.
+</p>
+
+<%- include('../partials/payment_details_modal') %>

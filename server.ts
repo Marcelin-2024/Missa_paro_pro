@@ -22,6 +22,14 @@ import {
 } from './src/modules/users/users.service.js';
 import { listProvincesSummary } from './src/modules/ecclesiastical/ecclesiastical.service.js';
 import { getPublicIntentionTracking } from './src/modules/intentions/intentions.service.js';
+import { paymentsApiRouter } from './src/modules/payments/payments.routes.js';
+import {
+  INTENTION_TARIFFS,
+  PAYMENT_PROVIDERS_META,
+  PAYMENT_SCENARIO_LABELS,
+  PAYMENT_SIMULATION_CONFIG,
+} from './src/modules/payments/payment.config.js';
+import { getPublicPaymentByReference } from './src/modules/payments/payments.service.js';
 import { loadFormConfig } from './src/utils/formConfig.js';
 
 declare module 'express-session' {
@@ -132,6 +140,7 @@ app.get('/api/auth/session-status', (req: Request, res: Response) => {
 // Modular APIs & Spaces
 app.use('/super-admin', superAdminRouter);
 app.use('/api/super-admin', superAdminApiRouter);
+app.use('/api/payments', paymentsApiRouter);
 app.use('/api/parish/intentions', intentionsParishRouter);
 app.use('/api/parish', parishApiRouter);
 app.use('/api/intentions', intentionsPublicRouter);
@@ -161,9 +170,40 @@ app.get('/demande-intention', (req: Request, res: Response) => {
   const trackingResult = ref ? getPublicIntentionTracking(ref) : null;
   res.render('demande_intention', {
     provinces: listProvincesSummary(),
+    tariffs: INTENTION_TARIFFS,
     error: ref && !trackingResult ? `Aucune demande trouvée pour la référence « ${ref} ».` : null,
     confirmation: null,
     trackingResult,
+  });
+});
+
+app.get('/paiement', (req: Request, res: Response) => {
+  const ref = typeof req.query.ref === 'string' ? req.query.ref.trim() : '';
+  if (ref) {
+    res.redirect(`/paiement/${encodeURIComponent(ref)}`);
+    return;
+  }
+  res.render('paiement_intention', {
+    intention: null,
+    paymentLookup: null,
+    providers: Object.values(PAYMENT_PROVIDERS_META),
+    scenarios: PAYMENT_SCENARIO_LABELS,
+    simulationConfig: PAYMENT_SIMULATION_CONFIG,
+    error: null,
+  });
+});
+
+app.get('/paiement/:trackingRef', (req: Request, res: Response) => {
+  const ref = String(req.params.trackingRef || '').trim();
+  const intention = getPublicIntentionTracking(ref);
+  const paymentLookup = getPublicPaymentByReference(ref);
+  res.render('paiement_intention', {
+    intention,
+    paymentLookup,
+    providers: Object.values(PAYMENT_PROVIDERS_META),
+    scenarios: PAYMENT_SCENARIO_LABELS,
+    simulationConfig: PAYMENT_SIMULATION_CONFIG,
+    error: !intention ? `Aucune intention trouvée pour la référence « ${ref} ».` : null,
   });
 });
 

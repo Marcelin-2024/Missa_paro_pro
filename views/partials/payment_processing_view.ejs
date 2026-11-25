@@ -1,0 +1,27 @@
+<section id="payment-processing-panel" class="payment-stage-card hidden" aria-live="polite">
+    <div class="payment-processing-head">
+        <span class="material-symbols-rounded payment-spinner-icon" aria-hidden="true">sync</span>
+        <div>
+            <h3 class="section-title">Traitement du paiement simulé en cours...</h3>
+            <p class="text-muted">Simulation locale côté serveur — aucun transfert d’argent réel n’est effectué.</p>
+        </div>
+    </div>
+    <ol id="payment-processing-steps" class="payment-steps-list">
+        <li data-step="1" class="payment-step-item">
+            <span class="material-symbols-rounded icon-sm" aria-hidden="true">hourglass_top</span>
+            <span>Initialisation de la demande Mobile Money simulée</span>
+        </li>
+        <li data-step="2" class="payment-step-item">
+            <span class="material-symbols-rounded icon-sm" aria-hidden="true">send_to_mobile</span>
+            <span>Envoi simulé de la demande de confirmation vers l’opérateur</span>
+        </li>
+        <li data-step="3" class="payment-step-item">
+            <span class="material-symbols-rounded icon-sm" aria-hidden="true">fact_check</span>
+            <span>Validation simulée et délai de traitement local</span>
+        </li>
+        <li data-step="4" class="payment-step-item">
+            <span class="material-symbols-rounded icon-sm" aria-hidden="true">task_alt</span>
+            <span>Enregistrement du résultat de la transaction simulée</span>
+        </li>
+    </ol>
+</section>

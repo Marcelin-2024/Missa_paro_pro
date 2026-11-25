@@ -1,0 +1,88 @@
+<%
+  const listData = typeof paymentList !== 'undefined' && paymentList ? paymentList : { items: [], total: 0, page: 1, totalPages: 1 };
+  const items = Array.isArray(listData.items) ? listData.items : [];
+  const scopeMode = typeof scope !== 'undefined' ? scope : 'parish';
+  const labels = typeof paymentStatusLabels !== 'undefined' && paymentStatusLabels ? paymentStatusLabels : {};
+%>
+<div class="table-responsive">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Référence</th>
+                <th>Fidèle</th>
+                <th>Téléphone</th>
+                <th>Intention</th>
+                <th>Opérateur</th>
+                <th>Montant</th>
+                <th>Date</th>
+                <th>Statut</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="<%= scopeMode %>-payments-tbody">
+            <% if (items.length > 0) { %>
+                <% for (const tx of items) { %>
+                    <tr>
+                        <td>
+                            <code><%= tx.transactionReference %></code>
+                            <span class="table-cell-sub">Simulée · #<%= tx.attemptNumber %></span>
+                        </td>
+                        <td>
+                            <span class="table-cell-title"><%= tx.faithfulName %></span>
+                            <% if (scopeMode === 'super_admin') { %>
+                                <span class="table-cell-sub"><%= tx.parishName %></span>
+                            <% } %>
+                        </td>
+                        <td><%= tx.faithfulPhone %></td>
+                        <td><code><%= tx.intentionTrackingRef %></code></td>
+                        <td><%- include('./payment_provider_icon', { provider: tx.provider, showName: true }) %></td>
+                        <td><strong><%= Number(tx.amount).toLocaleString('fr-FR') %> <%= tx.currency %></strong></td>
+                        <td><%= new Date(tx.createdAt).toLocaleString('fr-FR') %></td>
+                        <td><%- include('./payment_status_badge', { statut: tx.status, label: labels[tx.status] || tx.status }) %></td>
+                        <td>
+                            <button
+                                type="button"
+                                class="btn btn-outline btn-sm"
+                                data-open-payment-detail="<%= tx.id %>"
+                                data-payment-scope="<%= scopeMode %>"
+                            >
+                                <span class="material-symbols-rounded icon-sm" aria-hidden="true">visibility</span>
+                                <span>Détails</span>
+                            </button>
+                        </td>
+                    </tr>
+                <% } %>
+            <% } else { %>
+                <tr>
+                    <td colspan="9" class="empty-state">Aucune transaction Mobile Money simulée enregistrée pour ces critères.</td>
+                </tr>
+            <% } %>
+        </tbody>
+    </table>
+</div>
+
+<div id="<%= scopeMode %>-payments-pagination" class="payment-pagination">
+    <span class="text-muted">
+        Page <%= listData.page %> / <%= listData.totalPages %> · <%= listData.total %> transaction(s)
+    </span>
+    <div class="table-actions">
+        <button
+            type="button"
+            class="btn btn-outline btn-sm"
+            data-payments-page="<%= Math.max(1, listData.page - 1) %>"
+            data-payments-scope="<%= scopeMode %>"
+            <%= listData.page <= 1 ? 'disabled' : '' %>
+        >
+            Précédent
+        </button>
+        <button
+            type="button"
+            class="btn btn-outline btn-sm"
+            data-payments-page="<%= Math.min(listData.totalPages, listData.page + 1) %>"
+            data-payments-scope="<%= scopeMode %>"
+            <%= listData.page >= listData.totalPages ? 'disabled' : '' %>
+        >
+            Suivant
+        </button>
+    </div>
+</div>

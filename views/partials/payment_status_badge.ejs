@@ -1,0 +1,20 @@
+<%
+  const raw = String(statut || '').trim().toUpperCase();
+  const labelMap = {
+    PENDING: 'En attente',
+    SUCCESS: 'Réussi',
+    FAILED: 'Échoué',
+    CANCELLED: 'Annulé',
+    EXPIRED: 'Expiré',
+  };
+  const classMap = {
+    PENDING: 'badge-warning',
+    SUCCESS: 'badge-success',
+    FAILED: 'badge-danger',
+    CANCELLED: 'badge-neutral',
+    EXPIRED: 'badge-neutral',
+  };
+  const displayLabel = typeof label !== 'undefined' && label ? label : (labelMap[raw] || raw || 'Inconnu');
+  const badgeClass = classMap[raw] || 'badge-neutral';
+%>
+<span class="badge <%= badgeClass %>"><%= displayLabel %></span>

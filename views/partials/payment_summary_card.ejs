@@ -1,0 +1,29 @@
+<section class="card-soft card-soft-gold mb-4" aria-label="Récapitulatif de l’intention">
+    <div class="payment-summary-head">
+        <div>
+            <p class="payment-summary-kicker">Intention de messe à régler</p>
+            <h2 class="section-title"><%= intention.objet %></h2>
+        </div>
+        <div class="payment-amount-box">
+            <span class="payment-amount-label">Offrande indicative</span>
+            <strong class="payment-amount-value"><%= Number(intention.amount || 2000).toLocaleString('fr-FR') %> <%= intention.currency || 'XOF' %></strong>
+        </div>
+    </div>
+    <div class="payment-summary-grid">
+        <div><strong>Référence intention :</strong> <code><%= intention.trackingRef %></code></div>
+        <div><strong>Paroisse destinataire :</strong> <%= intention.parishName %></div>
+        <div><strong>Demandeur :</strong> <%= intention.requesterName %> (<%= intention.requesterPhone %>)</div>
+        <div>
+            <strong>Statut de l’intention :</strong>
+            <%- include('./status_badge', { statut: intention.status, label: intention.statusLabel }) %>
+        </div>
+        <div>
+            <strong>Statut du paiement :</strong>
+            <% if (intention.payment) { %>
+                <%- include('./payment_status_badge', { statut: intention.payment.status, label: intention.payment.statusLabel }) %>
+            <% } else { %>
+                <span class="badge badge-neutral">Non payée</span>
+            <% } %>
+        </div>
+    </div>
+</section>

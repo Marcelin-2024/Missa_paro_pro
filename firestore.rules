@@ -144,6 +144,53 @@ service cloud.firestore {
         data.createdAt is timestamp;
     }
 
+    function isValidPayment(data) {
+      return data.keys().hasAll([
+          'id', 'transactionReference', 'intentionId', 'parishId', 'faithfulName',
+          'faithfulPhone', 'provider', 'amount', 'currency', 'status',
+          'simulationMode', 'attemptNumber', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'transactionReference', 'intentionId', 'parishId', 'faithfulUserId',
+          'faithfulName', 'faithfulPhone', 'provider', 'amount', 'currency', 'status',
+          'simulationMode', 'attemptNumber', 'failureReason', 'confirmedAt', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.transactionReference is string && data.transactionReference.size() >= 5 && data.transactionReference.size() <= 64 &&
+        isValidId(data.intentionId) &&
+        isValidId(data.parishId) &&
+        (!('faithfulUserId' in data) || isValidId(data.faithfulUserId)) &&
+        data.faithfulName is string && data.faithfulName.size() >= 2 && data.faithfulName.size() <= 120 &&
+        data.faithfulPhone is string && data.faithfulPhone.size() >= 8 && data.faithfulPhone.size() <= 40 &&
+        data.provider in ['WAVE', 'ORANGE_MONEY', 'MTN_MONEY', 'MOOV_MONEY'] &&
+        data.amount is int && data.amount >= 500 && data.amount <= 500000 &&
+        data.currency == 'XOF' &&
+        data.status in ['PENDING', 'SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED'] &&
+        data.simulationMode == true &&
+        data.attemptNumber is int && data.attemptNumber >= 1 && data.attemptNumber <= 50 &&
+        (!('failureReason' in data) || (data.failureReason is string && data.failureReason.size() <= 300)) &&
+        (!('confirmedAt' in data) || data.confirmedAt is timestamp) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidPaymentEvent(data) {
+      return data.keys().hasAll([
+          'id', 'paymentId', 'parishId', 'eventType', 'newStatus', 'description', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'paymentId', 'parishId', 'eventType', 'previousStatus', 'newStatus', 'description', 'createdAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.paymentId) &&
+        isValidId(data.parishId) &&
+        data.eventType is string && data.eventType.size() >= 1 && data.eventType.size() <= 60 &&
+        (!('previousStatus' in data) || data.previousStatus in ['PENDING', 'SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED']) &&
+        data.newStatus in ['PENDING', 'SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED'] &&
+        data.description is string && data.description.size() >= 1 && data.description.size() <= 300 &&
+        data.createdAt is timestamp;
+    }
+
     // --- Connection Health Check (testConnection) ---
     match /test/connection {
       allow get: if isSignedIn();
@@ -289,6 +336,48 @@ service cloud.firestore {
       allow create: if isAdmin() && isValidId(logId) &&
         isValidAuditLog(incoming()) &&
         incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // --- Simulated Mobile Money Payments ---
+    match /payments/{paymentId} {
+      allow get: if isValidId(paymentId) && isSignedIn() && (
+        existing().faithfulUserId == request.auth.uid || isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.faithfulUserId == request.auth.uid || isBootstrappedAdmin()
+      );
+      allow create: if isVerified() && isValidId(paymentId) &&
+        isValidPayment(incoming()) &&
+        incoming().id == paymentId &&
+        incoming().simulationMode == true &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (!('faithfulUserId' in incoming()) || incoming().faithfulUserId == request.auth.uid) &&
+        exists(/databases/$(database)/documents/intentions/$(incoming().intentionId)) &&
+        exists(/databases/$(database)/documents/parishes/$(incoming().parishId));
+      allow update: if isBootstrappedAdmin() && isValidId(paymentId) &&
+        isValidPayment(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().transactionReference == existing().transactionReference &&
+        incoming().intentionId == existing().intentionId &&
+        incoming().parishId == existing().parishId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'failureReason', 'confirmedAt', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // --- Payment Events (Append-Only Audit Trail) ---
+    match /paymentEvents/{eventId} {
+      allow get: if isValidId(eventId) && isAdmin();
+      allow list: if isBootstrappedAdmin() &&
+        resource.data.newStatus in ['PENDING', 'SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED'];
+      allow create: if isVerified() && isValidId(eventId) &&
+        isValidPaymentEvent(incoming()) &&
+        incoming().id == eventId &&
+        incoming().createdAt == request.time &&
+        exists(/databases/$(database)/documents/payments/$(incoming().paymentId));
       allow update, delete: if false;
     }
   }

@@ -51,8 +51,15 @@
                         <div class="alert alert-success mb-4" role="status">
                             <strong>Intention enregistrée avec succès !</strong><br>
                             Référence de suivi : <code class="credential-code"><%= confirmation.trackingRef %></code><br>
-                            Paroisse destinataire : <strong><%= confirmation.parishName %></strong> · Statut : <strong><%= confirmation.statusLabel %></strong><br>
-                            <a href="/demande-intention?ref=<%= encodeURIComponent(confirmation.trackingRef) %>" class="auth-link">Suivre ma demande</a>
+                            Paroisse destinataire : <strong><%= confirmation.parishName %></strong> · Offrande indicative : <strong><%= Number(confirmation.amount || 2000).toLocaleString('fr-FR') %> <%= confirmation.currency || 'XOF' %></strong><br>
+                            Statut intention : <strong><%= confirmation.statusLabel %></strong>
+                            <div class="form-actions">
+                                <a href="/paiement/<%= encodeURIComponent(confirmation.trackingRef) %>" class="btn btn-primary">
+                                    <span class="material-symbols-rounded icon-sm" aria-hidden="true">payments</span>
+                                    <span>Payer par Mobile Money (simulation)</span>
+                                </a>
+                                <a href="/demande-intention?ref=<%= encodeURIComponent(confirmation.trackingRef) %>" class="btn btn-outline">Suivre ma demande</a>
+                            </div>
                         </div>
                     <% } %>
 
@@ -114,6 +121,25 @@
                             </div>
                         </div>
 
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="intentionType" class="form-label">Type d’intention</label>
+                                <select id="intentionType" name="intentionType" class="form-select" data-intention-type-select required>
+                                    <% const tariffList = typeof tariffs !== 'undefined' && Array.isArray(tariffs) ? tariffs : []; %>
+                                    <% for (const t of tariffList) { %>
+                                        <option value="<%= t.code %>" data-amount="<%= t.amount %>" data-label="<%= t.label %>">
+                                            <%= t.label %> — <%= Number(t.amount).toLocaleString('fr-FR') %> <%= t.currency %>
+                                        </option>
+                                    <% } %>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="intention-amount-display" class="form-label">Montant à payer (mode simulation)</label>
+                                <input id="intention-amount-display" type="text" class="form-control" value="2 000 XOF" readonly>
+                                <small class="form-helper">Vous pourrez simuler Wave, Orange Money, MTN MoMo ou Moov Money à l’étape suivante.</small>
+                            </div>
+                        </div>
+
                         <div class="form-group">
                             <label for="objet" class="form-label">Objet de l’intention</label>
                             <input id="objet" name="objet" type="text" class="form-control" required maxlength="150" placeholder="Ex. Action de grâce, Repos de l’âme, Guérison, Protection...">
@@ -153,6 +179,16 @@
                             </div>
                             <p><strong>Paroisse :</strong> <%= trackingResult.parishName %></p>
                             <p><strong>Objet :</strong> <%= trackingResult.objet %></p>
+                            <p><strong>Offrande indicative :</strong> <%= Number(trackingResult.amount || 2000).toLocaleString('fr-FR') %> <%= trackingResult.currency || 'XOF' %></p>
+                            <p>
+                                <strong>Paiement (simulation) :</strong>
+                                <% if (trackingResult.payment) { %>
+                                    <%- include('partials/payment_status_badge', { statut: trackingResult.payment.status, label: trackingResult.payment.statusLabel }) %>
+                                    (<code><%= trackingResult.payment.transactionReference %></code> · <%= trackingResult.payment.providerName %>)
+                                <% } else { %>
+                                    <span class="badge badge-neutral">Non payée</span>
+                                <% } %>
+                            </p>
                             <% if (trackingResult.desiredDate) { %>
                                 <p><strong>Date souhaitée :</strong> <%= trackingResult.desiredDate %></p>
                             <% } %>
@@ -161,6 +197,18 @@
                             <% } %>
                             <% if (trackingResult.celebratedAt) { %>
                                 <p><strong>Célébrée le :</strong> <%= new Date(trackingResult.celebratedAt).toLocaleString('fr-FR') %></p>
+                            <% } %>
+                            <% if (!trackingResult.payment || trackingResult.payment.status !== 'SUCCESS') { %>
+                                <div class="form-actions">
+                                    <a href="/paiement/<%= encodeURIComponent(trackingResult.trackingRef) %>" class="btn btn-primary btn-sm">
+                                        <span class="material-symbols-rounded icon-sm" aria-hidden="true">payments</span>
+                                        <span><%= trackingResult.payment ? 'Réessayer le paiement (simulation)' : 'Payer maintenant (simulation)' %></span>
+                                    </a>
+                                </div>
+                            <% } else { %>
+                                <div class="form-actions">
+                                    <a href="/paiement/<%= encodeURIComponent(trackingResult.trackingRef) %>" class="btn btn-outline btn-sm">Voir le reçu simulé</a>
+                                </div>
                             <% } %>
                         </div>
                     <% } %>
@@ -171,6 +219,7 @@
 
     <script src="/static/js/ecclesiastical-selector.js"></script>
     <script src="/static/js/ui-interactions.js"></script>
+    <script src="/static/js/payments-checkout.js"></script>
 </body>
 
 </html>
