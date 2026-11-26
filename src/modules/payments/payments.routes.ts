@@ -33,9 +33,9 @@ paymentsApiRouter.get('/providers', (_req: Request, res: Response) => {
   });
 });
 
-paymentsApiRouter.post('/simulate', (req: Request, res: Response) => {
+paymentsApiRouter.post('/simulate', async (req: Request, res: Response) => {
   const body = (req.body ?? {}) as Record<string, unknown>;
-  const result = simulateIntentionPayment({
+  const result = await simulateIntentionPayment({
     rawBody: body,
     intentionId: typeof body.intentionId === 'string' ? body.intentionId : undefined,
     intentionTrackingRef:
@@ -81,9 +81,9 @@ paymentsApiRouter.post('/simulate', (req: Request, res: Response) => {
   });
 });
 
-paymentsApiRouter.post('/:id/retry', (req: Request, res: Response) => {
+paymentsApiRouter.post('/:id/retry', async (req: Request, res: Response) => {
   const body = (req.body ?? {}) as Record<string, unknown>;
-  const result = retrySimulatedPayment({
+  const result = await retrySimulatedPayment({
     rawBody: body,
     paymentId: String(req.params.id || ''),
     provider: typeof body.provider === 'string' ? body.provider : undefined,
@@ -118,8 +118,8 @@ paymentsApiRouter.post('/:id/retry', (req: Request, res: Response) => {
   });
 });
 
-paymentsApiRouter.get('/reference/:reference', (req: Request, res: Response) => {
-  const found = getPublicPaymentByReference(String(req.params.reference || ''));
+paymentsApiRouter.get('/reference/:reference', async (req: Request, res: Response) => {
+  const found = await getPublicPaymentByReference(String(req.params.reference || ''));
   if (!found) {
     res.status(404).json({ success: false, error: 'Aucune transaction trouvée pour cette référence.' });
     return;
@@ -130,11 +130,11 @@ paymentsApiRouter.get('/reference/:reference', (req: Request, res: Response) => 
 paymentsApiRouter.get(
   '/statistics',
   requireParishPermission('parish.payments.statistics'),
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const parishId = req.authContext!.activeParish!.id;
     const dateFrom = typeof req.query.dateFrom === 'string' ? req.query.dateFrom : undefined;
     const dateTo = typeof req.query.dateTo === 'string' ? req.query.dateTo : undefined;
-    const stats = computePaymentStatistics({ parishId, dateFrom, dateTo });
+    const stats = await computePaymentStatistics({ parishId, dateFrom, dateTo });
     res.json({
       success: true,
       parishId,
@@ -147,9 +147,9 @@ paymentsApiRouter.get(
 paymentsApiRouter.get(
   '/',
   requireParishPermission('parish.payments.view'),
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const parishId = req.authContext!.activeParish!.id;
-    const result = listPaymentsFiltered({
+    const result = await listPaymentsFiltered({
       parishId,
       q: typeof req.query.q === 'string' ? req.query.q : undefined,
       provider: typeof req.query.provider === 'string' ? req.query.provider : undefined,
@@ -172,9 +172,9 @@ paymentsApiRouter.get(
 paymentsApiRouter.get(
   '/:id',
   requireParishPermission('parish.payments.view'),
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const parishId = req.authContext!.activeParish!.id;
-    const detail = getPaymentDetailsForStaff(String(req.params.id || ''), parishId);
+    const detail = await getPaymentDetailsForStaff(String(req.params.id || ''), parishId);
     if (!detail) {
       res.status(404).json({ success: false, error: 'Transaction introuvable dans cette paroisse.' });
       return;
@@ -183,7 +183,6 @@ paymentsApiRouter.get(
   }
 );
 
-// Strictly reject any direct parish-level status mutation on payments
 paymentsApiRouter.patch(
   '/:id/status',
   requireParishPermission('parish.payments.view'),

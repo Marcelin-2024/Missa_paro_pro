@@ -44,8 +44,8 @@
       "preferredDioceseId": "diocese_abidjan",
       "preferredParishId": "parish_sainte_rita",
       "createdAt": "2026-11-25T12:53:53.204Z",
-      "updatedAt": "2026-11-25T13:34:16.285Z",
-      "lastLoginAt": "2026-11-25T13:34:16.285Z"
+      "updatedAt": "2026-11-26T10:55:30.254Z",
+      "lastLoginAt": "2026-11-26T10:55:30.254Z"
     },
     {
       "id": "user-secretaire-demo-1",
@@ -348,5 +348,7 @@
       "read": false,
       "createdAt": "2026-11-25T12:53:53.204Z"
     }
-  ]
+  ],
+  "payments": [],
+  "paymentEvents": []
 }

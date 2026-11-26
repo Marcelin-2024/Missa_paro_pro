@@ -1,22 +1,32 @@
 import crypto from 'crypto';
 import { findDioceseById, findParishById } from '../ecclesiastical/ecclesiastical.repository.js';
-import { getPlatformState, savePlatformState } from '../platform/platform.repository.js';
 import type { ParishEntity, ParishStatus } from '../platform/platform.types.js';
 import { recordAuditLog } from '../audit/audit.service.js';
+import {
+  findParishByIdOrDirectoryRepo,
+  findParishByIdRepo,
+  listActiveParishesRepo,
+  listAllParishesRepo,
+  saveParishRepo,
+} from '../../repositories/parishes.repository.js';
 
-export function listAllParishes(): ParishEntity[] {
-  return getPlatformState().parishes;
+export async function listAllParishes(): Promise<ParishEntity[]> {
+  return listAllParishesRepo();
 }
 
-export function getParishById(parishId: string): ParishEntity | undefined {
-  return getPlatformState().parishes.find((p) => p.id === parishId);
+export async function listActiveParishes(): Promise<ParishEntity[]> {
+  return listActiveParishesRepo();
 }
 
-export function ensureDirectoryParishTenant(directoryParishId: string): ParishEntity | null {
-  const state = getPlatformState();
-  const existing = state.parishes.find(
-    (p) => p.id === directoryParishId || p.directoryParishId === directoryParishId
-  );
+export async function getParishById(parishId: string): Promise<ParishEntity | undefined> {
+  const found = await findParishByIdRepo(parishId);
+  return found ?? undefined;
+}
+
+export async function ensureDirectoryParishTenant(
+  directoryParishId: string
+): Promise<ParishEntity | null> {
+  const existing = await findParishByIdOrDirectoryRepo(directoryParishId);
   if (existing) return existing;
 
   const match = findParishById(directoryParishId);
@@ -43,12 +53,11 @@ export function ensureDirectoryParishTenant(directoryParishId: string): ParishEn
     updatedAt: now,
   };
 
-  state.parishes.push(created);
-  savePlatformState(state);
+  await saveParishRepo(created);
   return created;
 }
 
-export function provisionOrActivateParish(input: {
+export async function provisionOrActivateParish(input: {
   actorUserId: string;
   actorEmail: string;
   provinceId: string;
@@ -56,27 +65,46 @@ export function provisionOrActivateParish(input: {
   directoryParishId?: string;
   customParishName?: string;
   location?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  massScheduleSummary?: string;
   status?: ParishStatus;
-}): { ok: true; parish: ParishEntity } | { ok: false; status: number; error: string } {
+}): Promise<{ ok: true; parish: ParishEntity } | { ok: false; status: number; error: string }> {
   const dioMatch = findDioceseById(input.dioceseId);
   if (!dioMatch || dioMatch.province.id !== input.provinceId) {
     return { ok: false, status: 400, error: 'Province ou diocèse invalide.' };
   }
 
-  const state = getPlatformState();
   const now = new Date().toISOString();
 
   if (input.directoryParishId) {
     const dirMatch = findParishById(input.directoryParishId);
     if (!dirMatch || dirMatch.diocese.id !== dioMatch.diocese.id) {
-      return { ok: false, status: 400, error: 'La paroisse sélectionnée ne correspond pas au diocèse.' };
+      return {
+        ok: false,
+        status: 400,
+        error: 'La paroisse sélectionnée ne correspond pas au diocèse.',
+      };
     }
-    const existing = ensureDirectoryParishTenant(dirMatch.parish.id);
+    const existing = await ensureDirectoryParishTenant(dirMatch.parish.id);
     if (existing) {
       existing.status = input.status ?? 'ACTIVE';
+      if (typeof input.phone === 'string' && input.phone.trim()) {
+        existing.phone = input.phone.trim().slice(0, 40);
+      }
+      if (typeof input.email === 'string' && input.email.trim()) {
+        existing.email = input.email.trim().slice(0, 120);
+      }
+      if (typeof input.address === 'string' && input.address.trim()) {
+        existing.address = input.address.trim().slice(0, 200);
+      }
+      if (typeof input.massScheduleSummary === 'string' && input.massScheduleSummary.trim()) {
+        existing.massScheduleSummary = input.massScheduleSummary.trim().slice(0, 300);
+      }
       existing.updatedAt = now;
-      savePlatformState(state);
-      recordAuditLog({
+      await saveParishRepo(existing);
+      await recordAuditLog({
         actorUserId: input.actorUserId,
         actorEmail: input.actorEmail,
         scope: 'GLOBAL',
@@ -105,20 +133,20 @@ export function provisionOrActivateParish(input: {
     name: cleanName,
     location: String(input.location || dioMatch.diocese.name).trim().slice(0, 120),
     status: input.status ?? 'ACTIVE',
-    phone: '',
-    email: '',
-    address: '',
-    massScheduleSummary: 'Horaires à configurer',
+    phone: String(input.phone || '').trim().slice(0, 40),
+    email: String(input.email || '').trim().slice(0, 120),
+    address: String(input.address || '').trim().slice(0, 200),
+    massScheduleSummary:
+      String(input.massScheduleSummary || '').trim().slice(0, 300) || 'Horaires à configurer',
     chapelsEnabled: false,
     chapels: [],
     createdAt: now,
     updatedAt: now,
   };
 
-  state.parishes.push(created);
-  savePlatformState(state);
+  await saveParishRepo(created);
 
-  recordAuditLog({
+  await recordAuditLog({
     actorUserId: input.actorUserId,
     actorEmail: input.actorEmail,
     scope: 'GLOBAL',
@@ -132,19 +160,100 @@ export function provisionOrActivateParish(input: {
   return { ok: true, parish: created };
 }
 
-export function updateParishStatus(input: {
+export async function updateParishBySuperAdmin(input: {
+  actorUserId: string;
+  actorEmail: string;
+  parishId: string;
+  name?: string;
+  location?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  massScheduleSummary?: string;
+  chapelsEnabled?: boolean;
+  chapels?: string[];
+  status?: ParishStatus;
+}): Promise<{ ok: true; parish: ParishEntity } | { ok: false; status: number; error: string }> {
+  const parish = await findParishByIdRepo(input.parishId);
+  if (!parish) {
+    return { ok: false, status: 404, error: 'Paroisse introuvable.' };
+  }
+
+  if (typeof input.name === 'string') {
+    const cleanName = input.name.trim().slice(0, 160);
+    if (cleanName.length < 2) {
+      return {
+        ok: false,
+        status: 400,
+        error: 'Le nom de la paroisse est obligatoire (min. 2 caractères).',
+      };
+    }
+    parish.name = cleanName;
+  }
+  if (typeof input.location === 'string') {
+    parish.location = input.location.trim().slice(0, 120) || parish.dioceseName;
+  }
+  if (typeof input.phone === 'string') {
+    parish.phone = input.phone.trim().slice(0, 40);
+  }
+  if (typeof input.email === 'string') {
+    parish.email = input.email.trim().slice(0, 120);
+  }
+  if (typeof input.address === 'string') {
+    parish.address = input.address.trim().slice(0, 200);
+  }
+  if (typeof input.massScheduleSummary === 'string') {
+    parish.massScheduleSummary = input.massScheduleSummary.trim().slice(0, 300);
+  }
+  if (typeof input.chapelsEnabled === 'boolean') {
+    parish.chapelsEnabled = input.chapelsEnabled;
+    if (!input.chapelsEnabled) {
+      parish.chapels = [];
+    }
+  }
+  if (Array.isArray(input.chapels) && parish.chapelsEnabled) {
+    parish.chapels = input.chapels
+      .map((c) => c.trim().slice(0, 100))
+      .filter(Boolean)
+      .slice(0, 15);
+  }
+  if (input.status) {
+    const valid: ParishStatus[] = ['PENDING_ACTIVATION', 'ACTIVE', 'SUSPENDED', 'INACTIVE'];
+    if (!valid.includes(input.status)) {
+      return { ok: false, status: 400, error: 'Statut paroissial invalide.' };
+    }
+    parish.status = input.status;
+  }
+
+  parish.updatedAt = new Date().toISOString();
+  await saveParishRepo(parish);
+
+  await recordAuditLog({
+    actorUserId: input.actorUserId,
+    actorEmail: input.actorEmail,
+    scope: 'GLOBAL',
+    parishId: parish.id,
+    action: 'PARISH_UPDATED',
+    targetType: 'PARISH',
+    targetId: parish.id,
+    summary: `Mise à jour de la fiche paroissiale ${parish.name}.`,
+  });
+
+  return { ok: true, parish };
+}
+
+export async function updateParishStatus(input: {
   actorUserId: string;
   actorEmail: string;
   parishId: string;
   status: ParishStatus;
-}): { ok: true; parish: ParishEntity } | { ok: false; status: number; error: string } {
+}): Promise<{ ok: true; parish: ParishEntity } | { ok: false; status: number; error: string }> {
   const valid: ParishStatus[] = ['PENDING_ACTIVATION', 'ACTIVE', 'SUSPENDED', 'INACTIVE'];
   if (!valid.includes(input.status)) {
     return { ok: false, status: 400, error: 'Statut paroissial invalide.' };
   }
 
-  const state = getPlatformState();
-  const parish = state.parishes.find((p) => p.id === input.parishId);
+  const parish = await findParishByIdRepo(input.parishId);
   if (!parish) {
     return { ok: false, status: 404, error: 'Paroisse introuvable.' };
   }
@@ -152,9 +261,9 @@ export function updateParishStatus(input: {
   const previousStatus = parish.status;
   parish.status = input.status;
   parish.updatedAt = new Date().toISOString();
-  savePlatformState(state);
+  await saveParishRepo(parish);
 
-  recordAuditLog({
+  await recordAuditLog({
     actorUserId: input.actorUserId,
     actorEmail: input.actorEmail,
     scope: 'GLOBAL',
@@ -168,23 +277,26 @@ export function updateParishStatus(input: {
   return { ok: true, parish };
 }
 
-export function updateParishPracticalInfo(input: {
+export async function updateParishPracticalInfo(input: {
   actorUserId: string;
   actorEmail: string;
   parishId: string;
+  location?: string;
   phone: string;
   email: string;
   address: string;
   massScheduleSummary: string;
   chapelsEnabled: boolean;
   chapels: string[];
-}): { ok: true; parish: ParishEntity } | { ok: false; status: number; error: string } {
-  const state = getPlatformState();
-  const parish = state.parishes.find((p) => p.id === input.parishId);
+}): Promise<{ ok: true; parish: ParishEntity } | { ok: false; status: number; error: string }> {
+  const parish = await findParishByIdRepo(input.parishId);
   if (!parish) {
     return { ok: false, status: 404, error: 'Paroisse introuvable.' };
   }
 
+  if (typeof input.location === 'string' && input.location.trim()) {
+    parish.location = input.location.trim().slice(0, 120);
+  }
   parish.phone = input.phone.trim().slice(0, 40);
   parish.email = input.email.trim().slice(0, 120);
   parish.address = input.address.trim().slice(0, 200);
@@ -194,9 +306,9 @@ export function updateParishPracticalInfo(input: {
     ? input.chapels.map((c) => c.trim().slice(0, 100)).filter(Boolean).slice(0, 15)
     : [];
   parish.updatedAt = new Date().toISOString();
-  savePlatformState(state);
+  await saveParishRepo(parish);
 
-  recordAuditLog({
+  await recordAuditLog({
     actorUserId: input.actorUserId,
     actorEmail: input.actorEmail,
     scope: 'PARISH',

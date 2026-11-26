@@ -1,11 +1,13 @@
-import fs from 'fs';
-import path from 'path';
 import { hashPassword } from '../auth/password.utils.js';
-import type { PlatformState } from './platform.types.js';
+import type { PlatformState, UserEntity } from './platform.types.js';
+import {
+  DEFAULT_PLATFORM_SETTINGS,
+  getSystemMetadata,
+  saveSystemMetadata,
+} from '../../repositories/system.repository.js';
+import { findSuperAdminUsers, saveUser } from '../../repositories/users.repository.js';
 
-const STATE_FILE = path.join(process.cwd(), 'src', 'data', 'platformState.json');
-
-function createInitialSeedState(): PlatformState {
+export function buildDemoSeedState(): PlatformState {
   const now = new Date().toISOString();
   const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'settaocram@gmail.com').trim().toLowerCase();
   const superAdminEnvPass = (process.env.SUPER_ADMIN_PASSWORD || '').trim();
@@ -14,14 +16,7 @@ function createInitialSeedState(): PlatformState {
   return {
     version: 1,
     superAdminClaimed: Boolean(superAdminEnvPass),
-    settings: {
-      platformName: 'Missa Paro — Côte d’Ivoire',
-      supportEmail: 'support@missaparo.ci',
-      tempPasswordTtlHours: 48,
-      activationLinkTtlHours: 48,
-      allowPublicFideleSignup: true,
-      requireCureAnnouncementApproval: false,
-    },
+    settings: { ...DEFAULT_PLATFORM_SETTINGS },
     users: [
       {
         id: 'user-super-admin-1',
@@ -319,84 +314,8 @@ function createInitialSeedState(): PlatformState {
         updatedAt: now,
       },
     ],
-    payments: [
-      {
-        id: 'pay-seed-1',
-        transactionReference: 'TXN-2026-SR1001',
-        intentionId: 'int-sr-1',
-        intentionTrackingRef: 'INT-2026-1001',
-        parishId: 'parish_sainte_rita',
-        parishName: 'Paroisse Sainte Rita',
-        faithfulUserId: null,
-        faithfulName: 'Famille Yao',
-        faithfulPhone: '+225 0708091011',
-        provider: 'WAVE',
-        amount: 2000,
-        currency: 'XOF',
-        status: 'SUCCESS',
-        simulationMode: true,
-        scenario: 'SUCCESS',
-        createdAt: now,
-        updatedAt: now,
-        confirmedAt: now,
-        failureReason: null,
-        attemptNumber: 1,
-      },
-      {
-        id: 'pay-seed-2',
-        transactionReference: 'TXN-2026-SR1002',
-        intentionId: 'int-sr-2',
-        intentionTrackingRef: 'INT-2026-1002',
-        parishId: 'parish_sainte_rita',
-        parishName: 'Paroisse Sainte Rita',
-        faithfulUserId: null,
-        faithfulName: 'Adeline Bamba',
-        faithfulPhone: '+225 0504030201',
-        provider: 'ORANGE_MONEY',
-        amount: 3000,
-        currency: 'XOF',
-        status: 'PENDING',
-        simulationMode: true,
-        scenario: 'PENDING',
-        createdAt: now,
-        updatedAt: now,
-        confirmedAt: null,
-        failureReason: null,
-        attemptNumber: 1,
-      },
-    ],
-    paymentEvents: [
-      {
-        id: 'pevt-seed-1',
-        paymentId: 'pay-seed-1',
-        parishId: 'parish_sainte_rita',
-        eventType: 'CREATED',
-        previousStatus: null,
-        newStatus: 'PENDING',
-        description: 'Transaction simulée initialisée pour INT-2026-1001 (Wave).',
-        createdAt: now,
-      },
-      {
-        id: 'pevt-seed-2',
-        paymentId: 'pay-seed-1',
-        parishId: 'parish_sainte_rita',
-        eventType: 'PAYMENT_CONFIRMED',
-        previousStatus: 'PENDING',
-        newStatus: 'SUCCESS',
-        description: 'Confirmation simulée validée par Wave (TXN-2026-SR1001).',
-        createdAt: now,
-      },
-      {
-        id: 'pevt-seed-3',
-        paymentId: 'pay-seed-2',
-        parishId: 'parish_sainte_rita',
-        eventType: 'PAYMENT_PENDING',
-        previousStatus: null,
-        newStatus: 'PENDING',
-        description: 'Validation simulée en attente auprès de Orange Money (TXN-2026-SR1002).',
-        createdAt: now,
-      },
-    ],
+    payments: [],
+    paymentEvents: [],
     auditLogs: [
       {
         id: 'audit-seed-1',
@@ -428,57 +347,61 @@ function createInitialSeedState(): PlatformState {
   };
 }
 
-let cachedState: PlatformState | null = null;
-
-export function getPlatformState(): PlatformState {
-  if (cachedState) return cachedState;
-
-  const dir = path.dirname(STATE_FILE);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  if (!fs.existsSync(STATE_FILE)) {
-    const seed = createInitialSeedState();
-    savePlatformState(seed);
-    cachedState = seed;
-    return cachedState;
-  }
-
-  const raw = fs.readFileSync(STATE_FILE, 'utf-8');
-  const parsed = JSON.parse(raw) as PlatformState;
-  parsed.payments = Array.isArray(parsed.payments) ? parsed.payments : [];
-  parsed.paymentEvents = Array.isArray(parsed.paymentEvents) ? parsed.paymentEvents : [];
-  parsed.notifications = Array.isArray(parsed.notifications) ? parsed.notifications : [];
-  parsed.auditLogs = Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [];
-
-  const superAdminEnvPass = (process.env.SUPER_ADMIN_PASSWORD || '').trim();
-  if (!parsed.superAdminClaimed && superAdminEnvPass) {
-    const sa = parsed.users.find((u) => u.isSuperAdmin);
-    if (sa) {
-      sa.passwordHash = hashPassword(superAdminEnvPass);
-      sa.status = 'ACTIVE';
-      sa.mustChangePassword = false;
-      parsed.superAdminClaimed = true;
-      savePlatformState(parsed);
-      return parsed;
-    }
-  }
-  cachedState = parsed;
-  return cachedState;
+export async function isSuperAdminSetupNeeded(): Promise<boolean> {
+  const [meta, superAdmins] = await Promise.all([getSystemMetadata(), findSuperAdminUsers()]);
+  const envPass = (process.env.SUPER_ADMIN_PASSWORD || '').trim();
+  if (envPass) return false;
+  if (meta.superAdminClaimed) return false;
+  return !superAdmins.some((u) => Boolean(u.passwordHash));
 }
 
-export function savePlatformState(state: PlatformState): void {
-  const dir = path.dirname(STATE_FILE);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  const tmpFile = `${STATE_FILE}.tmp`;
-  fs.writeFileSync(tmpFile, JSON.stringify(state, null, 2), 'utf-8');
-  fs.renameSync(tmpFile, STATE_FILE);
-  cachedState = state;
-}
+export async function ensureSuperAdminFromEnvIfUnclaimed(): Promise<UserEntity | null> {
+  const envPass = (process.env.SUPER_ADMIN_PASSWORD || '').trim();
+  if (!envPass) return null;
 
-export function resetPlatformStateCache(): void {
-  cachedState = null;
+  const meta = await getSystemMetadata();
+  if (meta.superAdminClaimed) return null;
+
+  const superAdmins = await findSuperAdminUsers();
+  const alreadyHasHash = superAdmins.find((u) => Boolean(u.passwordHash));
+  if (alreadyHasHash) {
+    await saveSystemMetadata({ ...meta, superAdminClaimed: true });
+    return alreadyHasHash;
+  }
+
+  const now = new Date().toISOString();
+  const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'settaocram@gmail.com')
+    .trim()
+    .toLowerCase();
+  const target = superAdmins[0] ?? {
+    id: 'user-super-admin-1',
+    email: superAdminEmail,
+    displayName: 'Super Administrateur Missa Paro',
+    phone: '+225 0100000000',
+    passwordHash: null,
+    accountType: 'SUPER_ADMIN' as const,
+    isSuperAdmin: true,
+    status: 'ACTIVE' as const,
+    mustChangePassword: false,
+    tempPasswordExpiresAt: null,
+    activationTokenHash: null,
+    activationExpiresAt: null,
+    createdAt: now,
+    updatedAt: now,
+    lastLoginAt: null,
+  };
+
+  target.passwordHash = hashPassword(envPass);
+  target.status = 'ACTIVE';
+  target.mustChangePassword = false;
+  target.updatedAt = now;
+
+  await saveUser(target);
+  await saveSystemMetadata({
+    ...meta,
+    version: meta.version || 1,
+    superAdminClaimed: true,
+    bootstrappedAt: meta.bootstrappedAt || now,
+  });
+  return target;
 }

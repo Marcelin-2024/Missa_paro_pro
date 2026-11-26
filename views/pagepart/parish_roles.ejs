@@ -28,6 +28,7 @@
                 <tr>
                     <th>Utilisateur</th>
                     <th>Rôles actifs (cumulés)</th>
+                    <th>Permissions</th>
                     <% if (permissions.includes('parish.roles.manage')) { %>
                         <th>Attribuer un rôle</th>
                     <% } %>
@@ -38,7 +39,7 @@
                     <tr>
                         <td>
                             <span class="table-cell-title"><%= m.user.displayName %></span>
-                            <span class="table-cell-sub"><%= m.user.email %></span>
+                            <span class="table-cell-sub"><%= m.user.email %> · <%= m.permissions.length %> permission(s)</span>
                         </td>
                         <td>
                             <div class="roles-chip-list">
@@ -62,6 +63,11 @@
                                 <% } %>
                             </div>
                         </td>
+                        <td>
+                            <button type="button" class="btn btn-ghost btn-sm" data-member-detail="<%= m.membership.id %>">
+                                Voir permissions (<%= m.permissions.length %>)
+                            </button>
+                        </td>
                         <% if (permissions.includes('parish.roles.manage')) { %>
                             <td>
                                 <form class="inline-role-assign-form" data-assign-role-form data-membership-id="<%= m.membership.id %>">
@@ -83,3 +89,5 @@
         </table>
     </div>
 </section>
+
+<%- include('../partials/member_detail_modal') %>

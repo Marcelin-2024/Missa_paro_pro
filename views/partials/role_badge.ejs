@@ -21,7 +21,10 @@
 %>
 <span class="role-chip <%= chipClass %>">
     <span><%= display %></span>
-    <% if (typeof expiresAt !== 'undefined' && expiresAt) { %>
-        <span class="role-chip-exp" title="Expire le <%= expiresAt %>">exp.</span>
+    <% if (typeof expiresAt !== 'undefined' && expiresAt) {
+      const parsedExp = new Date(expiresAt);
+      const expDisplay = Number.isNaN(parsedExp.getTime()) ? expiresAt : parsedExp.toLocaleDateString('fr-FR');
+    %>
+        <span class="role-chip-exp" title="Expire le <%= expDisplay %>">exp. <%= expDisplay %></span>
     <% } %>
 </span>

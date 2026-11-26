@@ -1,5 +1,4 @@
 import crypto from 'crypto';
-import { getPlatformState, savePlatformState } from '../platform/platform.repository.js';
 import type {
   IntentionEntity,
   PaymentEntity,
@@ -19,8 +18,31 @@ import { getPaymentProvider, isValidPaymentProvider } from './providers/provider
 import type { PaymentSimulationStep } from './providers/payment-provider.interface.js';
 import { recordAuditLog } from '../audit/audit.service.js';
 import { createNotification } from '../notifications/notifications.service.js';
+import {
+  findIntentionByIdRepo,
+  findIntentionByTrackingRefRepo,
+} from '../../repositories/intentions.repository.js';
+import { findParishByIdRepo } from '../../repositories/parishes.repository.js';
+import {
+  commitPaymentCorrectionTransaction,
+  commitSimulatedPaymentTransaction,
+  findPaymentByIdOrRefRepo,
+  listPaymentEventsByPaymentRepo,
+  listPaymentsByIntentionRepo,
+  listPaymentsByIntentionTrackingRefRepo,
+  listPaymentsRepo,
+} from '../../repositories/payments.repository.js';
 
-const FORBIDDEN_SENSITIVE_KEYS = ['pin', 'pinCode', 'codePin', 'password', 'motdepasse', 'otp', 'cvv', 'secret'];
+const FORBIDDEN_SENSITIVE_KEYS = [
+  'pin',
+  'pinCode',
+  'codePin',
+  'password',
+  'motdepasse',
+  'otp',
+  'cvv',
+  'secret',
+];
 
 const activeIntentionLocks = new Set<string>();
 
@@ -41,9 +63,7 @@ export function normalizeMobileMoneyPhone(rawPhone: string): string | null {
 
 function hasForbiddenSensitiveFields(rawBody: Record<string, unknown> | undefined): boolean {
   if (!rawBody || typeof rawBody !== 'object') return false;
-  return Object.keys(rawBody).some((key) =>
-    FORBIDDEN_SENSITIVE_KEYS.includes(key.trim())
-  );
+  return Object.keys(rawBody).some((key) => FORBIDDEN_SENSITIVE_KEYS.includes(key.trim()));
 }
 
 function resolveScenario(rawScenario: unknown): PaymentScenario | null {
@@ -54,7 +74,7 @@ function resolveScenario(rawScenario: unknown): PaymentScenario | null {
   return null;
 }
 
-function appendPaymentEvent(input: {
+function buildPaymentEvent(input: {
   paymentId: string;
   parishId: string;
   eventType: PaymentEventType;
@@ -62,8 +82,7 @@ function appendPaymentEvent(input: {
   newStatus: PaymentStatus;
   description: string;
 }): PaymentEventEntity {
-  const state = getPlatformState();
-  const evt: PaymentEventEntity = {
+  return {
     id: `pevt-${crypto.randomUUID().slice(0, 12)}`,
     paymentId: input.paymentId,
     parishId: input.parishId,
@@ -73,11 +92,9 @@ function appendPaymentEvent(input: {
     description: input.description.slice(0, 300),
     createdAt: new Date().toISOString(),
   };
-  state.paymentEvents.push(evt);
-  return evt;
 }
 
-function executeSimulatedTransaction(params: {
+async function executeSimulatedTransaction(params: {
   intention: IntentionEntity;
   providerCode: PaymentProviderCode;
   phone: string;
@@ -85,156 +102,166 @@ function executeSimulatedTransaction(params: {
   scenario: PaymentScenario;
   faithfulUserId?: string | null;
   isRetry: boolean;
-}): {
-  ok: true;
-  payment: PaymentEntity;
-  events: PaymentEventEntity[];
-  steps: PaymentSimulationStep[];
-  operatorMessage: string;
-} {
-  const state = getPlatformState();
+  supersededPendingPaymentId?: string;
+}): Promise<
+  | {
+      ok: true;
+      payment: PaymentEntity;
+      events: PaymentEventEntity[];
+      steps: PaymentSimulationStep[];
+      operatorMessage: string;
+    }
+  | { ok: false; status: number; error: string }
+> {
   const provider = getPaymentProvider(params.providerCode);
-  const existingAttempts = state.payments.filter((p) => p.intentionId === params.intention.id);
-  const attemptNumber = existingAttempts.length + 1;
+  let capturedSteps: PaymentSimulationStep[] = [];
+  let capturedMessage = '';
 
-  let transactionReference = generateTransactionReference();
-  while (state.payments.some((p) => p.transactionReference === transactionReference)) {
-    transactionReference = generateTransactionReference();
-  }
+  const supersededCancelEvent = params.supersededPendingPaymentId
+    ? buildPaymentEvent({
+        paymentId: params.supersededPendingPaymentId,
+        parishId: params.intention.parishId,
+        eventType: 'PAYMENT_CANCELLED',
+        previousStatus: 'PENDING',
+        newStatus: 'CANCELLED',
+        description: 'Tentative précédente clôturée avant relance.',
+      })
+    : undefined;
 
-  const now = new Date().toISOString();
-  const paymentId = `pay-${crypto.randomUUID().slice(0, 12)}`;
-
-  const record: PaymentEntity = {
-    id: paymentId,
-    transactionReference,
+  const txResult = await commitSimulatedPaymentTransaction({
     intentionId: params.intention.id,
-    intentionTrackingRef: params.intention.trackingRef,
-    parishId: params.intention.parishId,
-    parishName: params.intention.parishName,
-    faithfulUserId: params.faithfulUserId ?? params.intention.requesterUserId ?? null,
-    faithfulName: params.intention.requesterName,
-    faithfulPhone: params.phone,
-    provider: params.providerCode,
-    amount: params.amount,
-    currency: 'XOF',
-    status: 'PENDING',
-    simulationMode: true,
-    scenario: params.scenario,
-    createdAt: now,
-    updatedAt: now,
-    confirmedAt: null,
-    failureReason: null,
-    attemptNumber,
-  };
+    isRetry: params.isRetry,
+    supersededPendingPaymentId: params.supersededPendingPaymentId,
+    supersededCancelEvent,
+    buildRecord: (attemptNumber) => {
+      const transactionReference = generateTransactionReference();
+      const now = new Date().toISOString();
+      const paymentId = `pay-${crypto.randomUUID().slice(0, 12)}`;
 
-  state.payments.unshift(record);
+      const simResult = provider.simulatePayment({
+        paymentId,
+        transactionReference,
+        intentionId: params.intention.id,
+        parishId: params.intention.parishId,
+        amount: params.amount,
+        currency: 'XOF',
+        phone: params.phone,
+        scenario: params.scenario,
+        attemptNumber,
+      });
 
-  const createdEvents: PaymentEventEntity[] = [];
-  createdEvents.push(
-    appendPaymentEvent({
-      paymentId: record.id,
-      parishId: record.parishId,
-      eventType: params.isRetry ? 'RETRY_INITIATED' : 'CREATED',
-      previousStatus: null,
-      newStatus: 'PENDING',
-      description: `${params.isRetry ? 'Nouvelle tentative' : 'Transaction simulée'} #${attemptNumber} initialisée via ${provider.displayName} pour ${params.intention.trackingRef}.`,
-    })
-  );
+      capturedSteps = simResult.steps;
+      capturedMessage = simResult.operatorMessage;
 
-  createdEvents.push(
-    appendPaymentEvent({
-      paymentId: record.id,
-      parishId: record.parishId,
-      eventType: 'OPERATOR_REQUEST_SENT',
-      previousStatus: 'PENDING',
-      newStatus: 'PENDING',
-      description: `Demande simulée transmise localement à l’adaptateur ${provider.displayName} (${params.phone}).`,
-    })
-  );
+      const record: PaymentEntity = {
+        id: paymentId,
+        transactionReference,
+        intentionId: params.intention.id,
+        intentionTrackingRef: params.intention.trackingRef,
+        parishId: params.intention.parishId,
+        parishName: params.intention.parishName,
+        faithfulUserId: params.faithfulUserId ?? params.intention.requesterUserId ?? null,
+        faithfulName: params.intention.requesterName,
+        faithfulPhone: params.phone,
+        provider: params.providerCode,
+        amount: params.amount,
+        currency: 'XOF',
+        status: simResult.status,
+        simulationMode: true,
+        scenario: params.scenario,
+        createdAt: now,
+        updatedAt: new Date().toISOString(),
+        confirmedAt: simResult.confirmedAt,
+        failureReason: simResult.failureReason,
+        attemptNumber,
+      };
 
-  const simResult = provider.simulatePayment({
-    paymentId: record.id,
-    transactionReference: record.transactionReference,
-    intentionId: params.intention.id,
-    parishId: record.parishId,
-    amount: record.amount,
-    currency: 'XOF',
-    phone: params.phone,
-    scenario: params.scenario,
-    attemptNumber,
+      const finalEventType: PaymentEventType =
+        simResult.status === 'SUCCESS'
+          ? 'PAYMENT_CONFIRMED'
+          : simResult.status === 'FAILED'
+            ? 'PAYMENT_FAILED'
+            : simResult.status === 'CANCELLED'
+              ? 'PAYMENT_CANCELLED'
+              : 'PAYMENT_PENDING';
+
+      const events: PaymentEventEntity[] = [
+        buildPaymentEvent({
+          paymentId: record.id,
+          parishId: record.parishId,
+          eventType: params.isRetry ? 'RETRY_INITIATED' : 'CREATED',
+          previousStatus: null,
+          newStatus: 'PENDING',
+          description: `${params.isRetry ? 'Nouvelle tentative' : 'Transaction simulée'} #${attemptNumber} initialisée via ${provider.displayName} pour ${params.intention.trackingRef}.`,
+        }),
+        buildPaymentEvent({
+          paymentId: record.id,
+          parishId: record.parishId,
+          eventType: 'OPERATOR_REQUEST_SENT',
+          previousStatus: 'PENDING',
+          newStatus: 'PENDING',
+          description: `Demande simulée transmise localement à l’adaptateur ${provider.displayName} (${params.phone}).`,
+        }),
+        buildPaymentEvent({
+          paymentId: record.id,
+          parishId: record.parishId,
+          eventType: finalEventType,
+          previousStatus: 'PENDING',
+          newStatus: simResult.status,
+          description: simResult.operatorMessage,
+        }),
+      ];
+
+      return { payment: record, events };
+    },
   });
 
-  record.status = simResult.status;
-  record.confirmedAt = simResult.confirmedAt;
-  record.failureReason = simResult.failureReason;
-  record.updatedAt = new Date().toISOString();
+  if (!txResult.ok) return txResult;
 
-  const finalEventType: PaymentEventType =
-    simResult.status === 'SUCCESS'
-      ? 'PAYMENT_CONFIRMED'
-      : simResult.status === 'FAILED'
-        ? 'PAYMENT_FAILED'
-        : simResult.status === 'CANCELLED'
-          ? 'PAYMENT_CANCELLED'
-          : 'PAYMENT_PENDING';
+  const { payment, events } = txResult;
 
-  createdEvents.push(
-    appendPaymentEvent({
-      paymentId: record.id,
-      parishId: record.parishId,
-      eventType: finalEventType,
-      previousStatus: 'PENDING',
-      newStatus: simResult.status,
-      description: simResult.operatorMessage,
-    })
-  );
-
-  // IMPORTANT: Intention status remains strictly independent from payment status!
-  savePlatformState(state);
-
-  if (simResult.status === 'SUCCESS') {
-    recordAuditLog({
-      actorUserId: record.faithfulUserId,
+  if (payment.status === 'SUCCESS') {
+    await recordAuditLog({
+      actorUserId: payment.faithfulUserId,
       actorEmail: params.intention.requesterEmail || 'fidele@public.ci',
       scope: 'PARISH',
-      parishId: record.parishId,
+      parishId: payment.parishId,
       action: 'PAYMENT_SIMULATED_SUCCESS',
       targetType: 'PAYMENT',
-      targetId: record.id,
-      summary: `Paiement simulé réussi (${record.amount} XOF · ${provider.displayName}) pour ${record.intentionTrackingRef} [${record.transactionReference}].`,
+      targetId: payment.id,
+      summary: `Paiement simulé réussi (${payment.amount} XOF · ${provider.displayName}) pour ${payment.intentionTrackingRef} [${payment.transactionReference}].`,
     });
 
-    createNotification({
-      parishId: record.parishId,
-      trackingRef: record.intentionTrackingRef,
+    await createNotification({
+      parishId: payment.parishId,
+      trackingRef: payment.intentionTrackingRef,
       audience: 'PARISH_ADMIN',
       type: 'PAYMENT_SIMULATED_RECEIVED',
       title: 'Offrande simulée reçue',
-      message: `${record.faithfulName} a simulé un paiement ${provider.displayName} de ${record.amount} XOF pour l’intention ${record.intentionTrackingRef}.`,
+      message: `${payment.faithfulName} a simulé un paiement ${provider.displayName} de ${payment.amount} XOF pour l’intention ${payment.intentionTrackingRef}.`,
     });
 
-    createNotification({
-      userId: record.faithfulUserId,
-      parishId: record.parishId,
-      trackingRef: record.intentionTrackingRef,
+    await createNotification({
+      userId: payment.faithfulUserId,
+      parishId: payment.parishId,
+      trackingRef: payment.intentionTrackingRef,
       audience: 'FIDELE',
       type: 'PAYMENT_SIMULATED_CONFIRMED',
       title: 'Paiement simulé confirmé',
-      message: `Transaction simulée ${record.transactionReference} (${record.amount} XOF via ${provider.displayName}) confirmée pour ${record.intentionTrackingRef}.`,
+      message: `Transaction simulée ${payment.transactionReference} (${payment.amount} XOF via ${provider.displayName}) confirmée pour ${payment.intentionTrackingRef}.`,
     });
   }
 
   return {
     ok: true,
-    payment: record,
-    events: createdEvents,
-    steps: simResult.steps,
-    operatorMessage: simResult.operatorMessage,
+    payment,
+    events,
+    steps: capturedSteps,
+    operatorMessage: capturedMessage,
   };
 }
 
-export function simulateIntentionPayment(input: {
+export async function simulateIntentionPayment(input: {
   rawBody?: Record<string, unknown>;
   intentionId?: string;
   intentionTrackingRef?: string;
@@ -243,7 +270,7 @@ export function simulateIntentionPayment(input: {
   amount?: number | string;
   scenario?: string;
   faithfulUserId?: string | null;
-}):
+}): Promise<
   | {
       ok: true;
       payment: PaymentEntity;
@@ -252,7 +279,8 @@ export function simulateIntentionPayment(input: {
       operatorMessage: string;
       intention: IntentionEntity;
     }
-  | { ok: false; status: number; error: string } {
+  | { ok: false; status: number; error: string }
+> {
   if (hasForbiddenSensitiveFields(input.rawBody)) {
     return {
       ok: false,
@@ -281,21 +309,14 @@ export function simulateIntentionPayment(input: {
 
   const scenario = resolveScenario(input.scenario);
   if (!scenario) {
-    return {
-      ok: false,
-      status: 400,
-      error: 'Scénario de simulation invalide.',
-    };
+    return { ok: false, status: 400, error: 'Scénario de simulation invalide.' };
   }
 
-  const state = getPlatformState();
   const idLookup = String(input.intentionId || '').trim();
   const refLookup = String(input.intentionTrackingRef || '').trim().toUpperCase();
-  const intention = state.intentions.find(
-    (item) =>
-      (idLookup && item.id === idLookup) ||
-      (refLookup && item.trackingRef.toUpperCase() === refLookup)
-  );
+  const intention =
+    (idLookup ? await findIntentionByIdRepo(idLookup) : null) ||
+    (refLookup ? await findIntentionByTrackingRefRepo(refLookup) : null);
 
   if (!intention) {
     return { ok: false, status: 404, error: 'Intention de messe introuvable.' };
@@ -319,28 +340,6 @@ export function simulateIntentionPayment(input: {
 
   activeIntentionLocks.add(intention.id);
   try {
-    const alreadyPaid = state.payments.some(
-      (p) => p.intentionId === intention.id && p.status === 'SUCCESS'
-    );
-    if (alreadyPaid) {
-      return {
-        ok: false,
-        status: 409,
-        error: 'Cette intention a déjà fait l’objet d’un paiement réussi. Double facturation bloquée.',
-      };
-    }
-
-    const activePending = state.payments.find(
-      (p) => p.intentionId === intention.id && p.status === 'PENDING'
-    );
-    if (activePending) {
-      return {
-        ok: false,
-        status: 409,
-        error: `Une transaction en attente (${activePending.transactionReference}) existe déjà pour cette intention. Utilisez la relance de paiement.`,
-      };
-    }
-
     const expectedAmount =
       typeof intention.amount === 'number' && intention.amount > 0
         ? intention.amount
@@ -369,7 +368,7 @@ export function simulateIntentionPayment(input: {
       };
     }
 
-    const execution = executeSimulatedTransaction({
+    const execution = await executeSimulatedTransaction({
       intention,
       providerCode: providerUpper,
       phone: cleanPhone,
@@ -378,6 +377,8 @@ export function simulateIntentionPayment(input: {
       faithfulUserId: input.faithfulUserId,
       isRetry: false,
     });
+
+    if (!execution.ok) return execution;
 
     return {
       ...execution,
@@ -388,13 +389,13 @@ export function simulateIntentionPayment(input: {
   }
 }
 
-export function retrySimulatedPayment(input: {
+export async function retrySimulatedPayment(input: {
   rawBody?: Record<string, unknown>;
   paymentId: string;
   provider?: string;
   faithfulPhone?: string;
   scenario?: string;
-}):
+}): Promise<
   | {
       ok: true;
       payment: PaymentEntity;
@@ -403,7 +404,8 @@ export function retrySimulatedPayment(input: {
       operatorMessage: string;
       intention: IntentionEntity;
     }
-  | { ok: false; status: number; error: string } {
+  | { ok: false; status: number; error: string }
+> {
   if (hasForbiddenSensitiveFields(input.rawBody)) {
     return {
       ok: false,
@@ -412,15 +414,12 @@ export function retrySimulatedPayment(input: {
     };
   }
 
-  const state = getPlatformState();
-  const previousPayment = state.payments.find(
-    (p) => p.id === input.paymentId || p.transactionReference === input.paymentId
-  );
+  const previousPayment = await findPaymentByIdOrRefRepo(input.paymentId);
   if (!previousPayment) {
     return { ok: false, status: 404, error: 'Transaction introuvable.' };
   }
 
-  const intention = state.intentions.find((i) => i.id === previousPayment.intentionId);
+  const intention = await findIntentionByIdRepo(previousPayment.intentionId);
   if (!intention) {
     return { ok: false, status: 404, error: 'Intention associée introuvable.' };
   }
@@ -435,10 +434,7 @@ export function retrySimulatedPayment(input: {
 
   activeIntentionLocks.add(intention.id);
   try {
-    const alreadyPaid = state.payments.some(
-      (p) => p.intentionId === intention.id && p.status === 'SUCCESS'
-    );
-    if (alreadyPaid || previousPayment.status === 'SUCCESS') {
+    if (previousPayment.status === 'SUCCESS') {
       return {
         ok: false,
         status: 409,
@@ -471,22 +467,7 @@ export function retrySimulatedPayment(input: {
       return { ok: false, status: 400, error: 'Scénario de simulation invalide.' };
     }
 
-    // Mark superseded PENDING attempt as CANCELLED so no stale PENDING remains open
-    if (previousPayment.status === 'PENDING') {
-      previousPayment.status = 'CANCELLED';
-      previousPayment.updatedAt = new Date().toISOString();
-      previousPayment.failureReason = 'Remplacée par une nouvelle tentative de paiement simulé.';
-      appendPaymentEvent({
-        paymentId: previousPayment.id,
-        parishId: previousPayment.parishId,
-        eventType: 'PAYMENT_CANCELLED',
-        previousStatus: 'PENDING',
-        newStatus: 'CANCELLED',
-        description: 'Tentative précédente clôturée avant relance.',
-      });
-    }
-
-    const execution = executeSimulatedTransaction({
+    const execution = await executeSimulatedTransaction({
       intention,
       providerCode: providerCandidate,
       phone: cleanPhone,
@@ -494,7 +475,11 @@ export function retrySimulatedPayment(input: {
       scenario,
       faithfulUserId: previousPayment.faithfulUserId,
       isRetry: true,
+      supersededPendingPaymentId:
+        previousPayment.status === 'PENDING' ? previousPayment.id : undefined,
     });
+
+    if (!execution.ok) return execution;
 
     return {
       ...execution,
@@ -505,7 +490,7 @@ export function retrySimulatedPayment(input: {
   }
 }
 
-export function listPaymentsFiltered(filters: {
+export async function listPaymentsFiltered(filters: {
   parishId?: string;
   q?: string;
   provider?: string;
@@ -515,12 +500,7 @@ export function listPaymentsFiltered(filters: {
   page?: number;
   limit?: number;
 }) {
-  const state = getPlatformState();
-  let rows = [...(state.payments || [])];
-
-  if (filters.parishId) {
-    rows = rows.filter((p) => p.parishId === filters.parishId);
-  }
+  let rows = await listPaymentsRepo(filters.parishId);
 
   if (filters.provider && isValidPaymentProvider(filters.provider)) {
     const provUpper = filters.provider.trim().toUpperCase();
@@ -571,19 +551,19 @@ export function listPaymentsFiltered(filters: {
   };
 }
 
-export function getPaymentDetailsForStaff(paymentId: string, scopeParishId?: string | null) {
-  const state = getPlatformState();
-  const payment = state.payments.find(
-    (p) => p.id === paymentId || p.transactionReference === paymentId
-  );
+export async function getPaymentDetailsForStaff(
+  paymentId: string,
+  scopeParishId?: string | null
+) {
+  const payment = await findPaymentByIdOrRefRepo(paymentId);
   if (!payment) return null;
   if (scopeParishId && payment.parishId !== scopeParishId) return null;
 
-  const intention = state.intentions.find((i) => i.id === payment.intentionId) || null;
-  const parish = state.parishes.find((pr) => pr.id === payment.parishId) || null;
-  const events = state.paymentEvents
-    .filter((e) => e.paymentId === payment.id)
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const [intention, parish, events] = await Promise.all([
+    findIntentionByIdRepo(payment.intentionId),
+    findParishByIdRepo(payment.parishId),
+    listPaymentEventsByPaymentRepo(payment.id),
+  ]);
 
   return {
     payment,
@@ -613,23 +593,22 @@ export function getPaymentDetailsForStaff(paymentId: string, scopeParishId?: str
   };
 }
 
-export function getPublicPaymentByReference(reference: string) {
+export async function getPublicPaymentByReference(reference: string) {
   const clean = String(reference || '').trim().toUpperCase();
   if (!clean) return null;
 
-  const state = getPlatformState();
-  const byTxn = state.payments.find((p) => p.transactionReference.toUpperCase() === clean);
-  const byIntention = state.payments
-    .filter((p) => p.intentionTrackingRef.toUpperCase() === clean)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-
-  const payment = byTxn || byIntention;
+  const byTxn = await findPaymentByIdOrRefRepo(clean);
+  let payment = byTxn;
+  if (!payment) {
+    const byIntention = await listPaymentsByIntentionTrackingRefRepo(clean);
+    payment = byIntention[0] ?? null;
+  }
   if (!payment) return null;
 
-  const intention = state.intentions.find((i) => i.id === payment.intentionId) || null;
-  const events = state.paymentEvents
-    .filter((e) => e.paymentId === payment.id)
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const [intention, events] = await Promise.all([
+    findIntentionByIdRepo(payment.intentionId),
+    listPaymentEventsByPaymentRepo(payment.id),
+  ]);
 
   return {
     payment,
@@ -650,25 +629,25 @@ export function getPublicPaymentByReference(reference: string) {
   };
 }
 
-export function getLatestPaymentForIntention(intentionId: string): PaymentEntity | null {
-  const state = getPlatformState();
-  const matches = state.payments
-    .filter((p) => p.intentionId === intentionId)
-    .sort((a, b) => {
-      if (a.status === 'SUCCESS' && b.status !== 'SUCCESS') return -1;
-      if (b.status === 'SUCCESS' && a.status !== 'SUCCESS') return 1;
-      return b.createdAt.localeCompare(a.createdAt);
-    });
+export async function getLatestPaymentForIntention(
+  intentionId: string
+): Promise<PaymentEntity | null> {
+  const matches = await listPaymentsByIntentionRepo(intentionId);
+  matches.sort((a, b) => {
+    if (a.status === 'SUCCESS' && b.status !== 'SUCCESS') return -1;
+    if (b.status === 'SUCCESS' && a.status !== 'SUCCESS') return 1;
+    return b.createdAt.localeCompare(a.createdAt);
+  });
   return matches[0] || null;
 }
 
-export function applyExceptionalPaymentCorrection(input: {
+export async function applyExceptionalPaymentCorrection(input: {
   actorUserId: string;
   actorEmail: string;
   paymentId: string;
   nextStatus: PaymentStatus;
   reason: string;
-}): { ok: true; payment: PaymentEntity } | { ok: false; status: number; error: string } {
+}): Promise<{ ok: true; payment: PaymentEntity } | { ok: false; status: number; error: string }> {
   const cleanReason = String(input.reason || '').trim();
   if (cleanReason.length < 10) {
     return {
@@ -678,8 +657,7 @@ export function applyExceptionalPaymentCorrection(input: {
     };
   }
 
-  const state = getPlatformState();
-  const payment = state.payments.find((p) => p.id === input.paymentId);
+  const payment = await findPaymentByIdOrRefRepo(input.paymentId);
   if (!payment) {
     return { ok: false, status: 404, error: 'Transaction introuvable.' };
   }
@@ -703,7 +681,7 @@ export function applyExceptionalPaymentCorrection(input: {
     payment.failureReason = cleanReason;
   }
 
-  appendPaymentEvent({
+  const event = buildPaymentEvent({
     paymentId: payment.id,
     parishId: payment.parishId,
     eventType: 'EXCEPTIONAL_CORRECTION',
@@ -712,9 +690,9 @@ export function applyExceptionalPaymentCorrection(input: {
     description: `Correction administrative exceptionnelle par ${input.actorEmail} : ${cleanReason}`,
   });
 
-  savePlatformState(state);
+  await commitPaymentCorrectionTransaction(payment, event);
 
-  recordAuditLog({
+  await recordAuditLog({
     actorUserId: input.actorUserId,
     actorEmail: input.actorEmail,
     scope: 'GLOBAL',

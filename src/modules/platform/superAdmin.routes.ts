@@ -3,16 +3,25 @@ import {
   requireSuperAdmin,
   verifyCsrfForSessionMutation,
 } from '../auth/auth.middleware.js';
-import { getPlatformState, savePlatformState } from './platform.repository.js';
-import { getAllProvinces, readParishRequests } from '../ecclesiastical/ecclesiastical.repository.js';
+import {
+  getAllProvinces,
+  listParishRequestsRepo,
+} from '../ecclesiastical/ecclesiastical.repository.js';
 import { listProvincesSummary, reviewParishRequest } from '../ecclesiastical/ecclesiastical.service.js';
 import {
   createParishAdminBySuperAdmin,
+  getParishAdminDetails,
   resetAdminAccessBySuperAdmin,
   sanitizeUser,
+  updateParishAdminBySuperAdmin,
   updateUserStatus,
 } from '../users/users.service.js';
-import { provisionOrActivateParish, updateParishStatus } from '../parishes/parishes.service.js';
+import {
+  getParishById,
+  provisionOrActivateParish,
+  updateParishBySuperAdmin,
+  updateParishStatus,
+} from '../parishes/parishes.service.js';
 import { listAuditLogs, recordAuditLog } from '../audit/audit.service.js';
 import { listNotificationsForSuperAdmin } from '../notifications/notifications.service.js';
 import {
@@ -23,19 +32,38 @@ import {
 import { computePaymentStatistics } from '../payments/payments.stats.js';
 import { PAYMENT_PROVIDERS_META, PAYMENT_STATUS_LABELS } from '../payments/payment.config.js';
 import type { ParishStatus, PaymentStatus, UserAccountStatus } from './platform.types.js';
+import {
+  listAllActiveRolesRepo,
+  listAllMembershipsRepo,
+  listAllParishesRepo,
+  listMembershipsByParishRepo,
+} from '../../repositories/parishes.repository.js';
+import { listAllUsers } from '../../repositories/users.repository.js';
+import {
+  countAllIntentionsRepo,
+  countIntentionsByParishRepo,
+} from '../../repositories/intentions.repository.js';
+import { countMessesByParishRepo } from '../../repositories/massesAnnouncements.repository.js';
+import {
+  getPlatformSettings,
+  savePlatformSettings,
+} from '../../repositories/system.repository.js';
 
 export const superAdminRouter = Router();
 export const superAdminApiRouter = Router();
 
-function buildSuperAdminStats() {
-  const state = getPlatformState();
-  const parishes = state.parishes;
-  const parishAdmins = state.users.filter((u) =>
-    state.membershipRoles.some(
-      (mr) => mr.userId === u.id && mr.roleCode === 'PARISH_ADMIN' && mr.status === 'ACTIVE'
-    )
+async function buildSuperAdminStats() {
+  const [parishes, users, activeRoles, parishRequests, totalIntentions] = await Promise.all([
+    listAllParishesRepo(),
+    listAllUsers(),
+    listAllActiveRolesRepo(),
+    listParishRequestsRepo(),
+    countAllIntentionsRepo(),
+  ]);
+
+  const parishAdmins = users.filter((u) =>
+    activeRoles.some((mr) => mr.userId === u.id && mr.roleCode === 'PARISH_ADMIN')
   );
-  const parishRequests = readParishRequests();
 
   return {
     totalParishes: parishes.length,
@@ -43,46 +71,48 @@ function buildSuperAdminStats() {
     pendingParishes: parishes.filter((p) => p.status === 'PENDING_ACTIVATION').length,
     suspendedParishes: parishes.filter((p) => p.status === 'SUSPENDED').length,
     totalParishAdmins: parishAdmins.length,
-    pendingAdmins: state.users.filter((u) => !u.isSuperAdmin && u.status === 'PENDING_ACTIVATION').length,
-    totalUsers: state.users.length,
-    totalIntentions: state.intentions.length,
+    pendingAdmins: users.filter((u) => !u.isSuperAdmin && u.status === 'PENDING_ACTIVATION').length,
+    totalUsers: users.length,
+    totalIntentions,
     pendingParishRequests: parishRequests.filter((r) => r.status === 'PENDING').length,
   };
 }
 
-function getParishAdminList() {
-  const state = getPlatformState();
-  return state.users
+async function getParishAdminList() {
+  const [users, memberships, parishes, activeRoles] = await Promise.all([
+    listAllUsers(),
+    listAllMembershipsRepo(),
+    listAllParishesRepo(),
+    listAllActiveRolesRepo(),
+  ]);
+  const parishMap = new Map(parishes.map((p) => [p.id, p]));
+
+  return users
     .filter((u) => !u.isSuperAdmin && u.accountType === 'PARISH_STAFF')
     .map((u) => {
-      const memberships = state.memberships
+      const userMemberships = memberships
         .filter((m) => m.userId === u.id && m.status !== 'REMOVED')
         .map((m) => {
-          const parish = state.parishes.find((p) => p.id === m.parishId);
-          const roles = state.membershipRoles
+          const parish = parishMap.get(m.parishId);
+          const roles = activeRoles
             .filter((mr) => mr.membershipId === m.id && mr.status === 'ACTIVE')
             .map((mr) => mr.roleCode);
-          return { membershipId: m.id, parishName: parish?.name || m.parishId, parishId: m.parishId, roles };
+          return {
+            membershipId: m.id,
+            parishName: parish?.name || m.parishId,
+            parishId: m.parishId,
+            roles,
+          };
         });
       return {
         ...sanitizeUser(u),
-        memberships,
+        memberships: userMemberships,
       };
     });
 }
 
-superAdminRouter.get('/', requireSuperAdmin, (req: Request, res: Response) => {
+superAdminRouter.get('/', requireSuperAdmin, async (req: Request, res: Response) => {
   const section = String(req.query.section || 'overview');
-  const state = getPlatformState();
-  const stats = buildSuperAdminStats();
-  const provinces = listProvincesSummary();
-  const directoryProvinces = getAllProvinces();
-  const parishRequests = readParishRequests();
-  const parishAdmins = getParishAdminList();
-  const auditLogs = listAuditLogs({ scope: 'GLOBAL', limit: 60 });
-  const recentAudit = listAuditLogs({ limit: 15 });
-  const notifications = listNotificationsForSuperAdmin();
-
   const paymentParishFilter = typeof req.query.parishId === 'string' ? req.query.parishId.trim() : '';
   const paymentQuery = {
     parishId: paymentParishFilter || undefined,
@@ -94,27 +124,51 @@ superAdminRouter.get('/', requireSuperAdmin, (req: Request, res: Response) => {
     page: typeof req.query.page === 'string' ? Number(req.query.page) : 1,
     limit: 10,
   };
-  const paymentStats = computePaymentStatistics({
-    parishId: paymentParishFilter || undefined,
-    dateFrom: paymentQuery.dateFrom,
-    dateTo: paymentQuery.dateTo,
-  });
-  const paymentList = listPaymentsFiltered(paymentQuery);
+
+  const [
+    parishes,
+    users,
+    stats,
+    parishRequests,
+    parishAdmins,
+    auditLogs,
+    recentAudit,
+    notifications,
+    settings,
+    paymentStats,
+    paymentList,
+  ] = await Promise.all([
+    listAllParishesRepo(),
+    listAllUsers(),
+    buildSuperAdminStats(),
+    listParishRequestsRepo(),
+    getParishAdminList(),
+    listAuditLogs({ scope: 'GLOBAL', limit: 60 }),
+    listAuditLogs({ limit: 15 }),
+    listNotificationsForSuperAdmin(),
+    getPlatformSettings(),
+    computePaymentStatistics({
+      parishId: paymentParishFilter || undefined,
+      dateFrom: paymentQuery.dateFrom,
+      dateTo: paymentQuery.dateTo,
+    }),
+    listPaymentsFiltered(paymentQuery),
+  ]);
 
   res.render('super_admin', {
     section,
     user: req.authContext!.user,
     stats,
-    parishes: state.parishes,
+    parishes,
     parishAdmins,
-    users: state.users.map(sanitizeUser),
-    provinces,
-    directoryProvinces,
+    users: users.map(sanitizeUser),
+    provinces: listProvincesSummary(),
+    directoryProvinces: getAllProvinces(),
     parishRequests,
     auditLogs,
     recentAudit,
     notifications,
-    settings: state.settings,
+    settings,
     paymentStats,
     paymentList,
     paymentFilters: paymentQuery,
@@ -126,17 +180,18 @@ superAdminRouter.get('/', requireSuperAdmin, (req: Request, res: Response) => {
 superAdminApiRouter.use(requireSuperAdmin);
 superAdminApiRouter.use(verifyCsrfForSessionMutation);
 
-superAdminApiRouter.get('/overview', (_req: Request, res: Response) => {
-  res.json({
-    stats: buildSuperAdminStats(),
-    recentAudit: listAuditLogs({ limit: 20 }),
-  });
+superAdminApiRouter.get('/overview', async (_req: Request, res: Response) => {
+  const [stats, recentAudit] = await Promise.all([
+    buildSuperAdminStats(),
+    listAuditLogs({ limit: 20 }),
+  ]);
+  res.json({ stats, recentAudit });
 });
 
-superAdminApiRouter.post('/parishes', (req: Request, res: Response) => {
+superAdminApiRouter.post('/parishes', async (req: Request, res: Response) => {
   const actor = req.authContext!.user;
   const body = (req.body ?? {}) as Record<string, string>;
-  const result = provisionOrActivateParish({
+  const result = await provisionOrActivateParish({
     actorUserId: actor.id,
     actorEmail: actor.email,
     provinceId: body.provinceId || '',
@@ -144,6 +199,10 @@ superAdminApiRouter.post('/parishes', (req: Request, res: Response) => {
     directoryParishId: body.directoryParishId || undefined,
     customParishName: body.customParishName || undefined,
     location: body.location || undefined,
+    phone: body.phone || undefined,
+    email: body.email || undefined,
+    address: body.address || undefined,
+    massScheduleSummary: body.massScheduleSummary || undefined,
     status: (body.status as ParishStatus) || 'ACTIVE',
   });
 
@@ -155,10 +214,58 @@ superAdminApiRouter.post('/parishes', (req: Request, res: Response) => {
   res.status(201).json({ success: true, parish: result.parish });
 });
 
-superAdminApiRouter.patch('/parishes/:id/status', (req: Request, res: Response) => {
+superAdminApiRouter.get('/parishes/:id', async (req: Request, res: Response) => {
+  const parish = await getParishById(String(req.params.id || ''));
+  if (!parish) {
+    res.status(404).json({ success: false, error: 'Paroisse introuvable.' });
+    return;
+  }
+  const [intentionsCount, massesCount, memberships] = await Promise.all([
+    countIntentionsByParishRepo(parish.id),
+    countMessesByParishRepo(parish.id),
+    listMembershipsByParishRepo(parish.id),
+  ]);
+  const staffCount = memberships.filter((m) => m.status === 'ACTIVE').length;
+  res.json({ success: true, parish, counts: { intentionsCount, massesCount, staffCount } });
+});
+
+superAdminApiRouter.patch('/parishes/:id', async (req: Request, res: Response) => {
+  const actor = req.authContext!.user;
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const chapels = Array.isArray(body.chapels)
+    ? body.chapels.map(String)
+    : typeof body.chapels === 'string'
+      ? body.chapels.split(',').map((s) => s.trim())
+      : undefined;
+
+  const result = await updateParishBySuperAdmin({
+    actorUserId: actor.id,
+    actorEmail: actor.email,
+    parishId: String(req.params.id || ''),
+    name: typeof body.name === 'string' ? body.name : undefined,
+    location: typeof body.location === 'string' ? body.location : undefined,
+    phone: typeof body.phone === 'string' ? body.phone : undefined,
+    email: typeof body.email === 'string' ? body.email : undefined,
+    address: typeof body.address === 'string' ? body.address : undefined,
+    massScheduleSummary:
+      typeof body.massScheduleSummary === 'string' ? body.massScheduleSummary : undefined,
+    chapelsEnabled: typeof body.chapelsEnabled === 'boolean' ? body.chapelsEnabled : undefined,
+    chapels,
+    status: typeof body.status === 'string' ? (body.status.toUpperCase() as ParishStatus) : undefined,
+  });
+
+  if (!result.ok) {
+    res.status(result.status).json({ success: false, error: result.error });
+    return;
+  }
+
+  res.json({ success: true, parish: result.parish });
+});
+
+superAdminApiRouter.patch('/parishes/:id/status', async (req: Request, res: Response) => {
   const actor = req.authContext!.user;
   const status = String((req.body as Record<string, unknown>)?.status || '').toUpperCase() as ParishStatus;
-  const result = updateParishStatus({
+  const result = await updateParishStatus({
     actorUserId: actor.id,
     actorEmail: actor.email,
     parishId: String(req.params.id || ''),
@@ -173,10 +280,10 @@ superAdminApiRouter.patch('/parishes/:id/status', (req: Request, res: Response) 
   res.json({ success: true, parish: result.parish });
 });
 
-superAdminApiRouter.post('/admins', (req: Request, res: Response) => {
+superAdminApiRouter.post('/admins', async (req: Request, res: Response) => {
   const actor = req.authContext!.user;
   const body = (req.body ?? {}) as Record<string, string>;
-  const result = createParishAdminBySuperAdmin({
+  const result = await createParishAdminBySuperAdmin({
     actorUserId: actor.id,
     actorEmail: actor.email,
     provinceId: body.provinceId || '',
@@ -204,10 +311,38 @@ superAdminApiRouter.post('/admins', (req: Request, res: Response) => {
   });
 });
 
-superAdminApiRouter.patch('/admins/:userId/status', (req: Request, res: Response) => {
+superAdminApiRouter.get('/admins/:userId', async (req: Request, res: Response) => {
+  const detail = await getParishAdminDetails(String(req.params.userId || ''));
+  if (!detail) {
+    res.status(404).json({ success: false, error: 'Administrateur introuvable.' });
+    return;
+  }
+  res.json({ success: true, ...detail });
+});
+
+superAdminApiRouter.patch('/admins/:userId', async (req: Request, res: Response) => {
+  const actor = req.authContext!.user;
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const result = await updateParishAdminBySuperAdmin({
+    actorUserId: actor.id,
+    actorEmail: actor.email,
+    userId: String(req.params.userId || ''),
+    displayName: typeof body.displayName === 'string' ? body.displayName : undefined,
+    phone: typeof body.phone === 'string' ? body.phone : undefined,
+  });
+
+  if (!result.ok) {
+    res.status(result.status).json({ success: false, error: result.error });
+    return;
+  }
+
+  res.json({ success: true, user: result.user });
+});
+
+superAdminApiRouter.patch('/admins/:userId/status', async (req: Request, res: Response) => {
   const actor = req.authContext!.user;
   const status = String((req.body as Record<string, unknown>)?.status || '').toUpperCase() as UserAccountStatus;
-  const result = updateUserStatus({
+  const result = await updateUserStatus({
     actorUserId: actor.id,
     actorEmail: actor.email,
     userId: String(req.params.userId || ''),
@@ -223,9 +358,9 @@ superAdminApiRouter.patch('/admins/:userId/status', (req: Request, res: Response
   res.json({ success: true, user: result.user });
 });
 
-superAdminApiRouter.post('/admins/:userId/reset-access', (req: Request, res: Response) => {
+superAdminApiRouter.post('/admins/:userId/reset-access', async (req: Request, res: Response) => {
   const actor = req.authContext!.user;
-  const result = resetAdminAccessBySuperAdmin({
+  const result = await resetAdminAccessBySuperAdmin({
     actorUserId: actor.id,
     actorEmail: actor.email,
     userId: String(req.params.userId || ''),
@@ -244,7 +379,7 @@ superAdminApiRouter.post('/admins/:userId/reset-access', (req: Request, res: Res
   });
 });
 
-superAdminApiRouter.patch('/parish-requests/:id', (req: Request, res: Response) => {
+superAdminApiRouter.patch('/parish-requests/:id', async (req: Request, res: Response) => {
   const actor = req.authContext!.user;
   const body = (req.body ?? {}) as Record<string, unknown>;
   const decision = String(body.decision || '').trim().toUpperCase();
@@ -253,7 +388,7 @@ superAdminApiRouter.patch('/parish-requests/:id', (req: Request, res: Response) 
     return;
   }
 
-  const result = reviewParishRequest({
+  const result = await reviewParishRequest({
     requestId: String(req.params.id || ''),
     decision,
     adminDecisionNote: typeof body.adminDecisionNote === 'string' ? body.adminDecisionNote : undefined,
@@ -265,7 +400,7 @@ superAdminApiRouter.patch('/parish-requests/:id', (req: Request, res: Response) 
   }
 
   if (decision === 'APPROVED') {
-    provisionOrActivateParish({
+    await provisionOrActivateParish({
       actorUserId: actor.id,
       actorEmail: actor.email,
       provinceId: result.request.provinceId,
@@ -275,7 +410,7 @@ superAdminApiRouter.patch('/parish-requests/:id', (req: Request, res: Response) 
     });
   }
 
-  recordAuditLog({
+  await recordAuditLog({
     actorUserId: actor.id,
     actorEmail: actor.email,
     scope: 'GLOBAL',
@@ -289,29 +424,32 @@ superAdminApiRouter.patch('/parish-requests/:id', (req: Request, res: Response) 
   res.json({ success: true, request: result.request });
 });
 
-superAdminApiRouter.post('/settings', (req: Request, res: Response) => {
+superAdminApiRouter.post('/settings', async (req: Request, res: Response) => {
   const actor = req.authContext!.user;
-  const state = getPlatformState();
+  const settings = await getPlatformSettings();
   const body = (req.body ?? {}) as Record<string, unknown>;
 
   if (typeof body.platformName === 'string' && body.platformName.trim()) {
-    state.settings.platformName = body.platformName.trim().slice(0, 100);
+    settings.platformName = body.platformName.trim().slice(0, 100);
   }
   if (typeof body.supportEmail === 'string' && body.supportEmail.trim()) {
-    state.settings.supportEmail = body.supportEmail.trim().slice(0, 120);
+    settings.supportEmail = body.supportEmail.trim().slice(0, 120);
   }
-  if (typeof body.tempPasswordTtlHours === 'number' || typeof body.tempPasswordTtlHours === 'string') {
+  if (
+    typeof body.tempPasswordTtlHours === 'number' ||
+    typeof body.tempPasswordTtlHours === 'string'
+  ) {
     const ttl = Number(body.tempPasswordTtlHours);
     if (Number.isFinite(ttl) && ttl >= 1 && ttl <= 168) {
-      state.settings.tempPasswordTtlHours = ttl;
-      state.settings.activationLinkTtlHours = ttl;
+      settings.tempPasswordTtlHours = ttl;
+      settings.activationLinkTtlHours = ttl;
     }
   }
-  state.settings.allowPublicFideleSignup = Boolean(body.allowPublicFideleSignup);
-  state.settings.requireCureAnnouncementApproval = Boolean(body.requireCureAnnouncementApproval);
-  savePlatformState(state);
+  settings.allowPublicFideleSignup = Boolean(body.allowPublicFideleSignup);
+  settings.requireCureAnnouncementApproval = Boolean(body.requireCureAnnouncementApproval);
+  await savePlatformSettings(settings);
 
-  recordAuditLog({
+  await recordAuditLog({
     actorUserId: actor.id,
     actorEmail: actor.email,
     scope: 'GLOBAL',
@@ -322,19 +460,19 @@ superAdminApiRouter.post('/settings', (req: Request, res: Response) => {
     summary: 'Mise à jour des paramètres globaux de la plateforme.',
   });
 
-  res.json({ success: true, settings: state.settings });
+  res.json({ success: true, settings });
 });
 
-superAdminApiRouter.get('/payments/statistics', (req: Request, res: Response) => {
+superAdminApiRouter.get('/payments/statistics', async (req: Request, res: Response) => {
   const parishId = typeof req.query.parishId === 'string' ? req.query.parishId : undefined;
   const dateFrom = typeof req.query.dateFrom === 'string' ? req.query.dateFrom : undefined;
   const dateTo = typeof req.query.dateTo === 'string' ? req.query.dateTo : undefined;
-  const statistics = computePaymentStatistics({ parishId, dateFrom, dateTo });
+  const statistics = await computePaymentStatistics({ parishId, dateFrom, dateTo });
   res.json({ success: true, statistics });
 });
 
-superAdminApiRouter.get('/payments', (req: Request, res: Response) => {
-  const result = listPaymentsFiltered({
+superAdminApiRouter.get('/payments', async (req: Request, res: Response) => {
+  const result = await listPaymentsFiltered({
     parishId: typeof req.query.parishId === 'string' ? req.query.parishId : undefined,
     q: typeof req.query.q === 'string' ? req.query.q : undefined,
     provider: typeof req.query.provider === 'string' ? req.query.provider : undefined,
@@ -352,8 +490,8 @@ superAdminApiRouter.get('/payments', (req: Request, res: Response) => {
   });
 });
 
-superAdminApiRouter.get('/payments/:id', (req: Request, res: Response) => {
-  const detail = getPaymentDetailsForStaff(String(req.params.id || ''), null);
+superAdminApiRouter.get('/payments/:id', async (req: Request, res: Response) => {
+  const detail = await getPaymentDetailsForStaff(String(req.params.id || ''), null);
   if (!detail) {
     res.status(404).json({ success: false, error: 'Transaction introuvable.' });
     return;
@@ -361,10 +499,10 @@ superAdminApiRouter.get('/payments/:id', (req: Request, res: Response) => {
   res.json({ success: true, ...detail });
 });
 
-superAdminApiRouter.post('/payments/:id/correction', (req: Request, res: Response) => {
+superAdminApiRouter.post('/payments/:id/correction', async (req: Request, res: Response) => {
   const actor = req.authContext!.user;
   const body = (req.body ?? {}) as Record<string, unknown>;
-  const result = applyExceptionalPaymentCorrection({
+  const result = await applyExceptionalPaymentCorrection({
     actorUserId: actor.id,
     actorEmail: actor.email,
     paymentId: String(req.params.id || ''),

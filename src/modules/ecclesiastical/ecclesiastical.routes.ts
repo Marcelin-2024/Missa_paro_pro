@@ -1,12 +1,13 @@
 import { Router, Request, Response } from 'express';
 import {
-  getParishRequests,
   listDiocesesForProvince,
   listParishesForDiocese,
   listProvincesSummary,
   reviewParishRequest,
   submitMissingParishRequest,
+  getParishRequests,
 } from './ecclesiastical.service.js';
+import { requireSuperAdmin } from '../auth/auth.middleware.js';
 import type { ParishRequestStatus } from './ecclesiastical.types.js';
 
 export const ecclesiasticalRouter = Router();
@@ -59,29 +60,32 @@ ecclesiasticalRouter.get('/parishes', (req: Request, res: Response) => {
   res.json(result);
 });
 
-ecclesiasticalRouter.get('/parish-requests', (req: Request, res: Response) => {
-  const rawStatus = String(req.query.status || '').trim().toUpperCase();
-  const validStatuses: ParishRequestStatus[] = ['PENDING', 'APPROVED', 'REJECTED'];
-  const status = validStatuses.includes(rawStatus as ParishRequestStatus)
-    ? (rawStatus as ParishRequestStatus)
-    : undefined;
+ecclesiasticalRouter.get(
+  '/parish-requests',
+  requireSuperAdmin,
+  async (req: Request, res: Response) => {
+    const rawStatus = String(req.query.status || '').trim().toUpperCase();
+    const validStatuses: ParishRequestStatus[] = ['PENDING', 'APPROVED', 'REJECTED'];
+    const status = validStatuses.includes(rawStatus as ParishRequestStatus)
+      ? (rawStatus as ParishRequestStatus)
+      : undefined;
 
-  res.json({
-    requests: getParishRequests(status),
-  });
-});
+    const requests = await getParishRequests(status);
+    res.json({ requests });
+  }
+);
 
-ecclesiasticalRouter.post('/parish-requests', (req: Request, res: Response) => {
+ecclesiasticalRouter.post('/parish-requests', async (req: Request, res: Response) => {
   const body = (req.body ?? {}) as Record<string, unknown>;
   const provinceId = typeof body.provinceId === 'string' ? body.provinceId : undefined;
   const dioceseId = typeof body.dioceseId === 'string' ? body.dioceseId : '';
   const parishName = typeof body.parishName === 'string' ? body.parishName : '';
   const userId =
-    typeof body.userId === 'string' && body.userId.trim()
-      ? body.userId.trim()
-      : req.session.uid ?? null;
+    req.authContext?.user.id ??
+    req.session.uid ??
+    (typeof body.userId === 'string' && body.userId.trim() ? body.userId.trim() : null);
 
-  const result = submitMissingParishRequest({
+  const result = await submitMissingParishRequest({
     provinceId,
     dioceseId,
     parishName,
@@ -102,45 +106,41 @@ ecclesiasticalRouter.post('/parish-requests', (req: Request, res: Response) => {
   });
 });
 
-ecclesiasticalRouter.patch('/parish-requests/:id', (req: Request, res: Response) => {
-  if (!req.session.user) {
-    res.status(401).json({
-      success: false,
-      error: 'Authentification requise pour traiter une demande.',
+ecclesiasticalRouter.patch(
+  '/parish-requests/:id',
+  requireSuperAdmin,
+  async (req: Request, res: Response) => {
+    const requestId = String(req.params.id || '').trim();
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const decision = String(body.decision || '').trim().toUpperCase();
+    const adminDecisionNote =
+      typeof body.adminDecisionNote === 'string' ? body.adminDecisionNote : undefined;
+
+    if (decision !== 'APPROVED' && decision !== 'REJECTED') {
+      res.status(400).json({
+        success: false,
+        error: 'Décision invalide. Valeurs attendues : APPROVED ou REJECTED.',
+      });
+      return;
+    }
+
+    const result = await reviewParishRequest({
+      requestId,
+      decision,
+      adminDecisionNote,
     });
-    return;
-  }
 
-  const requestId = String(req.params.id || '').trim();
-  const body = (req.body ?? {}) as Record<string, unknown>;
-  const decision = String(body.decision || '').trim().toUpperCase();
-  const adminDecisionNote =
-    typeof body.adminDecisionNote === 'string' ? body.adminDecisionNote : undefined;
+    if (!result.ok) {
+      res.status(result.statusCode).json({
+        success: false,
+        error: result.error,
+      });
+      return;
+    }
 
-  if (decision !== 'APPROVED' && decision !== 'REJECTED') {
-    res.status(400).json({
-      success: false,
-      error: 'Décision invalide. Valeurs attendues : APPROVED ou REJECTED.',
+    res.json({
+      success: true,
+      request: result.request,
     });
-    return;
   }
-
-  const result = reviewParishRequest({
-    requestId,
-    decision,
-    adminDecisionNote,
-  });
-
-  if (!result.ok) {
-    res.status(result.statusCode).json({
-      success: false,
-      error: result.error,
-    });
-    return;
-  }
-
-  res.json({
-    success: true,
-    request: result.request,
-  });
-});
+);

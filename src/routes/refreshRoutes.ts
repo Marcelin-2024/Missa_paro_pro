@@ -19,16 +19,9 @@ export const refreshRouter = Router();
 
 refreshRouter.use(requireParishContext);
 
-function buildCommonLocals(req: Request) {
+async function buildCommonLocals(req: Request) {
   const ctx = req.authContext!;
-  const stats = buildParishDashboardData(ctx.activeParish!.id);
-  const members = ctx.permissions.includes('parish.users.view')
-    ? listParishMembersDetailed(ctx.activeParish!.id)
-    : [];
-  const auditLogs = ctx.permissions.includes('parish.audit.view')
-    ? listAuditLogs({ scope: 'PARISH', parishId: ctx.activeParish!.id, limit: 40 })
-    : [];
-  const notifications = listNotificationsForParish(ctx.activeParish!.id, ctx.user.id);
+  const parishId = ctx.activeParish!.id;
   const canViewPayments = ctx.permissions.includes('parish.payments.view');
   const paymentFilters = {
     q: typeof req.query.q === 'string' ? req.query.q : '',
@@ -39,6 +32,21 @@ function buildCommonLocals(req: Request) {
     page: typeof req.query.page === 'string' ? Number(req.query.page) : 1,
     limit: 10,
   };
+
+  const [stats, members, auditLogs, notifications, paymentStats, paymentList] = await Promise.all([
+    buildParishDashboardData(parishId),
+    ctx.permissions.includes('parish.users.view')
+      ? listParishMembersDetailed(parishId)
+      : Promise.resolve([]),
+    ctx.permissions.includes('parish.audit.view')
+      ? listAuditLogs({ scope: 'PARISH', parishId, limit: 40 })
+      : Promise.resolve([]),
+    listNotificationsForParish(parishId, ctx.user.id),
+    canViewPayments ? computePaymentStatistics({ parishId }) : Promise.resolve(null),
+    canViewPayments
+      ? listPaymentsFiltered({ parishId, ...paymentFilters })
+      : Promise.resolve(null),
+  ]);
 
   return {
     user: {
@@ -58,54 +66,90 @@ function buildCommonLocals(req: Request) {
     members,
     auditLogs,
     notifications,
-    paymentStats: canViewPayments
-      ? computePaymentStatistics({ parishId: ctx.activeParish!.id })
-      : null,
-    paymentList: canViewPayments
-      ? listPaymentsFiltered({ parishId: ctx.activeParish!.id, ...paymentFilters })
-      : null,
+    paymentStats,
+    paymentList,
     paymentFilters,
     paymentProviders: PAYMENT_PROVIDERS_META,
     paymentStatusLabels: PAYMENT_STATUS_LABELS,
   };
 }
 
-refreshRouter.get('/refresh_firt', requireParishPermission('parish.dashboard.view'), (req: Request, res: Response) => {
-  res.render('pagepart/contenue1', buildCommonLocals(req));
-});
+refreshRouter.get(
+  '/refresh_firt',
+  requireParishPermission('parish.dashboard.view'),
+  async (req: Request, res: Response) => {
+    res.render('pagepart/contenue1', await buildCommonLocals(req));
+  }
+);
 
-refreshRouter.get('/refresh_second', requireParishPermission('parish.intentions.view'), (req: Request, res: Response) => {
-  res.render('pagepart/contenue2', buildCommonLocals(req));
-});
+refreshRouter.get(
+  '/refresh_second',
+  requireParishPermission('parish.intentions.view'),
+  async (req: Request, res: Response) => {
+    res.render('pagepart/contenue2', await buildCommonLocals(req));
+  }
+);
 
-refreshRouter.get('/refresh_third', requireParishPermission('parish.masses.view'), (req: Request, res: Response) => {
-  res.render('pagepart/contenue3', buildCommonLocals(req));
-});
+refreshRouter.get(
+  '/refresh_third',
+  requireParishPermission('parish.masses.view'),
+  async (req: Request, res: Response) => {
+    res.render('pagepart/contenue3', await buildCommonLocals(req));
+  }
+);
 
-refreshRouter.get('/refresh_four', requireParishPermission('parish.announcements.view'), (req: Request, res: Response) => {
-  res.render('pagepart/contenue4', buildCommonLocals(req));
-});
+refreshRouter.get(
+  '/refresh_four',
+  requireParishPermission('parish.announcements.view'),
+  async (req: Request, res: Response) => {
+    res.render('pagepart/contenue4', await buildCommonLocals(req));
+  }
+);
 
-refreshRouter.get('/parish/reports', requireParishPermission('parish.reports.view'), (req: Request, res: Response) => {
-  res.render('pagepart/parish_reports', buildCommonLocals(req));
-});
+refreshRouter.get(
+  '/parish/reports',
+  requireParishPermission('parish.reports.view'),
+  async (req: Request, res: Response) => {
+    res.render('pagepart/parish_reports', await buildCommonLocals(req));
+  }
+);
 
-refreshRouter.get('/parish/users', requireParishPermission('parish.users.view'), (req: Request, res: Response) => {
-  res.render('pagepart/parish_users', buildCommonLocals(req));
-});
+refreshRouter.get(
+  '/parish/users',
+  requireParishPermission('parish.users.view'),
+  async (req: Request, res: Response) => {
+    res.render('pagepart/parish_users', await buildCommonLocals(req));
+  }
+);
 
-refreshRouter.get('/parish/roles', requireParishPermission('parish.roles.view'), (req: Request, res: Response) => {
-  res.render('pagepart/parish_roles', buildCommonLocals(req));
-});
+refreshRouter.get(
+  '/parish/roles',
+  requireParishPermission('parish.roles.view'),
+  async (req: Request, res: Response) => {
+    res.render('pagepart/parish_roles', await buildCommonLocals(req));
+  }
+);
 
-refreshRouter.get('/parish/settings', requireParishPermission('parish.settings.view'), (req: Request, res: Response) => {
-  res.render('pagepart/parish_settings', buildCommonLocals(req));
-});
+refreshRouter.get(
+  '/parish/settings',
+  requireParishPermission('parish.settings.view'),
+  async (req: Request, res: Response) => {
+    res.render('pagepart/parish_settings', await buildCommonLocals(req));
+  }
+);
 
-refreshRouter.get('/parish/audit', requireParishPermission('parish.audit.view'), (req: Request, res: Response) => {
-  res.render('pagepart/parish_audit', buildCommonLocals(req));
-});
+refreshRouter.get(
+  '/parish/audit',
+  requireParishPermission('parish.audit.view'),
+  async (req: Request, res: Response) => {
+    res.render('pagepart/parish_audit', await buildCommonLocals(req));
+  }
+);
 
-refreshRouter.get('/parish/payments', requireParishPermission('parish.payments.view'), (req: Request, res: Response) => {
-  res.render('pagepart/parish_payments', buildCommonLocals(req));
-});
+refreshRouter.get(
+  '/parish/payments',
+  requireParishPermission('parish.payments.view'),
+  async (req: Request, res: Response) => {
+    res.render('pagepart/parish_payments', await buildCommonLocals(req));
+  }
+);

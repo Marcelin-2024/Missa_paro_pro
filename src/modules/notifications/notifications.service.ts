@@ -1,8 +1,14 @@
 import crypto from 'crypto';
-import { getPlatformState, savePlatformState } from '../platform/platform.repository.js';
 import type { NotificationEntity } from '../platform/platform.types.js';
+import {
+  listNotificationsForParishRepo,
+  listNotificationsForSuperAdminRepo,
+  listTrackingNotificationsRepo,
+  markNotificationReadRepo,
+  saveNotificationRepo,
+} from '../../repositories/auditNotifications.repository.js';
 
-export function createNotification(input: {
+export async function createNotification(input: {
   userId?: string | null;
   parishId?: string | null;
   trackingRef?: string | null;
@@ -10,8 +16,7 @@ export function createNotification(input: {
   type: string;
   title: string;
   message: string;
-}): NotificationEntity {
-  const state = getPlatformState();
+}): Promise<NotificationEntity> {
   const record: NotificationEntity = {
     id: `notif-${crypto.randomUUID().slice(0, 12)}`,
     userId: input.userId ?? null,
@@ -24,45 +29,27 @@ export function createNotification(input: {
     read: false,
     createdAt: new Date().toISOString(),
   };
-  state.notifications.unshift(record);
-  if (state.notifications.length > 400) {
-    state.notifications.length = 400;
-  }
-  savePlatformState(state);
+  await saveNotificationRepo(record);
   return record;
 }
 
-export function listNotificationsForParish(parishId: string, userId?: string): NotificationEntity[] {
-  const state = getPlatformState();
-  return state.notifications
-    .filter(
-      (n) =>
-        (n.parishId === parishId &&
-          (n.audience === 'PARISH_STAFF' || n.audience === 'PARISH_ADMIN')) ||
-        (userId && n.userId === userId)
-    )
-    .slice(0, 30);
+export async function listNotificationsForParish(
+  parishId: string,
+  userId?: string
+): Promise<NotificationEntity[]> {
+  return listNotificationsForParishRepo(parishId, userId);
 }
 
-export function listNotificationsForSuperAdmin(): NotificationEntity[] {
-  const state = getPlatformState();
-  return state.notifications
-    .filter((n) => n.audience === 'SUPER_ADMIN' || n.audience === 'PARISH_ADMIN')
-    .slice(0, 30);
+export async function listNotificationsForSuperAdmin(): Promise<NotificationEntity[]> {
+  return listNotificationsForSuperAdminRepo();
 }
 
-export function listTrackingNotifications(trackingRef: string): NotificationEntity[] {
-  const state = getPlatformState();
-  return state.notifications.filter(
-    (n) => n.trackingRef === trackingRef && n.audience === 'FIDELE'
-  );
+export async function listTrackingNotifications(
+  trackingRef: string
+): Promise<NotificationEntity[]> {
+  return listTrackingNotificationsRepo(trackingRef);
 }
 
-export function markNotificationRead(notificationId: string): void {
-  const state = getPlatformState();
-  const target = state.notifications.find((n) => n.id === notificationId);
-  if (target && !target.read) {
-    target.read = true;
-    savePlatformState(state);
-  }
+export async function markNotificationRead(notificationId: string): Promise<void> {
+  await markNotificationReadRepo(notificationId);
 }

@@ -1,8 +1,11 @@
 import crypto from 'crypto';
-import { getPlatformState, savePlatformState } from '../platform/platform.repository.js';
 import type { AuditLogEntity } from '../platform/platform.types.js';
+import {
+  listAuditLogsRepo,
+  saveAuditLogRepo,
+} from '../../repositories/auditNotifications.repository.js';
 
-export function recordAuditLog(input: {
+export async function recordAuditLog(input: {
   actorUserId: string | null;
   actorEmail: string;
   scope: 'GLOBAL' | 'PARISH' | 'PUBLIC';
@@ -11,8 +14,7 @@ export function recordAuditLog(input: {
   targetType: string;
   targetId: string;
   summary: string;
-}): AuditLogEntity {
-  const state = getPlatformState();
+}): Promise<AuditLogEntity> {
   const entry: AuditLogEntity = {
     id: `audit-${crypto.randomUUID().slice(0, 12)}`,
     actorUserId: input.actorUserId,
@@ -25,26 +27,14 @@ export function recordAuditLog(input: {
     summary: input.summary,
     createdAt: new Date().toISOString(),
   };
-  state.auditLogs.unshift(entry);
-  if (state.auditLogs.length > 500) {
-    state.auditLogs.length = 500;
-  }
-  savePlatformState(state);
+  await saveAuditLogRepo(entry);
   return entry;
 }
 
-export function listAuditLogs(filter: {
+export async function listAuditLogs(filter: {
   scope?: 'GLOBAL' | 'PARISH' | 'PUBLIC';
   parishId?: string;
   limit?: number;
-}): AuditLogEntity[] {
-  const state = getPlatformState();
-  let rows = state.auditLogs;
-  if (filter.scope) {
-    rows = rows.filter((log) => log.scope === filter.scope);
-  }
-  if (filter.parishId) {
-    rows = rows.filter((log) => log.parishId === filter.parishId);
-  }
-  return rows.slice(0, filter.limit ?? 100);
+}): Promise<AuditLogEntity[]> {
+  return listAuditLogsRepo(filter);
 }

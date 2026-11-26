@@ -2,383 +2,95 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Global Safety Net (Default-Deny)
+    // Global Zero-Trust Default-Deny
     match /{document=**} {
       allow read, write: if false;
-    }
-
-    // --- Primitive Helpers ---
-    function isValidId(id) {
-      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
-    function incoming() {
-      return request.resource.data;
-    }
-
-    function existing() {
-      return resource.data;
     }
 
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isVerified() {
-      return isSignedIn() && request.auth.token.email_verified == true;
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function isBootstrappedAdmin() {
-      return isVerified() && request.auth.token.email == 'settaocram@gmail.com';
-    }
-
-    function isAdmin() {
-      return isBootstrappedAdmin() || (
-        isVerified() && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-      );
-    }
-
-    // --- Validation Blueprints ---
-    function isValidUserProfile(data) {
-      return data.keys().hasAll(['uid', 'displayName', 'paroisse', 'diocese', 'role', 'createdAt']) &&
-        data.keys().hasOnly(['uid', 'displayName', 'paroisse', 'diocese', 'role', 'createdAt']) &&
-        isValidId(data.uid) &&
-        data.uid == request.auth.uid &&
-        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
-        data.paroisse is string && data.paroisse.size() >= 1 && data.paroisse.size() <= 120 &&
-        data.diocese is string && data.diocese.size() >= 1 && data.diocese.size() <= 120 &&
-        data.role in ['fidele', 'paroisse'] &&
-        data.createdAt is timestamp;
-    }
-
-    function isValidUserPrivateInfo(data) {
-      return data.keys().hasAll(['uid', 'email', 'updatedAt']) &&
-        data.keys().hasOnly(['uid', 'email', 'telephone', 'updatedAt']) &&
-        isValidId(data.uid) &&
-        data.uid == request.auth.uid &&
-        data.email is string && data.email.size() >= 3 && data.email.size() <= 200 &&
-        (!('telephone' in data) || (data.telephone is string && data.telephone.size() <= 30)) &&
-        data.updatedAt is timestamp;
-    }
-
-    function isValidParish(data) {
-      return data.keys().hasAll(['id', 'provinceId', 'dioceseId', 'name', 'status', 'createdAt']) &&
-        data.keys().hasOnly(['id', 'provinceId', 'dioceseId', 'name', 'status', 'createdAt']) &&
-        isValidId(data.id) &&
-        isValidId(data.provinceId) &&
-        isValidId(data.dioceseId) &&
-        data.name is string && data.name.size() >= 2 && data.name.size() <= 160 &&
-        data.status in ['PENDING_ACTIVATION', 'ACTIVE', 'SUSPENDED', 'INACTIVE'] &&
-        data.createdAt is timestamp;
-    }
-
-    function isValidParishMembership(data) {
-      return data.keys().hasAll(['userId', 'parishId', 'status', 'roles', 'updatedAt']) &&
-        data.keys().hasOnly(['userId', 'parishId', 'status', 'roles', 'updatedAt']) &&
-        isValidId(data.userId) &&
-        isValidId(data.parishId) &&
-        data.status in ['ACTIVE', 'SUSPENDED', 'REMOVED'] &&
-        data.roles is list && data.roles.size() <= 8 &&
-        data.updatedAt is timestamp;
-    }
-
-    function isValidMesse(data) {
-      return data.keys().hasAll(['date', 'horaire', 'celebrant', 'paroisse', 'statut', 'createdBy', 'createdAt']) &&
-        data.keys().hasOnly(['date', 'horaire', 'celebrant', 'paroisse', 'statut', 'createdBy', 'createdAt']) &&
-        data.date is string && data.date.size() >= 1 && data.date.size() <= 40 &&
-        data.horaire is string && data.horaire.size() >= 1 && data.horaire.size() <= 40 &&
-        data.celebrant is string && data.celebrant.size() >= 1 && data.celebrant.size() <= 120 &&
-        data.paroisse is string && data.paroisse.size() >= 1 && data.paroisse.size() <= 120 &&
-        data.statut in ['A venir', 'Passée', 'Annulée'] &&
-        isValidId(data.createdBy) &&
-        data.createdAt is timestamp;
-    }
-
-    function isValidAnnonce(data) {
-      return data.keys().hasAll(['type', 'titre', 'dateAnnonce', 'contenu', 'createdBy', 'createdAt']) &&
-        data.keys().hasOnly(['type', 'titre', 'dateAnnonce', 'contenu', 'createdBy', 'createdAt']) &&
-        data.type in ['evenement', 'Deces', 'Communique', 'Solennite'] &&
-        data.titre is string && data.titre.size() >= 1 && data.titre.size() <= 200 &&
-        data.dateAnnonce is string && data.dateAnnonce.size() >= 1 && data.dateAnnonce.size() <= 40 &&
-        data.contenu is string && data.contenu.size() >= 1 && data.contenu.size() <= 2000 &&
-        isValidId(data.createdBy) &&
-        data.createdAt is timestamp;
-    }
-
-    function isValidIntention(data) {
-      return data.keys().hasAll([
-          'fideleId', 'fideleNom', 'messeId', 'messeDate', 'messeHoraire',
-          'celebrant', 'objetIntention', 'detailIntention', 'statut', 'createdAt', 'updatedAt'
-        ]) &&
-        data.keys().hasOnly([
-          'fideleId', 'fideleNom', 'messeId', 'messeDate', 'messeHoraire',
-          'celebrant', 'objetIntention', 'detailIntention', 'statut', 'createdAt', 'updatedAt', 'parishId'
-        ]) &&
-        isValidId(data.fideleId) &&
-        data.fideleNom is string && data.fideleNom.size() >= 1 && data.fideleNom.size() <= 120 &&
-        isValidId(data.messeId) &&
-        (!('parishId' in data) || isValidId(data.parishId)) &&
-        data.messeDate is string && data.messeDate.size() >= 1 && data.messeDate.size() <= 40 &&
-        data.messeHoraire is string && data.messeHoraire.size() >= 1 && data.messeHoraire.size() <= 40 &&
-        data.celebrant is string && data.celebrant.size() >= 1 && data.celebrant.size() <= 120 &&
-        data.objetIntention is string && data.objetIntention.size() >= 1 && data.objetIntention.size() <= 150 &&
-        data.detailIntention is string && data.detailIntention.size() >= 1 && data.detailIntention.size() <= 1000 &&
-        data.statut in ['en attente', 'validé', 'annulée'] &&
-        data.createdAt is timestamp &&
-        data.updatedAt is timestamp;
-    }
-
-    function isValidAuditLog(data) {
-      return data.keys().hasAll(['actorUid', 'scope', 'action', 'summary', 'createdAt']) &&
-        data.keys().hasOnly(['actorUid', 'scope', 'parishId', 'action', 'summary', 'createdAt']) &&
-        isValidId(data.actorUid) &&
-        data.actorUid == request.auth.uid &&
-        data.scope in ['GLOBAL', 'PARISH', 'PUBLIC'] &&
-        (!('parishId' in data) || isValidId(data.parishId)) &&
-        data.action is string && data.action.size() >= 1 && data.action.size() <= 80 &&
-        data.summary is string && data.summary.size() >= 1 && data.summary.size() <= 400 &&
-        data.createdAt is timestamp;
-    }
-
-    function isValidPayment(data) {
-      return data.keys().hasAll([
-          'id', 'transactionReference', 'intentionId', 'parishId', 'faithfulName',
-          'faithfulPhone', 'provider', 'amount', 'currency', 'status',
-          'simulationMode', 'attemptNumber', 'createdAt', 'updatedAt'
-        ]) &&
-        data.keys().hasOnly([
-          'id', 'transactionReference', 'intentionId', 'parishId', 'faithfulUserId',
-          'faithfulName', 'faithfulPhone', 'provider', 'amount', 'currency', 'status',
-          'simulationMode', 'attemptNumber', 'failureReason', 'confirmedAt', 'createdAt', 'updatedAt'
-        ]) &&
-        isValidId(data.id) &&
-        data.transactionReference is string && data.transactionReference.size() >= 5 && data.transactionReference.size() <= 64 &&
-        isValidId(data.intentionId) &&
-        isValidId(data.parishId) &&
-        (!('faithfulUserId' in data) || isValidId(data.faithfulUserId)) &&
-        data.faithfulName is string && data.faithfulName.size() >= 2 && data.faithfulName.size() <= 120 &&
-        data.faithfulPhone is string && data.faithfulPhone.size() >= 8 && data.faithfulPhone.size() <= 40 &&
-        data.provider in ['WAVE', 'ORANGE_MONEY', 'MTN_MONEY', 'MOOV_MONEY'] &&
-        data.amount is int && data.amount >= 500 && data.amount <= 500000 &&
-        data.currency == 'XOF' &&
-        data.status in ['PENDING', 'SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED'] &&
-        data.simulationMode == true &&
-        data.attemptNumber is int && data.attemptNumber >= 1 && data.attemptNumber <= 50 &&
-        (!('failureReason' in data) || (data.failureReason is string && data.failureReason.size() <= 300)) &&
-        (!('confirmedAt' in data) || data.confirmedAt is timestamp) &&
-        data.createdAt is timestamp &&
-        data.updatedAt is timestamp;
-    }
-
-    function isValidPaymentEvent(data) {
-      return data.keys().hasAll([
-          'id', 'paymentId', 'parishId', 'eventType', 'newStatus', 'description', 'createdAt'
-        ]) &&
-        data.keys().hasOnly([
-          'id', 'paymentId', 'parishId', 'eventType', 'previousStatus', 'newStatus', 'description', 'createdAt'
-        ]) &&
-        isValidId(data.id) &&
-        isValidId(data.paymentId) &&
-        isValidId(data.parishId) &&
-        data.eventType is string && data.eventType.size() >= 1 && data.eventType.size() <= 60 &&
-        (!('previousStatus' in data) || data.previousStatus in ['PENDING', 'SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED']) &&
-        data.newStatus in ['PENDING', 'SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED'] &&
-        data.description is string && data.description.size() >= 1 && data.description.size() <= 300 &&
-        data.createdAt is timestamp;
-    }
-
-    // --- Connection Health Check (testConnection) ---
+    // Connection health check for Firebase Web SDK (testConnection)
     match /test/connection {
       allow get: if isSignedIn();
     }
 
-    // --- Admin Markers (Read-Only for owner/admin) ---
-    match /admins/{adminId} {
-      allow get: if isValidId(adminId) && (isOwner(adminId) || isAdmin());
-      allow list, write: if false;
+    // All business and session collections are strictly server-managed via Firebase Admin SDK
+    match /systemMetadata/{docId} {
+      allow read, write: if false;
     }
 
-    // --- Multi-Tenant Parishes (Super Admin managed) ---
-    match /parishes/{parishId} {
-      allow get: if isValidId(parishId) && isSignedIn();
-      allow list: if isSignedIn() && resource.data.status in ['ACTIVE', 'PENDING_ACTIVATION', 'SUSPENDED', 'INACTIVE'];
-      allow create: if isBootstrappedAdmin() && isValidId(parishId) &&
-        isValidParish(incoming()) &&
-        incoming().id == parishId &&
-        incoming().createdAt == request.time;
-      allow update: if isBootstrappedAdmin() && isValidId(parishId) &&
-        isValidParish(incoming()) &&
-        incoming().id == existing().id &&
-        incoming().createdAt == existing().createdAt &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'status']);
-      allow delete: if false;
+    match /platformSettings/{docId} {
+      allow read, write: if false;
     }
 
-    // --- Parish Memberships & Cumulated Roles (Tenant-scoped) ---
-    match /parishMemberships/{membershipId} {
-      allow get: if isValidId(membershipId) && isSignedIn() && (
-        existing().userId == request.auth.uid || isAdmin()
-      );
-      allow list: if isSignedIn() && (
-        resource.data.userId == request.auth.uid || isBootstrappedAdmin()
-      );
-      allow create, update: if isAdmin() && isValidId(membershipId) &&
-        isValidParishMembership(incoming()) &&
-        incoming().updatedAt == request.time;
-      allow delete: if false;
-    }
-
-    // --- User Profiles (No PII) ---
     match /users/{userId} {
-      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
-      allow list: if isBootstrappedAdmin() && resource.data.role in ['fidele', 'paroisse'];
-      allow create: if isVerified() && isValidId(userId) && isOwner(userId) &&
-        isValidUserProfile(incoming()) &&
-        incoming().createdAt == request.time;
-      allow update: if isVerified() && isValidId(userId) &&
-        isValidUserProfile(incoming()) &&
-        (isOwner(userId) || isAdmin()) &&
-        incoming().uid == existing().uid &&
-        incoming().role == existing().role &&
-        incoming().createdAt == existing().createdAt &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'paroisse', 'diocese']);
-      allow delete: if false;
-
-      // --- Isolated PII Subcollection ---
-      match /private/info {
-        allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
-        allow list: if false;
-        allow create: if isVerified() && isValidId(userId) && isOwner(userId) &&
-          isValidUserPrivateInfo(incoming()) &&
-          incoming().updatedAt == request.time;
-        allow update: if isVerified() && isValidId(userId) && isOwner(userId) &&
-          isValidUserPrivateInfo(incoming()) &&
-          incoming().uid == existing().uid &&
-          incoming().updatedAt == request.time &&
-          incoming().diff(existing()).affectedKeys().hasOnly(['email', 'telephone', 'updatedAt']);
-        allow delete: if false;
-      }
+      allow read, write: if false;
     }
 
-    // --- Messes ---
+    match /parishes/{parishId} {
+      allow read, write: if false;
+    }
+
+    match /parishMemberships/{membershipId} {
+      allow read, write: if false;
+    }
+
+    match /membershipRoles/{roleId} {
+      allow read, write: if false;
+    }
+
     match /messes/{messeId} {
-      allow get: if isValidId(messeId) && isSignedIn();
-      allow list: if isSignedIn() && resource.data.statut in ['A venir', 'Passée', 'Annulée'];
-      allow create: if isAdmin() && isValidId(messeId) &&
-        isValidMesse(incoming()) &&
-        incoming().createdBy == request.auth.uid &&
-        incoming().createdAt == request.time;
-      allow update: if isAdmin() && isValidId(messeId) &&
-        isValidMesse(incoming()) &&
-        incoming().createdBy == existing().createdBy &&
-        incoming().createdAt == existing().createdAt &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['date', 'horaire', 'celebrant', 'paroisse', 'statut']);
-      allow delete: if isAdmin() && isValidId(messeId);
+      allow read, write: if false;
     }
 
-    // --- Annonces ---
     match /annonces/{annonceId} {
-      allow get: if isValidId(annonceId) && isSignedIn();
-      allow list: if isSignedIn() && resource.data.type in ['evenement', 'Deces', 'Communique', 'Solennite'];
-      allow create: if isAdmin() && isValidId(annonceId) &&
-        isValidAnnonce(incoming()) &&
-        incoming().createdBy == request.auth.uid &&
-        incoming().createdAt == request.time;
-      allow update: if isAdmin() && isValidId(annonceId) &&
-        isValidAnnonce(incoming()) &&
-        incoming().createdBy == existing().createdBy &&
-        incoming().createdAt == existing().createdAt &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['type', 'titre', 'dateAnnonce', 'contenu']);
-      allow delete: if isAdmin() && isValidId(annonceId);
+      allow read, write: if false;
     }
 
-    // --- Intentions de Messe ---
     match /intentions/{intentionId} {
-      allow get: if isValidId(intentionId) && isSignedIn() && (
-        existing().fideleId == request.auth.uid || isAdmin()
-      );
-      allow list: if isSignedIn() && (
-        resource.data.fideleId == request.auth.uid || isBootstrappedAdmin()
-      );
-      allow create: if isVerified() && isValidId(intentionId) &&
-        isValidIntention(incoming()) &&
-        incoming().fideleId == request.auth.uid &&
-        incoming().statut == 'en attente' &&
-        incoming().createdAt == request.time &&
-        incoming().updatedAt == request.time &&
-        exists(/databases/$(database)/documents/messes/$(incoming().messeId));
-      allow update: if isVerified() && isValidId(intentionId) &&
-        isValidIntention(incoming()) &&
-        incoming().fideleId == existing().fideleId &&
-        incoming().messeId == existing().messeId &&
-        incoming().createdAt == existing().createdAt &&
-        incoming().updatedAt == request.time && (
-          (isAdmin() &&
-            incoming().diff(existing()).affectedKeys().hasOnly(['statut', 'updatedAt'])) ||
-          (isOwner(existing().fideleId) &&
-            existing().statut == 'en attente' &&
-            incoming().statut == 'en attente' &&
-            incoming().diff(existing()).affectedKeys().hasOnly(['objetIntention', 'detailIntention', 'updatedAt']))
-        );
-      allow delete: if isVerified() && isValidId(intentionId) && (
-        (isOwner(existing().fideleId) && existing().statut == 'en attente') ||
-        isAdmin()
-      );
+      allow read, write: if false;
     }
 
-    // --- Audit Logs (Append-Only) ---
-    match /auditLogs/{logId} {
-      allow get, list: if isBootstrappedAdmin();
-      allow create: if isAdmin() && isValidId(logId) &&
-        isValidAuditLog(incoming()) &&
-        incoming().createdAt == request.time;
-      allow update, delete: if false;
-    }
-
-    // --- Simulated Mobile Money Payments ---
     match /payments/{paymentId} {
-      allow get: if isValidId(paymentId) && isSignedIn() && (
-        existing().faithfulUserId == request.auth.uid || isAdmin()
-      );
-      allow list: if isSignedIn() && (
-        resource.data.faithfulUserId == request.auth.uid || isBootstrappedAdmin()
-      );
-      allow create: if isVerified() && isValidId(paymentId) &&
-        isValidPayment(incoming()) &&
-        incoming().id == paymentId &&
-        incoming().simulationMode == true &&
-        incoming().createdAt == request.time &&
-        incoming().updatedAt == request.time &&
-        (!('faithfulUserId' in incoming()) || incoming().faithfulUserId == request.auth.uid) &&
-        exists(/databases/$(database)/documents/intentions/$(incoming().intentionId)) &&
-        exists(/databases/$(database)/documents/parishes/$(incoming().parishId));
-      allow update: if isBootstrappedAdmin() && isValidId(paymentId) &&
-        isValidPayment(incoming()) &&
-        incoming().id == existing().id &&
-        incoming().transactionReference == existing().transactionReference &&
-        incoming().intentionId == existing().intentionId &&
-        incoming().parishId == existing().parishId &&
-        incoming().createdAt == existing().createdAt &&
-        incoming().updatedAt == request.time &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'failureReason', 'confirmedAt', 'updatedAt']);
-      allow delete: if false;
+      allow read, write: if false;
     }
 
-    // --- Payment Events (Append-Only Audit Trail) ---
     match /paymentEvents/{eventId} {
-      allow get: if isValidId(eventId) && isAdmin();
-      allow list: if isBootstrappedAdmin() &&
-        resource.data.newStatus in ['PENDING', 'SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED'];
-      allow create: if isVerified() && isValidId(eventId) &&
-        isValidPaymentEvent(incoming()) &&
-        incoming().id == eventId &&
-        incoming().createdAt == request.time &&
-        exists(/databases/$(database)/documents/payments/$(incoming().paymentId));
-      allow update, delete: if false;
+      allow read, write: if false;
+    }
+
+    match /parishRequests/{requestId} {
+      allow read, write: if false;
+    }
+
+    match /auditLogs/{logId} {
+      allow read, write: if false;
+    }
+
+    match /notifications/{notificationId} {
+      allow read, write: if false;
+    }
+
+    match /sessions/{sid} {
+      allow read, write: if false;
+    }
+
+    match /contacts/{contactId} {
+      allow read, write: if false;
+    }
+
+    match /reviews/{reviewId} {
+      allow read, write: if false;
+    }
+
+    match /pushTokens/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /loginAttempts/{keyHash} {
+      allow read, write: if false;
     }
   }
 }

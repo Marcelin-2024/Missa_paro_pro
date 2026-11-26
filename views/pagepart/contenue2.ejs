@@ -3,6 +3,7 @@
   const intentions = (stats && stats.allIntentions) ? stats.allIntentions : [];
   const messes = (stats && stats.allMesses) ? stats.allMesses : [];
   const statusLabels = (stats && stats.statusLabels) ? stats.statusLabels : {};
+  const tariffs = (stats && Array.isArray(stats.tariffs)) ? stats.tariffs : [];
 
   const canProcess = perms.includes('parish.intentions.process');
   const canApprove = perms.includes('parish.intentions.approve');
@@ -31,7 +32,7 @@
                 id="intentions-search"
                 type="search"
                 class="form-control table-search"
-                placeholder="Rechercher par référence, demandeur, objet ou date..."
+                placeholder="Rechercher par référence, demandeur, e-mail, objet ou date..."
                 data-table-search="intentions-table-body"
             >
             <label for="intentions-status-filter" class="sr-only">Filtrer par statut</label>
@@ -56,10 +57,10 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Référence &amp; Date</th>
+                    <th>Référence &amp; Dates</th>
                     <th>Demandeur</th>
-                    <th>Objet &amp; Détails</th>
-                    <th>Statut</th>
+                    <th>Intention &amp; Offrande</th>
+                    <th>Statut &amp; Paiement</th>
                     <th>Traitement paroissial</th>
                 </tr>
             </thead>
@@ -73,26 +74,53 @@
                                     Souhaitée : <%= item.desiredDate || 'Non précisée' %><br>
                                     Reçue : <%= new Date(item.requestedAt).toLocaleDateString('fr-FR') %>
                                 </span>
+                                <% if (item.linkedMesse) { %>
+                                    <span class="table-cell-sub">
+                                        Messe : <%= item.linkedMesse.date %> · <%= item.linkedMesse.horaire %> (<%= item.linkedMesse.celebrant %>)
+                                    </span>
+                                <% } %>
                             </td>
                             <td>
                                 <span class="table-cell-title"><%= item.requesterName %></span>
-                                <span class="table-cell-sub"><%= item.requesterPhone %></span>
+                                <span class="table-cell-sub">
+                                    <%= item.requesterPhone %><br>
+                                    <%= item.requesterEmail || 'E-mail non renseigné' %>
+                                </span>
                             </td>
                             <td>
                                 <span class="table-cell-title"><%= item.objet %></span>
-                                <span class="table-cell-sub"><%= item.details %></span>
+                                <span class="table-cell-sub">
+                                    <strong><%= item.intentionTypeLabel || 'Intention' %></strong> · <%= Number(item.effectiveAmount || 2000).toLocaleString('fr-FR') %> <%= item.currency || 'XOF' %><br>
+                                    <%= item.details %>
+                                </span>
                                 <% if (item.internalComment) { %>
                                     <span class="table-cell-note">Note interne : <%= item.internalComment %></span>
                                 <% } %>
                             </td>
                             <td>
-                                <%- include('../partials/status_badge', { statut: item.status, label: statusLabels[item.status] || item.status }) %>
+                                <div class="mb-2">
+                                    <%- include('../partials/status_badge', { statut: item.status, label: statusLabels[item.status] || item.status }) %>
+                                </div>
+                                <div>
+                                    <% if (item.paymentSummary) { %>
+                                        <%- include('../partials/payment_status_badge', { statut: item.paymentSummary.status, label: `${item.paymentSummary.statusLabel} (${item.paymentSummary.providerName})` }) %>
+                                    <% } else { %>
+                                        <span class="badge badge-neutral">Non payée</span>
+                                    <% } %>
+                                </div>
                             </td>
                             <td>
                                 <% const isTerminal = ['CELEBRATED', 'REJECTED', 'CANCELLED'].includes(item.status); %>
-                                <% if (!isTerminal && (canProcess || canApprove || canCelebrate)) { %>
-                                    <div class="intention-workflow-box" data-intention-controls="<%= item.id %>">
-                                        <% if (item.status === 'ACCEPTED' && canProcess) { %>
+                                <div class="intention-workflow-box" data-intention-controls="<%= item.id %>">
+                                    <div class="table-actions">
+                                        <button type="button" class="btn btn-ghost btn-sm" data-intention-detail="<%= item.id %>">Détails</button>
+                                        <% if (!isTerminal && (canProcess || canApprove)) { %>
+                                            <button type="button" class="btn btn-outline btn-sm" data-intention-edit="<%= item.id %>">Modifier</button>
+                                        <% } %>
+                                    </div>
+
+                                    <% if (!isTerminal && (canProcess || canApprove || canCelebrate)) { %>
+                                        <% if ((item.status === 'ACCEPTED' || item.status === 'SCHEDULED') && canProcess) { %>
                                             <select class="form-select intention-messe-picker" data-intention-messe="<%= item.id %>" aria-label="Associer une messe">
                                                 <option value="">Choisir une messe...</option>
                                                 <% for (const m of messes) { %>
@@ -127,10 +155,10 @@
                                                 <button type="button" class="btn btn-ghost btn-sm" data-intention-transition="CANCELLED" data-intention-id="<%= item.id %>">Annuler</button>
                                             <% } %>
                                         </div>
-                                    </div>
-                                <% } else { %>
-                                    <span class="text-muted"><%= isTerminal ? 'Clôturée' : 'Consultation seule' %></span>
-                                <% } %>
+                                    <% } else { %>
+                                        <span class="text-muted"><%= isTerminal ? 'Clôturée' : 'Consultation seule' %></span>
+                                    <% } %>
+                                </div>
                             </td>
                         </tr>
                     <% } %>
@@ -146,3 +174,139 @@
         Aucune intention ne correspond à votre recherche.
     </div>
 </section>
+
+<div id="intention-detail-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="intention-detail-title">
+    <div class="modal-dialog modal-dialog-lg">
+        <div class="modal-header payment-modal-header">
+            <div>
+                <h2 id="intention-detail-title" class="modal-title">Détails de l’intention de messe</h2>
+                <p id="id-ref-sub" class="text-muted">-</p>
+            </div>
+            <button type="button" class="icon-btn" data-dialog-close="intention-detail-modal" aria-label="Fermer les détails">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </button>
+        </div>
+
+        <div class="modal-body payment-modal-body">
+            <div class="payment-detail-grid">
+                <div class="payment-detail-card">
+                    <h3>Demande &amp; Demandeur</h3>
+                    <dl class="payment-detail-dl">
+                        <div><dt>Référence</dt><dd><code id="id-tracking-ref">-</code></dd></div>
+                        <div><dt>Statut</dt><dd id="id-status">-</dd></div>
+                        <div><dt>Demandeur</dt><dd id="id-requester-name">-</dd></div>
+                        <div><dt>Téléphone</dt><dd id="id-requester-phone">-</dd></div>
+                        <div><dt>Adresse e-mail</dt><dd id="id-requester-email">-</dd></div>
+                        <div><dt>Type d’intention</dt><dd id="id-type-label">-</dd></div>
+                        <div><dt>Offrande indicative</dt><dd id="id-amount">-</dd></div>
+                        <div><dt>Date souhaitée</dt><dd id="id-desired-date">-</dd></div>
+                    </dl>
+                </div>
+
+                <div class="payment-detail-card">
+                    <h3>Suivi paroissial &amp; Paiement</h3>
+                    <dl class="payment-detail-dl">
+                        <div><dt>Reçue le</dt><dd id="id-requested-at">-</dd></div>
+                        <div><dt>Messe associée</dt><dd id="id-messe-info">-</dd></div>
+                        <div><dt>Paiement (simulation)</dt><dd id="id-payment-info">-</dd></div>
+                        <div><dt>Traitée par</dt><dd id="id-processed-by">-</dd></div>
+                        <div><dt>Traitée le</dt><dd id="id-processed-at">-</dd></div>
+                        <div><dt>Célébrée par</dt><dd id="id-celebrated-by">-</dd></div>
+                        <div><dt>Célébrée le</dt><dd id="id-celebrated-at">-</dd></div>
+                        <div><dt>Note interne</dt><dd id="id-internal-comment">-</dd></div>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="payment-detail-card mt-4">
+                <h3>Objet &amp; Précisions de prière</h3>
+                <p id="id-objet" class="font-semibold mb-2">-</p>
+                <p id="id-details" class="detail-text-block">-</p>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-dialog-close="intention-detail-modal">Fermer</button>
+        </div>
+    </div>
+</div>
+
+<% if (canProcess || canApprove) { %>
+<div id="intention-edit-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="intention-edit-title">
+    <div class="modal-dialog modal-dialog-lg">
+        <div class="modal-header payment-modal-header">
+            <h2 id="intention-edit-title" class="modal-title">Modifier l’intention de messe</h2>
+            <button type="button" class="icon-btn" data-dialog-close="intention-edit-modal" aria-label="Fermer">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </button>
+        </div>
+        <form id="intention-edit-form">
+            <input id="ie-id" type="hidden" name="id">
+            <div class="modal-body payment-modal-body">
+                <div id="intention-edit-error" class="alert alert-error hidden mb-3" role="alert"></div>
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="ie-requesterName" class="form-label">Nom et prénoms du demandeur</label>
+                        <input id="ie-requesterName" name="requesterName" type="text" class="form-control" required maxlength="120">
+                    </div>
+                    <div class="form-group">
+                        <label for="ie-requesterPhone" class="form-label">Téléphone</label>
+                        <input id="ie-requesterPhone" name="requesterPhone" type="tel" class="form-control" required maxlength="40">
+                    </div>
+                </div>
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="ie-requesterEmail" class="form-label">Adresse e-mail (optionnel)</label>
+                        <input id="ie-requesterEmail" name="requesterEmail" type="email" class="form-control" maxlength="150">
+                    </div>
+                    <div class="form-group">
+                        <label for="ie-desiredDate" class="form-label">Date souhaitée (optionnel)</label>
+                        <input id="ie-desiredDate" name="desiredDate" type="date" class="form-control">
+                    </div>
+                </div>
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="ie-intentionType" class="form-label">Type d’intention</label>
+                        <select id="ie-intentionType" name="intentionType" class="form-select">
+                            <% for (const t of tariffs) { %>
+                                <option value="<%= t.code %>"><%= t.label %> — <%= Number(t.amount).toLocaleString('fr-FR') %> <%= t.currency %></option>
+                            <% } %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="ie-messeId" class="form-label">Messe associée (optionnel)</label>
+                        <select id="ie-messeId" name="messeId" class="form-select">
+                            <option value="">Aucune messe associée</option>
+                            <% for (const m of messes) { %>
+                                <option value="<%= m.id %>"><%= m.date %> · <%= m.horaire %> (<%= m.celebrant %>)</option>
+                            <% } %>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="ie-objet" class="form-label">Objet de l’intention</label>
+                    <input id="ie-objet" name="objet" type="text" class="form-control" required maxlength="150">
+                </div>
+
+                <div class="form-group">
+                    <label for="ie-details" class="form-label">Précisions de prière</label>
+                    <textarea id="ie-details" name="details" class="form-textarea" required rows="3" maxlength="1000"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="ie-internalComment" class="form-label">Note interne (optionnel)</label>
+                    <input id="ie-internalComment" name="internalComment" type="text" class="form-control" maxlength="500" placeholder="Visible uniquement par l’équipe paroissiale">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" data-dialog-close="intention-edit-modal">Annuler</button>
+                <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+            </div>
+        </form>
+    </div>
+</div>
+<% } %>

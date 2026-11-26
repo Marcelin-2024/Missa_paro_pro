@@ -3,6 +3,38 @@
     return window.missaUI?.getCsrfToken?.() || '';
   }
 
+  function setText(id, value, fallback = '-') {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const str = value !== undefined && value !== null && String(value).trim() !== '' ? String(value) : fallback;
+    el.textContent = str;
+  }
+
+  function setInputVal(id, value) {
+    const el = document.getElementById(id);
+    if (el && (el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement)) {
+      el.value = value !== undefined && value !== null ? String(value) : '';
+    }
+  }
+
+  function formatDateFr(value, fallback = 'Non renseignée') {
+    if (!value) return fallback;
+    const dt = new Date(value);
+    return Number.isNaN(dt.getTime()) ? String(value) : dt.toLocaleString('fr-FR');
+  }
+
+  function showInlineError(boxId, message) {
+    const box = document.getElementById(boxId);
+    if (!box) return;
+    if (!message) {
+      box.textContent = '';
+      box.classList.add('hidden');
+      return;
+    }
+    box.textContent = message;
+    box.classList.remove('hidden');
+  }
+
   function showFeedback(message, isError) {
     const box = document.getElementById('super-admin-feedback');
     if (!box) return;
@@ -45,6 +77,127 @@
   document.addEventListener('click', async (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
+    const parishDetailBtn = target.closest('[data-sa-parish-detail]');
+    if (parishDetailBtn instanceof HTMLButtonElement) {
+      const id = parishDetailBtn.getAttribute('data-sa-parish-detail');
+      if (!id) return;
+      try {
+        const data = await apiJson(`/api/super-admin/parishes/${encodeURIComponent(id)}`, 'GET');
+        const p = data.parish;
+        const counts = data.counts || {};
+        setText('sapd-subtitle', `${p.provinceName} · ${p.dioceseName}`);
+        setText('sapd-name', p.name);
+        setText('sapd-province', p.provinceName);
+        setText('sapd-diocese', p.dioceseName);
+        setText('sapd-location', p.location, 'Non renseignée');
+        setText('sapd-address', p.address, 'Non renseignée');
+        setText('sapd-phone', p.phone, 'Non renseigné');
+        setText('sapd-email', p.email, 'Non renseignée');
+        setText('sapd-status', p.status);
+        setText('sapd-schedules', p.massScheduleSummary, 'Non renseignés');
+        setText(
+          'sapd-chapels',
+          p.chapelsEnabled && Array.isArray(p.chapels) && p.chapels.length > 0
+            ? p.chapels.join(', ')
+            : 'Aucune chapelle'
+        );
+        setText('sapd-staff-count', String(counts.staffCount ?? 0));
+        setText('sapd-masses-count', String(counts.massesCount ?? 0));
+        setText('sapd-intentions-count', String(counts.intentionsCount ?? 0));
+        setText('sapd-created-at', formatDateFr(p.createdAt));
+        document.getElementById('sa-parish-detail-modal')?.classList.remove('hidden');
+      } catch (error) {
+        showFeedback(error instanceof Error ? error.message : 'Erreur chargement paroisse.', true);
+      }
+      return;
+    }
+
+    const parishEditBtn = target.closest('[data-sa-parish-edit]');
+    if (parishEditBtn instanceof HTMLButtonElement) {
+      const id = parishEditBtn.getAttribute('data-sa-parish-edit');
+      if (!id) return;
+      try {
+        const data = await apiJson(`/api/super-admin/parishes/${encodeURIComponent(id)}`, 'GET');
+        const p = data.parish;
+        showInlineError('sa-parish-edit-error', '');
+        setInputVal('sape-id', p.id);
+        setInputVal('sape-name', p.name);
+        setInputVal('sape-location', p.location || '');
+        setInputVal('sape-phone', p.phone || '');
+        setInputVal('sape-email', p.email || '');
+        setInputVal('sape-address', p.address || '');
+        setInputVal('sape-status', p.status || 'ACTIVE');
+        setInputVal('sape-schedules', p.massScheduleSummary || '');
+        setInputVal('sape-chapels', Array.isArray(p.chapels) ? p.chapels.join(', ') : '');
+        const chapCb = document.getElementById('sape-chapelsEnabled');
+        if (chapCb instanceof HTMLInputElement) chapCb.checked = Boolean(p.chapelsEnabled);
+        document.getElementById('sa-parish-edit-modal')?.classList.remove('hidden');
+      } catch (error) {
+        showFeedback(error instanceof Error ? error.message : 'Erreur chargement paroisse.', true);
+      }
+      return;
+    }
+
+    const adminDetailBtn = target.closest('[data-sa-admin-detail]');
+    if (adminDetailBtn instanceof HTMLButtonElement) {
+      const userId = adminDetailBtn.getAttribute('data-sa-admin-detail');
+      if (!userId) return;
+      try {
+        const data = await apiJson(`/api/super-admin/admins/${encodeURIComponent(userId)}`, 'GET');
+        const u = data.user;
+        setText('saad-subtitle', u.email);
+        setText('saad-name', u.displayName);
+        setText('saad-email', u.email);
+        setText('saad-phone', u.phone, 'Non renseigné');
+        setText('saad-status', u.status);
+        setText('saad-must-change', u.mustChangePassword ? 'Oui (1re connexion)' : 'Non');
+        setText('saad-created-at', formatDateFr(u.createdAt));
+        setText('saad-last-login', formatDateFr(u.lastLoginAt, 'Jamais connecté'));
+
+        const memList = document.getElementById('saad-memberships-list');
+        if (memList) {
+          memList.innerHTML = '';
+          const items = Array.isArray(data.memberships) ? data.memberships : [];
+          if (items.length === 0) {
+            const li = document.createElement('li');
+            li.className = 'text-muted';
+            li.textContent = 'Aucune paroisse rattachée.';
+            memList.appendChild(li);
+          } else {
+            items.forEach((m) => {
+              const li = document.createElement('li');
+              li.className = 'status-breakdown-item';
+              const rolesTxt = (m.roles || []).map((r) => r.label || r.code).join(', ') || 'Aucun rôle';
+              li.textContent = `${m.parishName} (${m.membershipStatus}) — ${rolesTxt}`;
+              memList.appendChild(li);
+            });
+          }
+        }
+        document.getElementById('sa-admin-detail-modal')?.classList.remove('hidden');
+      } catch (error) {
+        showFeedback(error instanceof Error ? error.message : 'Erreur chargement admin.', true);
+      }
+      return;
+    }
+
+    const adminEditBtn = target.closest('[data-sa-admin-edit]');
+    if (adminEditBtn instanceof HTMLButtonElement) {
+      const userId = adminEditBtn.getAttribute('data-sa-admin-edit');
+      if (!userId) return;
+      try {
+        const data = await apiJson(`/api/super-admin/admins/${encodeURIComponent(userId)}`, 'GET');
+        const u = data.user;
+        showInlineError('sa-admin-edit-error', '');
+        setInputVal('saae-id', u.id);
+        setInputVal('saae-displayName', u.displayName);
+        setInputVal('saae-phone', u.phone || '');
+        document.getElementById('sa-admin-edit-modal')?.classList.remove('hidden');
+      } catch (error) {
+        showFeedback(error instanceof Error ? error.message : 'Erreur chargement admin.', true);
+      }
+      return;
+    }
 
     const parishStatusBtn = target.closest('[data-sa-parish-status]');
     if (parishStatusBtn instanceof HTMLButtonElement) {
@@ -135,11 +288,62 @@
           directoryParishId: rawParishId === '__missing__' ? '' : rawParishId,
           customParishName: formData.get('customParishName'),
           location: formData.get('location'),
+          phone: formData.get('phone'),
+          email: formData.get('email'),
+          address: formData.get('address'),
+          massScheduleSummary: formData.get('massScheduleSummary'),
           status: 'ACTIVE',
         });
         window.location.reload();
       } catch (error) {
         showFeedback(error instanceof Error ? error.message : 'Erreur création paroisse.', true);
+      }
+      return;
+    }
+
+    if (form.id === 'sa-parish-edit-form') {
+      event.preventDefault();
+      const formData = new FormData(form);
+      const id = String(formData.get('id') || '');
+      if (!id) return;
+      try {
+        await apiJson(`/api/super-admin/parishes/${encodeURIComponent(id)}`, 'PATCH', {
+          name: formData.get('name'),
+          location: formData.get('location'),
+          phone: formData.get('phone'),
+          email: formData.get('email'),
+          address: formData.get('address'),
+          status: formData.get('status'),
+          massScheduleSummary: formData.get('massScheduleSummary'),
+          chapelsEnabled: form.querySelector('[name="chapelsEnabled"]')?.checked || false,
+          chapels: formData.get('chapels'),
+        });
+        window.location.reload();
+      } catch (error) {
+        showInlineError(
+          'sa-parish-edit-error',
+          error instanceof Error ? error.message : 'Erreur mise à jour paroisse.'
+        );
+      }
+      return;
+    }
+
+    if (form.id === 'sa-admin-edit-form') {
+      event.preventDefault();
+      const formData = new FormData(form);
+      const userId = String(formData.get('userId') || '');
+      if (!userId) return;
+      try {
+        await apiJson(`/api/super-admin/admins/${encodeURIComponent(userId)}`, 'PATCH', {
+          displayName: formData.get('displayName'),
+          phone: formData.get('phone'),
+        });
+        window.location.reload();
+      } catch (error) {
+        showInlineError(
+          'sa-admin-edit-error',
+          error instanceof Error ? error.message : 'Erreur mise à jour responsable.'
+        );
       }
       return;
     }

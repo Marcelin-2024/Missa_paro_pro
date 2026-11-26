@@ -196,9 +196,11 @@ export interface MesseEntity {
   horaire: string;
   celebrant: string;
   type: string;
+  lieu?: string;
   statut: 'A venir' | 'Passée' | 'Annulée';
   createdBy: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface AnnonceEntity {
@@ -213,6 +215,7 @@ export interface AnnonceEntity {
   createdBy: string;
   approvedBy: string | null;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface AuditLogEntity {

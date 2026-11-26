@@ -2,10 +2,12 @@ import crypto from 'crypto';
 import {
   findDioceseById,
   findParishById,
+  findParishRequestByIdRepo,
   findProvinceById,
   getAllProvinces,
-  readParishRequests,
-  writeParishRequests,
+  listParishRequestsRepo,
+  listPendingRequestsByDioceseRepo,
+  saveParishRequestRepo,
 } from './ecclesiastical.repository.js';
 import type {
   DioceseEntry,
@@ -96,14 +98,15 @@ export function listParishesForDiocese(
   };
 }
 
-export function submitMissingParishRequest(input: {
+export async function submitMissingParishRequest(input: {
   provinceId?: string;
   dioceseId: string;
   parishName: string;
   userId?: string | null;
-}):
+}): Promise<
   | { ok: true; request: ParishRequestRecord }
-  | { ok: false; statusCode: number; error: string } {
+  | { ok: false; statusCode: number; error: string }
+> {
   const dioceseMatch = findDioceseById(String(input.dioceseId || '').trim());
   if (!dioceseMatch) {
     return {
@@ -131,13 +134,10 @@ export function submitMissingParishRequest(input: {
     };
   }
 
-  const existingRequests = readParishRequests();
+  const pendingInDiocese = await listPendingRequestsByDioceseRepo(dioceseMatch.diocese.id);
   const normalizedIncoming = normalizeSearchText(cleanName);
-  const duplicatePending = existingRequests.find(
-    (req) =>
-      req.dioceseId === dioceseMatch.diocese.id &&
-      req.status === 'PENDING' &&
-      normalizeSearchText(req.parishName) === normalizedIncoming
+  const duplicatePending = pendingInDiocese.find(
+    (req) => normalizeSearchText(req.parishName) === normalizedIncoming
   );
 
   if (duplicatePending) {
@@ -156,32 +156,31 @@ export function submitMissingParishRequest(input: {
     decidedAt: null,
   };
 
-  existingRequests.unshift(record);
-  writeParishRequests(existingRequests);
-
+  await saveParishRequestRepo(record);
   return { ok: true, request: record };
 }
 
-export function getParishRequests(status?: ParishRequestStatus): ParishRequestRecord[] {
-  const all = readParishRequests();
-  return status ? all.filter((r) => r.status === status) : all;
+export async function getParishRequests(
+  status?: ParishRequestStatus
+): Promise<ParishRequestRecord[]> {
+  return listParishRequestsRepo(status);
 }
 
-export function reviewParishRequest(input: {
+export async function reviewParishRequest(input: {
   requestId: string;
   decision: 'APPROVED' | 'REJECTED';
   adminDecisionNote?: string;
-}):
+}): Promise<
   | { ok: true; request: ParishRequestRecord }
-  | { ok: false; statusCode: number; error: string } {
-  const requests = readParishRequests();
-  const idx = requests.findIndex((r) => r.id === input.requestId);
-  if (idx === -1) {
+  | { ok: false; statusCode: number; error: string }
+> {
+  const existing = await findParishRequestByIdRepo(input.requestId);
+  if (!existing) {
     return { ok: false, statusCode: 404, error: 'Demande de paroisse introuvable.' };
   }
 
   const updated: ParishRequestRecord = {
-    ...requests[idx],
+    ...existing,
     status: input.decision,
     adminDecisionNote: input.adminDecisionNote
       ? String(input.adminDecisionNote).trim().slice(0, 300)
@@ -189,9 +188,7 @@ export function reviewParishRequest(input: {
     decidedAt: new Date().toISOString(),
   };
 
-  requests[idx] = updated;
-  writeParishRequests(requests);
-
+  await saveParishRequestRepo(updated);
   return { ok: true, request: updated };
 }
 
@@ -210,14 +207,14 @@ export type EcclesiasticalValidationResult =
 
 export const MISSING_PARISH_SENTINEL = '__missing__';
 
-export function validateEcclesiasticalRegistration(input: {
+export async function validateEcclesiasticalRegistration(input: {
   provinceId?: string;
   dioceseId?: string;
   parishId?: string;
   missingParishName?: string;
   parishRequestId?: string;
   userId?: string | null;
-}): EcclesiasticalValidationResult {
+}): Promise<EcclesiasticalValidationResult> {
   const provinceId = String(input.provinceId || '').trim();
   const dioceseId = String(input.dioceseId || '').trim();
   const parishId = String(input.parishId || '').trim();
@@ -249,7 +246,6 @@ export function validateEcclesiasticalRegistration(input: {
     };
   }
 
-  // Case 1: User selected "Je ne trouve pas ma paroisse"
   if (parishId === MISSING_PARISH_SENTINEL) {
     if (missingParishName.length < 2) {
       return {
@@ -260,14 +256,14 @@ export function validateEcclesiasticalRegistration(input: {
 
     let requestId = providedRequestId;
     if (requestId) {
-      const existing = readParishRequests().find(
-        (req) => req.id === requestId && req.dioceseId === dioceseMatch.diocese.id
-      );
-      if (!existing) requestId = '';
+      const existing = await findParishRequestByIdRepo(requestId);
+      if (!existing || existing.dioceseId !== dioceseMatch.diocese.id) {
+        requestId = '';
+      }
     }
 
     if (!requestId) {
-      const created = submitMissingParishRequest({
+      const created = await submitMissingParishRequest({
         provinceId: province.id,
         dioceseId: dioceseMatch.diocese.id,
         parishName: missingParishName,
@@ -293,7 +289,6 @@ export function validateEcclesiasticalRegistration(input: {
     };
   }
 
-  // Case 2: Official directory parish ID
   if (!parishId) {
     return { valid: false, error: 'Veuillez sélectionner votre paroisse.' };
   }

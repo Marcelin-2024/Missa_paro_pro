@@ -1,40 +1,58 @@
 {
   "entities": {
-    "UserProfile": {
-      "title": "UserProfile",
-      "description": "Public profile metadata for a parish member or faithful user (no PII).",
+    "SystemMetadata": {
+      "title": "SystemMetadata",
+      "description": "Bootstrap and migration metadata for the Missa Paro platform.",
       "type": "object",
       "properties": {
-        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
-        "paroisse": { "type": "string", "minLength": 1, "maxLength": 120 },
-        "diocese": { "type": "string", "minLength": 1, "maxLength": 120 },
-        "role": { "type": "string", "enum": ["fidele", "paroisse"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "version": { "type": "integer" },
+        "superAdminClaimed": { "type": "boolean" },
+        "bootstrappedAt": { "type": "string", "format": "date-time" },
+        "migratedAt": { "type": "string", "format": "date-time" },
+        "seededAt": { "type": "string", "format": "date-time" },
+        "source": { "type": "string", "maxLength": 120 }
       },
-      "required": ["uid", "displayName", "paroisse", "diocese", "role", "createdAt"]
+      "required": ["version", "superAdminClaimed"]
     },
-    "UserPrivateInfo": {
-      "title": "UserPrivateInfo",
-      "description": "Isolated PII document for user contact details (email and phone).",
+    "PlatformSettings": {
+      "title": "PlatformSettings",
+      "description": "Global Missa Paro platform configuration managed by the Super Administrator.",
       "type": "object",
       "properties": {
-        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "platformName": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "supportEmail": { "type": "string", "format": "email", "maxLength": 120 },
+        "tempPasswordTtlHours": { "type": "integer" },
+        "activationLinkTtlHours": { "type": "integer" },
+        "allowPublicFideleSignup": { "type": "boolean" },
+        "requireCureAnnouncementApproval": { "type": "boolean" }
+      },
+      "required": [
+        "platformName",
+        "supportEmail",
+        "tempPasswordTtlHours",
+        "activationLinkTtlHours",
+        "allowPublicFideleSignup",
+        "requireCureAnnouncementApproval"
+      ]
+    },
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Server-managed Missa Paro account (Super Admin, Parish Staff, or Fidele).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "email": { "type": "string", "format": "email", "maxLength": 200 },
-        "telephone": { "type": "string", "maxLength": 30 },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "phone": { "type": "string", "maxLength": 40 },
+        "passwordHash": { "type": "string", "maxLength": 300 },
+        "accountType": { "type": "string", "enum": ["SUPER_ADMIN", "PARISH_STAFF", "FIDELE"] },
+        "isSuperAdmin": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["PENDING_ACTIVATION", "ACTIVE", "SUSPENDED", "DISABLED"] },
+        "mustChangePassword": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["uid", "email", "updatedAt"]
-    },
-    "AdminMarker": {
-      "title": "AdminMarker",
-      "description": "Trusted administrator marker document.",
-      "type": "object",
-      "properties": {
-        "email": { "type": "string", "format": "email", "maxLength": 200 },
-        "role": { "type": "string", "enum": ["admin"] }
-      },
-      "required": ["email", "role"]
+      "required": ["id", "email", "displayName", "accountType", "isSuperAdmin", "status", "mustChangePassword", "createdAt", "updatedAt"]
     },
     "Parish": {
       "title": "Parish",
@@ -42,179 +60,281 @@
       "type": "object",
       "properties": {
         "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "directoryParishId": { "type": "string", "maxLength": 128 },
         "provinceId": { "type": "string", "maxLength": 128 },
+        "provinceName": { "type": "string", "maxLength": 160 },
         "dioceseId": { "type": "string", "maxLength": 128 },
+        "dioceseName": { "type": "string", "maxLength": 160 },
         "name": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "location": { "type": "string", "maxLength": 120 },
         "status": { "type": "string", "enum": ["PENDING_ACTIVATION", "ACTIVE", "SUSPENDED", "INACTIVE"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "phone": { "type": "string", "maxLength": 40 },
+        "email": { "type": "string", "maxLength": 150 },
+        "address": { "type": "string", "maxLength": 240 },
+        "massScheduleSummary": { "type": "string", "maxLength": 400 },
+        "chapelsEnabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "provinceId", "dioceseId", "name", "status", "createdAt"]
+      "required": ["id", "provinceId", "dioceseId", "name", "status", "createdAt", "updatedAt"]
     },
     "ParishMembership": {
       "title": "ParishMembership",
-      "description": "Links a user to a parish with cumulated roles (membership-scoped RBAC).",
+      "description": "Membership binding a user account to a parish tenant.",
       "type": "object",
       "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "parishId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "status": { "type": "string", "enum": ["ACTIVE", "SUSPENDED", "REMOVED"] },
-        "roles": { "type": "array", "items": { "type": "string" } },
+        "titleLabel": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["userId", "parishId", "status", "roles", "updatedAt"]
+      "required": ["id", "userId", "parishId", "status", "createdAt", "updatedAt"]
+    },
+    "MembershipRole": {
+      "title": "MembershipRole",
+      "description": "Individual parish role assignment attached to a membership.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "membershipId": { "type": "string", "maxLength": 128 },
+        "parishId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "roleCode": { "type": "string", "enum": ["PARISH_ADMIN", "CURE", "VICAIRE", "PRETRE", "SECRETAIRE", "TRESORIER", "VALIDATEUR", "OPERATEUR"] },
+        "status": { "type": "string", "enum": ["ACTIVE", "REVOKED", "EXPIRED"] },
+        "assignedBy": { "type": "string", "maxLength": 128 },
+        "assignedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "membershipId", "parishId", "userId", "roleCode", "status", "assignedBy", "assignedAt"]
     },
     "Messe": {
       "title": "Messe",
       "description": "Scheduled parish mass.",
       "type": "object",
       "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "parishId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "date": { "type": "string", "minLength": 1, "maxLength": 40 },
         "horaire": { "type": "string", "minLength": 1, "maxLength": 40 },
         "celebrant": { "type": "string", "minLength": 1, "maxLength": 120 },
-        "paroisse": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "type": { "type": "string", "maxLength": 80 },
+        "lieu": { "type": "string", "maxLength": 120 },
         "statut": { "type": "string", "enum": ["A venir", "Passée", "Annulée"] },
-        "createdBy": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "createdBy": { "type": "string", "maxLength": 128 },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["date", "horaire", "celebrant", "paroisse", "statut", "createdBy", "createdAt"]
+      "required": ["id", "parishId", "date", "horaire", "celebrant", "statut", "createdBy", "createdAt"]
     },
     "Annonce": {
       "title": "Annonce",
       "description": "Parish announcement published by parish administration.",
       "type": "object",
       "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "parishId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "type": { "type": "string", "enum": ["evenement", "Deces", "Communique", "Solennite"] },
         "titre": { "type": "string", "minLength": 1, "maxLength": 200 },
         "dateAnnonce": { "type": "string", "minLength": 1, "maxLength": 40 },
         "contenu": { "type": "string", "minLength": 1, "maxLength": 2000 },
-        "createdBy": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "imageUrl": { "type": "string", "maxLength": 500000 },
+        "statut": { "type": "string", "enum": ["PUBLISHED", "PENDING_APPROVAL", "ARCHIVED"] },
+        "createdBy": { "type": "string", "maxLength": 128 },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["type", "titre", "dateAnnonce", "contenu", "createdBy", "createdAt"]
+      "required": ["id", "parishId", "type", "titre", "dateAnnonce", "contenu", "statut", "createdBy", "createdAt"]
     },
     "Intention": {
       "title": "Intention",
-      "description": "Mass intention submitted by a faithful user for a parish mass.",
+      "description": "Mass intention submitted for a parish.",
       "type": "object",
       "properties": {
-        "fideleId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "fideleNom": { "type": "string", "minLength": 1, "maxLength": 120 },
-        "messeId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "parishId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "messeDate": { "type": "string", "minLength": 1, "maxLength": 40 },
-        "messeHoraire": { "type": "string", "minLength": 1, "maxLength": 40 },
-        "celebrant": { "type": "string", "minLength": 1, "maxLength": 120 },
-        "objetIntention": { "type": "string", "minLength": 1, "maxLength": 150 },
-        "detailIntention": { "type": "string", "minLength": 1, "maxLength": 1000 },
-        "statut": { "type": "string", "enum": ["en attente", "validé", "annulée"] },
-        "createdAt": { "type": "string", "format": "date-time" },
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "trackingRef": { "type": "string", "maxLength": 40 },
+        "parishId": { "type": "string", "maxLength": 128 },
+        "parishName": { "type": "string", "maxLength": 160 },
+        "provinceId": { "type": "string", "maxLength": 128 },
+        "dioceseId": { "type": "string", "maxLength": 128 },
+        "requesterName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "requesterPhone": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "intentionType": { "type": "string", "maxLength": 40 },
+        "amount": { "type": "integer" },
+        "currency": { "type": "string", "enum": ["XOF"] },
+        "objet": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "details": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["PENDING", "PROCESSING", "ACCEPTED", "SCHEDULED", "CELEBRATED", "REJECTED", "CANCELLED"] },
+        "requestedAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "fideleId",
-        "fideleNom",
-        "messeId",
-        "messeDate",
-        "messeHoraire",
-        "celebrant",
-        "objetIntention",
-        "detailIntention",
-        "statut",
-        "createdAt",
-        "updatedAt"
-      ]
-    },
-    "AuditLog": {
-      "title": "AuditLog",
-      "description": "Immutable audit trail for governance and parish role changes.",
-      "type": "object",
-      "properties": {
-        "actorUid": { "type": "string", "maxLength": 128 },
-        "scope": { "type": "string", "enum": ["GLOBAL", "PARISH", "PUBLIC"] },
-        "parishId": { "type": "string", "maxLength": 128 },
-        "action": { "type": "string", "maxLength": 80 },
-        "summary": { "type": "string", "maxLength": 400 },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["actorUid", "scope", "action", "summary", "createdAt"]
+      "required": ["id", "trackingRef", "parishId", "parishName", "requesterName", "requesterPhone", "objet", "details", "status", "requestedAt", "updatedAt"]
     },
     "Payment": {
       "title": "Payment",
-      "description": "Simulated Mobile Money payment transaction linked to a mass intention and parish (no PIN or sensitive banking fields).",
+      "description": "Simulated Mobile Money payment transaction linked to a mass intention.",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "transactionReference": { "type": "string", "minLength": 5, "maxLength": 64 },
-        "intentionId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "parishId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "faithfulUserId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "faithfulName": { "type": "string", "minLength": 2, "maxLength": 120 },
-        "faithfulPhone": { "type": "string", "minLength": 8, "maxLength": 40 },
+        "id": { "type": "string", "maxLength": 128 },
+        "transactionReference": { "type": "string", "maxLength": 64 },
+        "intentionId": { "type": "string", "maxLength": 128 },
+        "intentionTrackingRef": { "type": "string", "maxLength": 40 },
+        "parishId": { "type": "string", "maxLength": 128 },
+        "faithfulName": { "type": "string", "maxLength": 120 },
+        "faithfulPhone": { "type": "string", "maxLength": 40 },
         "provider": { "type": "string", "enum": ["WAVE", "ORANGE_MONEY", "MTN_MONEY", "MOOV_MONEY"] },
-        "amount": { "type": "integer", "minimum": 500, "maximum": 500000 },
+        "amount": { "type": "integer" },
         "currency": { "type": "string", "enum": ["XOF"] },
         "status": { "type": "string", "enum": ["PENDING", "SUCCESS", "FAILED", "CANCELLED", "EXPIRED"] },
         "simulationMode": { "type": "boolean" },
-        "attemptNumber": { "type": "integer", "minimum": 1 },
-        "failureReason": { "type": "string", "maxLength": 300 },
-        "confirmedAt": { "type": "string", "format": "date-time" },
+        "attemptNumber": { "type": "integer" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "transactionReference",
-        "intentionId",
-        "parishId",
-        "faithfulName",
-        "faithfulPhone",
-        "provider",
-        "amount",
-        "currency",
-        "status",
-        "simulationMode",
-        "attemptNumber",
-        "createdAt",
-        "updatedAt"
-      ]
+      "required": ["id", "transactionReference", "intentionId", "parishId", "faithfulName", "faithfulPhone", "provider", "amount", "currency", "status", "simulationMode", "attemptNumber", "createdAt", "updatedAt"]
     },
     "PaymentEvent": {
       "title": "PaymentEvent",
-      "description": "Immutable status transition event log for a simulated payment transaction.",
+      "description": "Immutable payment audit trail.",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "paymentId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "parishId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "id": { "type": "string", "maxLength": 128 },
+        "paymentId": { "type": "string", "maxLength": 128 },
+        "parishId": { "type": "string", "maxLength": 128 },
         "eventType": { "type": "string", "maxLength": 60 },
-        "previousStatus": { "type": "string", "maxLength": 30 },
         "newStatus": { "type": "string", "enum": ["PENDING", "SUCCESS", "FAILED", "CANCELLED", "EXPIRED"] },
-        "description": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "description": { "type": "string", "maxLength": 300 },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "paymentId", "parishId", "eventType", "newStatus", "description", "createdAt"]
+    },
+    "ParishRequest": {
+      "title": "ParishRequest",
+      "description": "Pending request for a parish missing from the official Côte d'Ivoire directory.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "provinceId": { "type": "string", "maxLength": 128 },
+        "dioceseId": { "type": "string", "maxLength": 128 },
+        "parishName": { "type": "string", "maxLength": 120 },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "submittedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "provinceId", "dioceseId", "parishName", "status", "submittedAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Append-only governance and parish audit trail.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "actorEmail": { "type": "string", "maxLength": 200 },
+        "scope": { "type": "string", "enum": ["GLOBAL", "PARISH", "PUBLIC"] },
+        "action": { "type": "string", "maxLength": 80 },
+        "targetType": { "type": "string", "maxLength": 60 },
+        "targetId": { "type": "string", "maxLength": 128 },
+        "summary": { "type": "string", "maxLength": 400 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "actorEmail", "scope", "action", "targetType", "targetId", "summary", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "In-app notification record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "audience": { "type": "string", "enum": ["SUPER_ADMIN", "PARISH_ADMIN", "PARISH_STAFF", "FIDELE"] },
+        "type": { "type": "string", "maxLength": 80 },
+        "title": { "type": "string", "maxLength": 160 },
+        "message": { "type": "string", "maxLength": 500 },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "audience", "type", "title", "message", "read", "createdAt"]
+    },
+    "SessionRecord": {
+      "title": "SessionRecord",
+      "description": "Persistent Express server session state.",
+      "type": "object",
+      "properties": {
+        "sid": { "type": "string", "maxLength": 250 },
+        "expiresAtMs": { "type": "integer" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["sid", "expiresAtMs", "updatedAt"]
+    },
+    "ContactMessage": {
+      "title": "ContactMessage",
+      "description": "Public contact message stored in Firestore.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "message": { "type": "string", "maxLength": 4000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "message", "createdAt"]
+    },
+    "ReviewRecord": {
+      "title": "ReviewRecord",
+      "description": "User feedback rating and comment.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "rating": { "type": "integer" },
+        "comment": { "type": "string", "maxLength": 2000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "rating", "comment", "createdAt"]
+    },
+    "PushTokenRecord": {
+      "title": "PushTokenRecord",
+      "description": "Registered push notification token.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "token": { "type": "string", "maxLength": 500 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "token", "updatedAt"]
+    },
+    "LoginAttempt": {
+      "title": "LoginAttempt",
+      "description": "Shared login brute-force protection counter.",
+      "type": "object",
+      "properties": {
+        "key": { "type": "string", "maxLength": 250 },
+        "count": { "type": "integer" },
+        "lockedUntilMs": { "type": "integer" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["key", "count", "lockedUntilMs", "updatedAt"]
     }
   },
   "firestore": {
+    "/systemMetadata/{docId}": {
+      "schema": { "$ref": "#/entities/SystemMetadata" },
+      "description": "Server-only platform bootstrap and migration metadata."
+    },
+    "/platformSettings/{docId}": {
+      "schema": { "$ref": "#/entities/PlatformSettings" },
+      "description": "Server-only global platform settings."
+    },
     "/users/{userId}": {
-      "schema": { "$ref": "#/entities/UserProfile" },
-      "description": "User profile summary documents keyed by Firebase Auth UID."
-    },
-    "/users/{userId}/private/info": {
-      "schema": { "$ref": "#/entities/UserPrivateInfo" },
-      "description": "Isolated PII subcollection document for a user's email and phone."
-    },
-    "/admins/{adminId}": {
-      "schema": { "$ref": "#/entities/AdminMarker" },
-      "description": "Read-only admin role marker collection."
+      "schema": { "$ref": "#/entities/UserAccount" },
+      "description": "Server-managed user accounts and authentication hashes."
     },
     "/parishes/{parishId}": {
       "schema": { "$ref": "#/entities/Parish" },
-      "description": "Multi-tenant parish directory and status records."
+      "description": "Multi-tenant parish directory and practical details."
     },
     "/parishMemberships/{membershipId}": {
       "schema": { "$ref": "#/entities/ParishMembership" },
-      "description": "Parish-scoped memberships and cumulated roles."
+      "description": "User-to-parish membership bindings."
+    },
+    "/membershipRoles/{roleId}": {
+      "schema": { "$ref": "#/entities/MembershipRole" },
+      "description": "Granular parish RBAC role assignments."
     },
     "/messes/{messeId}": {
       "schema": { "$ref": "#/entities/Messe" },
@@ -222,23 +342,51 @@
     },
     "/annonces/{annonceId}": {
       "schema": { "$ref": "#/entities/Annonce" },
-      "description": "Published parish announcements."
+      "description": "Parish announcements."
     },
     "/intentions/{intentionId}": {
       "schema": { "$ref": "#/entities/Intention" },
       "description": "Mass intentions submitted by faithful users."
     },
-    "/auditLogs/{logId}": {
-      "schema": { "$ref": "#/entities/AuditLog" },
-      "description": "Append-only governance and role audit logs."
-    },
     "/payments/{paymentId}": {
       "schema": { "$ref": "#/entities/Payment" },
-      "description": "Simulated Mobile Money payments attached to mass intentions and parishes."
+      "description": "Simulated Mobile Money payment transactions."
     },
     "/paymentEvents/{eventId}": {
       "schema": { "$ref": "#/entities/PaymentEvent" },
-      "description": "Append-only event history for simulated payment status changes."
+      "description": "Append-only event history for payment transactions."
+    },
+    "/parishRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/ParishRequest" },
+      "description": "Requests to add missing parishes to the directory."
+    },
+    "/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Append-only governance and parish audit trail."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "In-app notifications."
+    },
+    "/sessions/{sid}": {
+      "schema": { "$ref": "#/entities/SessionRecord" },
+      "description": "Server-only persistent Express sessions."
+    },
+    "/contacts/{contactId}": {
+      "schema": { "$ref": "#/entities/ContactMessage" },
+      "description": "Public contact messages."
+    },
+    "/reviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/ReviewRecord" },
+      "description": "User feedback reviews."
+    },
+    "/pushTokens/{tokenId}": {
+      "schema": { "$ref": "#/entities/PushTokenRecord" },
+      "description": "Push notification tokens."
+    },
+    "/loginAttempts/{keyHash}": {
+      "schema": { "$ref": "#/entities/LoginAttempt" },
+      "description": "Server-only login rate-limiting state."
     }
   }
 }

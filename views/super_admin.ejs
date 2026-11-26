@@ -233,6 +233,28 @@
                         </div>
                     </div>
 
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="sa-create-parish-phone" class="form-label">Téléphone du secrétariat (optionnel)</label>
+                            <input id="sa-create-parish-phone" name="phone" type="tel" class="form-control" maxlength="40" placeholder="+225 07 00 00 00 00">
+                        </div>
+                        <div class="form-group">
+                            <label for="sa-create-parish-email" class="form-label">Adresse e-mail paroissiale (optionnel)</label>
+                            <input id="sa-create-parish-email" name="email" type="email" class="form-control" maxlength="150" placeholder="contact@paroisse.ci">
+                        </div>
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="sa-create-parish-address" class="form-label">Adresse physique (optionnel)</label>
+                            <input id="sa-create-parish-address" name="address" type="text" class="form-control" maxlength="240" placeholder="Quartier, rue ou repère">
+                        </div>
+                        <div class="form-group">
+                            <label for="sa-create-parish-schedules" class="form-label">Horaires habituels des messes (optionnel)</label>
+                            <input id="sa-create-parish-schedules" name="massScheduleSummary" type="text" class="form-control" maxlength="400" placeholder="Dimanche : 7h00, 9h30 ; Semaine : 6h30">
+                        </div>
+                    </div>
+
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary">Activer l’espace paroisse</button>
                     </div>
@@ -254,7 +276,7 @@
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>Paroisse</th>
+                                    <th>Paroisse &amp; Coordonnées</th>
                                     <th>Province / Diocèse</th>
                                     <th>Statut</th>
                                     <th>Actions</th>
@@ -265,7 +287,10 @@
                                     <tr>
                                         <td>
                                             <span class="table-cell-title"><%= p.name %></span>
-                                            <span class="table-cell-sub"><%= p.location %> · <%= p.email || 'Email non défini' %></span>
+                                            <span class="table-cell-sub">
+                                                <%= p.location || 'Localité non renseignée' %> · <%= p.email || 'E-mail non défini' %><br>
+                                                <%= p.phone || 'Téléphone non défini' %>
+                                            </span>
                                         </td>
                                         <td>
                                             <span class="table-cell-title"><%= p.dioceseName %></span>
@@ -274,6 +299,8 @@
                                         <td><%- include('partials/status_badge', { statut: p.status }) %></td>
                                         <td>
                                             <div class="table-actions">
+                                                <button type="button" class="btn btn-ghost btn-sm" data-sa-parish-detail="<%= p.id %>">Détails</button>
+                                                <button type="button" class="btn btn-outline btn-sm" data-sa-parish-edit="<%= p.id %>">Modifier</button>
                                                 <% if (p.status !== 'ACTIVE') { %>
                                                     <button type="button" class="btn btn-primary btn-sm" data-sa-parish-status="ACTIVE" data-parish-id="<%= p.id %>">Activer</button>
                                                 <% } %>
@@ -288,6 +315,121 @@
                         </table>
                     </div>
                 </section>
+
+                <div id="sa-parish-detail-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="sapd-title">
+                    <div class="modal-dialog modal-dialog-lg">
+                        <div class="modal-header payment-modal-header">
+                            <div>
+                                <h2 id="sapd-title" class="modal-title">Fiche paroisse</h2>
+                                <p id="sapd-subtitle" class="text-muted">-</p>
+                            </div>
+                            <button type="button" class="icon-btn" data-dialog-close="sa-parish-detail-modal" aria-label="Fermer">
+                                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+                            </button>
+                        </div>
+                        <div class="modal-body payment-modal-body">
+                            <div class="payment-detail-grid">
+                                <div class="payment-detail-card">
+                                    <h3>Coordonnées &amp; Identité</h3>
+                                    <dl class="payment-detail-dl">
+                                        <div><dt>Nom</dt><dd id="sapd-name">-</dd></div>
+                                        <div><dt>Province</dt><dd id="sapd-province">-</dd></div>
+                                        <div><dt>Diocèse</dt><dd id="sapd-diocese">-</dd></div>
+                                        <div><dt>Localité</dt><dd id="sapd-location">-</dd></div>
+                                        <div><dt>Adresse</dt><dd id="sapd-address">-</dd></div>
+                                        <div><dt>Téléphone</dt><dd id="sapd-phone">-</dd></div>
+                                        <div><dt>Adresse e-mail</dt><dd id="sapd-email">-</dd></div>
+                                    </dl>
+                                </div>
+                                <div class="payment-detail-card">
+                                    <h3>Vie paroissiale &amp; Activité</h3>
+                                    <dl class="payment-detail-dl">
+                                        <div><dt>Statut</dt><dd id="sapd-status">-</dd></div>
+                                        <div><dt>Horaires messes</dt><dd id="sapd-schedules">-</dd></div>
+                                        <div><dt>Chapelles</dt><dd id="sapd-chapels">-</dd></div>
+                                        <div><dt>Membres actifs</dt><dd id="sapd-staff-count">0</dd></div>
+                                        <div><dt>Messes</dt><dd id="sapd-masses-count">0</dd></div>
+                                        <div><dt>Intentions reçues</dt><dd id="sapd-intentions-count">0</dd></div>
+                                        <div><dt>Créée le</dt><dd id="sapd-created-at">-</dd></div>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" data-dialog-close="sa-parish-detail-modal">Fermer</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sa-parish-edit-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="sape-title">
+                    <div class="modal-dialog modal-dialog-lg">
+                        <div class="modal-header payment-modal-header">
+                            <h2 id="sape-title" class="modal-title">Modifier la paroisse</h2>
+                            <button type="button" class="icon-btn" data-dialog-close="sa-parish-edit-modal" aria-label="Fermer">
+                                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+                            </button>
+                        </div>
+                        <form id="sa-parish-edit-form">
+                            <input id="sape-id" type="hidden" name="id">
+                            <div class="modal-body payment-modal-body">
+                                <div id="sa-parish-edit-error" class="alert alert-error hidden mb-3" role="alert"></div>
+                                <div class="form-grid-2">
+                                    <div class="form-group">
+                                        <label for="sape-name" class="form-label">Nom de la paroisse</label>
+                                        <input id="sape-name" name="name" type="text" class="form-control" required maxlength="160">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="sape-location" class="form-label">Localité / Commune</label>
+                                        <input id="sape-location" name="location" type="text" class="form-control" maxlength="120">
+                                    </div>
+                                </div>
+                                <div class="form-grid-2">
+                                    <div class="form-group">
+                                        <label for="sape-phone" class="form-label">Téléphone</label>
+                                        <input id="sape-phone" name="phone" type="tel" class="form-control" maxlength="40">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="sape-email" class="form-label">Adresse e-mail</label>
+                                        <input id="sape-email" name="email" type="email" class="form-control" maxlength="150">
+                                    </div>
+                                </div>
+                                <div class="form-grid-2">
+                                    <div class="form-group">
+                                        <label for="sape-address" class="form-label">Adresse physique</label>
+                                        <input id="sape-address" name="address" type="text" class="form-control" maxlength="240">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="sape-status" class="form-label">Statut</label>
+                                        <select id="sape-status" name="status" class="form-select">
+                                            <option value="ACTIVE">Active</option>
+                                            <option value="PENDING_ACTIVATION">En attente</option>
+                                            <option value="SUSPENDED">Suspendue</option>
+                                            <option value="INACTIVE">Inactive</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="sape-schedules" class="form-label">Horaires habituels des messes</label>
+                                    <textarea id="sape-schedules" name="massScheduleSummary" class="form-textarea" rows="2" maxlength="400"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label class="checkbox-label">
+                                        <input id="sape-chapelsEnabled" type="checkbox" name="chapelsEnabled">
+                                        <span>Activer les chapelles rattachées</span>
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label for="sape-chapels" class="form-label">Chapelles (séparées par des virgules)</label>
+                                    <input id="sape-chapels" name="chapels" type="text" class="form-control">
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline" data-dialog-close="sa-parish-edit-modal">Annuler</button>
+                                <button type="submit" class="btn btn-primary">Enregistrer</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             <% } %>
 
             <% if (section === 'admins') { %>
@@ -352,7 +494,7 @@
                             <input id="sa-admin-name" name="displayName" type="text" class="form-control" required placeholder="Ex. Jean-Paul Konan">
                         </div>
                         <div class="form-group">
-                            <label for="sa-admin-email" class="form-label">Email professionnel</label>
+                            <label for="sa-admin-email" class="form-label">Adresse e-mail professionnelle</label>
                             <input id="sa-admin-email" name="email" type="email" class="form-control" required placeholder="admin@paroisse.ci">
                         </div>
                     </div>
@@ -383,7 +525,7 @@
                                     <tr>
                                         <td>
                                             <span class="table-cell-title"><%= adminUser.displayName %></span>
-                                            <span class="table-cell-sub"><%= adminUser.email %> · <%= adminUser.phone || 'Sans téléphone' %></span>
+                                            <span class="table-cell-sub"><%= adminUser.email %> · <%= adminUser.phone || 'Téléphone non renseigné' %></span>
                                         </td>
                                         <td>
                                             <% if (adminUser.memberships && adminUser.memberships.length > 0) { %>
@@ -402,6 +544,8 @@
                                         <td><%- include('partials/status_badge', { statut: adminUser.status }) %></td>
                                         <td>
                                             <div class="table-actions">
+                                                <button type="button" class="btn btn-ghost btn-sm" data-sa-admin-detail="<%= adminUser.id %>">Détails</button>
+                                                <button type="button" class="btn btn-outline btn-sm" data-sa-admin-edit="<%= adminUser.id %>">Modifier</button>
                                                 <button type="button" class="btn btn-outline btn-sm" data-sa-reset-admin="<%= adminUser.id %>">Réinitialiser accès</button>
                                                 <% if (adminUser.status === 'ACTIVE' || adminUser.status === 'PENDING_ACTIVATION') { %>
                                                     <button type="button" class="btn btn-danger btn-sm" data-sa-admin-status="SUSPENDED" data-user-id="<%= adminUser.id %>">Suspendre</button>
@@ -416,6 +560,72 @@
                         </table>
                     </div>
                 </section>
+
+                <div id="sa-admin-detail-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="saad-title">
+                    <div class="modal-dialog modal-dialog-lg">
+                        <div class="modal-header payment-modal-header">
+                            <div>
+                                <h2 id="saad-title" class="modal-title">Fiche responsable paroissial</h2>
+                                <p id="saad-subtitle" class="text-muted">-</p>
+                            </div>
+                            <button type="button" class="icon-btn" data-dialog-close="sa-admin-detail-modal" aria-label="Fermer">
+                                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+                            </button>
+                        </div>
+                        <div class="modal-body payment-modal-body">
+                            <div class="payment-detail-grid">
+                                <div class="payment-detail-card">
+                                    <h3>Compte</h3>
+                                    <dl class="payment-detail-dl">
+                                        <div><dt>Nom complet</dt><dd id="saad-name">-</dd></div>
+                                        <div><dt>Adresse e-mail</dt><dd id="saad-email">-</dd></div>
+                                        <div><dt>Téléphone</dt><dd id="saad-phone">-</dd></div>
+                                        <div><dt>Statut</dt><dd id="saad-status">-</dd></div>
+                                        <div><dt>Changement MDP requis</dt><dd id="saad-must-change">-</dd></div>
+                                        <div><dt>Créé le</dt><dd id="saad-created-at">-</dd></div>
+                                        <div><dt>Dernière connexion</dt><dd id="saad-last-login">-</dd></div>
+                                    </dl>
+                                </div>
+                                <div class="payment-detail-card">
+                                    <h3>Paroisses &amp; Rôles</h3>
+                                    <ul id="saad-memberships-list" class="payment-events-list"></ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" data-dialog-close="sa-admin-detail-modal">Fermer</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sa-admin-edit-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="saae-title">
+                    <div class="modal-dialog modal-dialog-lg">
+                        <div class="modal-header payment-modal-header">
+                            <h2 id="saae-title" class="modal-title">Modifier le responsable</h2>
+                            <button type="button" class="icon-btn" data-dialog-close="sa-admin-edit-modal" aria-label="Fermer">
+                                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+                            </button>
+                        </div>
+                        <form id="sa-admin-edit-form">
+                            <input id="saae-id" type="hidden" name="userId">
+                            <div class="modal-body">
+                                <div id="sa-admin-edit-error" class="alert alert-error hidden mb-3" role="alert"></div>
+                                <div class="form-group">
+                                    <label for="saae-displayName" class="form-label">Nom complet</label>
+                                    <input id="saae-displayName" name="displayName" type="text" class="form-control" required maxlength="120">
+                                </div>
+                                <div class="form-group">
+                                    <label for="saae-phone" class="form-label">Téléphone</label>
+                                    <input id="saae-phone" name="phone" type="tel" class="form-control" maxlength="40" placeholder="+225 07 00 00 00 00">
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline" data-dialog-close="sa-admin-edit-modal">Annuler</button>
+                                <button type="submit" class="btn btn-primary">Enregistrer</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             <% } %>
 
             <% if (section === 'directory') { %>

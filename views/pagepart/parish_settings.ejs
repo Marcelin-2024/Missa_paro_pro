@@ -7,20 +7,36 @@
 <div id="parish-settings-feedback" class="alert hidden mb-4" role="status"></div>
 
 <form id="parish-settings-form" class="card-soft">
+    <div class="card-soft card-soft-gold mb-4">
+        <div class="flex items-center justify-between gap-2">
+            <div>
+                <h2 class="section-title"><%= activeParish.name %></h2>
+                <p class="text-muted"><%= activeParish.provinceName %> · <%= activeParish.dioceseName %></p>
+            </div>
+            <%- include('../partials/status_badge', { statut: activeParish.status }) %>
+        </div>
+    </div>
+
     <div class="form-grid-2">
+        <div class="form-group">
+            <label for="ps-location" class="form-label">Localité / Commune</label>
+            <input id="ps-location" name="location" type="text" class="form-control" value="<%= activeParish.location || '' %>" maxlength="120" <%= permissions.includes('parish.settings.manage') ? '' : 'disabled' %>>
+        </div>
         <div class="form-group">
             <label for="ps-phone" class="form-label">Téléphone du secrétariat</label>
             <input id="ps-phone" name="phone" type="tel" class="form-control" value="<%= activeParish.phone || '' %>" <%= permissions.includes('parish.settings.manage') ? '' : 'disabled' %>>
         </div>
-        <div class="form-group">
-            <label for="ps-email" class="form-label">Email paroissial</label>
-            <input id="ps-email" name="email" type="email" class="form-control" value="<%= activeParish.email || '' %>" <%= permissions.includes('parish.settings.manage') ? '' : 'disabled' %>>
-        </div>
     </div>
 
-    <div class="form-group">
-        <label for="ps-address" class="form-label">Adresse physique</label>
-        <input id="ps-address" name="address" type="text" class="form-control" value="<%= activeParish.address || '' %>" <%= permissions.includes('parish.settings.manage') ? '' : 'disabled' %>>
+    <div class="form-grid-2">
+        <div class="form-group">
+            <label for="ps-email" class="form-label">Adresse e-mail paroissiale</label>
+            <input id="ps-email" name="email" type="email" class="form-control" value="<%= activeParish.email || '' %>" <%= permissions.includes('parish.settings.manage') ? '' : 'disabled' %>>
+        </div>
+        <div class="form-group">
+            <label for="ps-address" class="form-label">Adresse physique</label>
+            <input id="ps-address" name="address" type="text" class="form-control" value="<%= activeParish.address || '' %>" <%= permissions.includes('parish.settings.manage') ? '' : 'disabled' %>>
+        </div>
     </div>
 
     <div class="form-group">

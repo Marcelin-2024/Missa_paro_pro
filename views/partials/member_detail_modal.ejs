@@ -1,0 +1,41 @@
+<div id="member-detail-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="member-detail-title">
+    <div class="modal-dialog modal-dialog-lg">
+        <div class="modal-header payment-modal-header">
+            <div>
+                <h2 id="member-detail-title" class="modal-title">Fiche membre paroissial</h2>
+                <p id="md-email-sub" class="text-muted">-</p>
+            </div>
+            <button type="button" class="icon-btn" data-dialog-close="member-detail-modal" aria-label="Fermer les détails">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </button>
+        </div>
+
+        <div class="modal-body payment-modal-body">
+            <div class="payment-detail-grid">
+                <div class="payment-detail-card">
+                    <h3>Identité &amp; Compte</h3>
+                    <dl class="payment-detail-dl">
+                        <div><dt>Nom complet</dt><dd id="md-name">-</dd></div>
+                        <div><dt>Adresse e-mail</dt><dd id="md-email">-</dd></div>
+                        <div><dt>Téléphone</dt><dd id="md-phone">-</dd></div>
+                        <div><dt>Fonction affichée</dt><dd id="md-title">-</dd></div>
+                        <div><dt>Statut compte</dt><dd id="md-account-status">-</dd></div>
+                        <div><dt>Statut rattachement</dt><dd id="md-membership-status">-</dd></div>
+                        <div><dt>Créé le</dt><dd id="md-created-at">-</dd></div>
+                        <div><dt>Dernière connexion</dt><dd id="md-last-login">-</dd></div>
+                    </dl>
+                </div>
+
+                <div class="payment-detail-card">
+                    <h3>Rôles &amp; Permissions effectives</h3>
+                    <div id="md-roles-list" class="roles-chip-list mb-3"></div>
+                    <ul id="md-permissions-list" class="permissions-chip-list"></ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-dialog-close="member-detail-modal">Fermer</button>
+        </div>
+    </div>
+</div>

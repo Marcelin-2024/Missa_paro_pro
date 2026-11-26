@@ -43,13 +43,31 @@
                                 </div>
                                 <h2 class="annonce-card-title"><%= parish.name %></h2>
                                 <p class="annonce-card-content">
-                                    <strong>Localité :</strong> <%= parish.location %><br>
+                                    <strong>Localité :</strong> <%= parish.location || 'Non renseignée' %><br>
+                                    <strong>Adresse :</strong> <%= parish.address || 'Non renseignée' %><br>
                                     <strong>Horaires :</strong> <%= parish.massScheduleSummary || 'Voir secrétariat paroissial' %><br>
-                                    <% if (parish.phone) { %><strong>Téléphone :</strong> <%= parish.phone %><br><% } %>
+                                    <strong>Téléphone :</strong> <%= parish.phone || 'Non renseigné' %><br>
+                                    <strong>Adresse e-mail :</strong> <%= parish.email || 'Non renseignée' %>
                                     <% if (parish.chapelsEnabled && parish.chapels && parish.chapels.length > 0) { %>
-                                        <strong>Chapelles :</strong> <%= parish.chapels.join(', ') %>
+                                        <br><strong>Chapelles :</strong> <%= parish.chapels.join(', ') %>
                                     <% } %>
                                 </p>
+                                <div class="mt-3">
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline btn-sm"
+                                        data-directory-parish-detail
+                                        data-parish-name="<%= parish.name %>"
+                                        data-parish-province="<%= parish.provinceName %>"
+                                        data-parish-diocese="<%= parish.dioceseName %>"
+                                        data-parish-location="<%= parish.location || 'Non renseignée' %>"
+                                        data-parish-address="<%= parish.address || 'Non renseignée' %>"
+                                        data-parish-phone="<%= parish.phone || 'Non renseigné' %>"
+                                        data-parish-email="<%= parish.email || 'Non renseignée' %>"
+                                        data-parish-schedules="<%= parish.massScheduleSummary || 'Voir secrétariat paroissial' %>"
+                                        data-parish-chapels="<%= (parish.chapelsEnabled && parish.chapels && parish.chapels.length > 0) ? parish.chapels.join(', ') : 'Aucune chapelle rattachée' %>"
+                                    >Voir la fiche</button>
+                                </div>
                             </article>
                         <% } %>
                     </div>
@@ -96,6 +114,37 @@
             </section>
         </div>
     </main>
+
+    <div id="directory-parish-detail-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="dpd-title">
+        <div class="modal-dialog modal-dialog-lg">
+            <div class="modal-header payment-modal-header">
+                <div>
+                    <h2 id="dpd-title" class="modal-title">Fiche paroissiale</h2>
+                    <p id="dpd-diocese" class="text-muted">-</p>
+                </div>
+                <button type="button" class="icon-btn" data-dialog-close="directory-parish-detail-modal" aria-label="Fermer">
+                    <span class="material-symbols-rounded" aria-hidden="true">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="payment-detail-card">
+                    <dl class="payment-detail-dl">
+                        <div><dt>Province</dt><dd id="dpd-province">-</dd></div>
+                        <div><dt>Localité</dt><dd id="dpd-location">-</dd></div>
+                        <div><dt>Adresse</dt><dd id="dpd-address">-</dd></div>
+                        <div><dt>Téléphone</dt><dd id="dpd-phone">-</dd></div>
+                        <div><dt>Adresse e-mail</dt><dd id="dpd-email">-</dd></div>
+                        <div><dt>Horaires des messes</dt><dd id="dpd-schedules">-</dd></div>
+                        <div><dt>Chapelles</dt><dd id="dpd-chapels">-</dd></div>
+                    </dl>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="/demande-intention" class="btn btn-gold btn-sm">Déposer une intention</a>
+                <button type="button" class="btn btn-primary btn-sm" data-dialog-close="directory-parish-detail-modal">Fermer</button>
+            </div>
+        </div>
+    </div>
 
     <script src="/static/js/ecclesiastical-selector.js"></script>
     <script src="/static/js/ui-interactions.js"></script>

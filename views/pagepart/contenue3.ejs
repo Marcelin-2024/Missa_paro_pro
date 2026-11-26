@@ -1,6 +1,8 @@
 <%
   const perms = typeof permissions !== 'undefined' && Array.isArray(permissions) ? permissions : [];
   const messes = (stats && stats.allMesses) ? stats.allMesses : [];
+  const messeTypes = (stats && Array.isArray(stats.messeTypes)) ? stats.messeTypes : ['Messe paroissiale', 'Messe dominicale', 'Messe de semaine', 'Messe d’action de grâce', 'Messe de requiem', 'Messe de mariage'];
+  const canManage = perms.includes('parish.masses.manage');
 %>
 <div class="page-header">
     <div class="page-header-meta">
@@ -8,7 +10,7 @@
         <p class="page-subtitle">Calendrier des célébrations de votre paroisse</p>
     </div>
     <div class="page-actions">
-        <% if (perms.includes('parish.masses.manage')) { %>
+        <% if (canManage) { %>
             <a href="/page/messes" class="btn btn-gold">Ajouter une messe</a>
         <% } %>
     </div>
@@ -24,7 +26,7 @@
                 id="messes-search"
                 type="search"
                 class="form-control table-search"
-                placeholder="Rechercher par date, horaire ou célébrant..."
+                placeholder="Rechercher par date, horaire, célébrant, type ou lieu..."
                 data-table-search="messes-table-body"
             >
             <label for="messes-status-filter" class="sr-only">Filtrer par statut</label>
@@ -45,32 +47,37 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Horaire</th>
+                    <th>Date &amp; Horaire</th>
                     <th>Célébrant &amp; Type</th>
+                    <th>Lieu</th>
                     <th>Statut</th>
-                    <th>Action</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody id="messes-table-body">
                 <% if (messes.length > 0) { %>
                     <% for (const item of messes) { %>
                         <tr>
-                            <td><%= item.date %></td>
-                            <td><%= item.horaire %></td>
+                            <td>
+                                <span class="table-cell-title"><%= item.date %></span>
+                                <span class="table-cell-sub"><%= item.horaire %></span>
+                            </td>
                             <td>
                                 <span class="table-cell-title"><%= item.celebrant %></span>
                                 <span class="table-cell-sub"><%= item.type || 'Messe paroissiale' %></span>
                             </td>
+                            <td><%= item.lieu || 'Église paroissiale' %></td>
                             <td><%- include('../partials/status_badge', { statut: item.statut }) %></td>
                             <td>
                                 <div class="table-actions">
-                                    <% if (perms.includes('parish.intentions.view')) { %>
-                                        <button type="button" class="btn btn-ghost btn-sm" data-nav-target="intentions">Intentions</button>
-                                    <% } %>
-                                    <% if (perms.includes('parish.masses.manage') && item.statut === 'A venir') { %>
-                                        <button type="button" class="btn btn-outline btn-sm" data-messe-status="Passée" data-messe-id="<%= item.id %>">Clôturer</button>
-                                        <button type="button" class="btn btn-danger btn-sm" data-messe-status="Annulée" data-messe-id="<%= item.id %>">Annuler</button>
+                                    <button type="button" class="btn btn-ghost btn-sm" data-messe-detail="<%= item.id %>">Détails</button>
+                                    <% if (canManage) { %>
+                                        <button type="button" class="btn btn-outline btn-sm" data-messe-edit="<%= item.id %>">Modifier</button>
+                                        <% if (item.statut === 'A venir') { %>
+                                            <button type="button" class="btn btn-outline btn-sm" data-messe-status="Passée" data-messe-id="<%= item.id %>">Clôturer</button>
+                                            <button type="button" class="btn btn-danger btn-sm" data-messe-status="Annulée" data-messe-id="<%= item.id %>">Annuler</button>
+                                        <% } %>
+                                        <button type="button" class="btn btn-ghost btn-sm" data-messe-delete="<%= item.id %>">Supprimer</button>
                                     <% } %>
                                 </div>
                             </td>
@@ -88,3 +95,111 @@
         Aucune messe ne correspond à votre recherche.
     </div>
 </section>
+
+<div id="messe-detail-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="messe-detail-title">
+    <div class="modal-dialog modal-dialog-lg">
+        <div class="modal-header payment-modal-header">
+            <div>
+                <h2 id="messe-detail-title" class="modal-title">Détails de la messe</h2>
+                <p id="msd-subtitle" class="text-muted">-</p>
+            </div>
+            <button type="button" class="icon-btn" data-dialog-close="messe-detail-modal" aria-label="Fermer les détails">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </button>
+        </div>
+
+        <div class="modal-body payment-modal-body">
+            <div class="payment-detail-grid">
+                <div class="payment-detail-card">
+                    <h3>Célébration</h3>
+                    <dl class="payment-detail-dl">
+                        <div><dt>Date</dt><dd id="msd-date">-</dd></div>
+                        <div><dt>Horaire</dt><dd id="msd-horaire">-</dd></div>
+                        <div><dt>Célébrant</dt><dd id="msd-celebrant">-</dd></div>
+                        <div><dt>Type</dt><dd id="msd-type">-</dd></div>
+                        <div><dt>Lieu</dt><dd id="msd-lieu">-</dd></div>
+                        <div><dt>Statut</dt><dd id="msd-statut">-</dd></div>
+                    </dl>
+                </div>
+
+                <div class="payment-detail-card">
+                    <h3>Traçabilité &amp; Intentions liées</h3>
+                    <dl class="payment-detail-dl">
+                        <div><dt>Programmée par</dt><dd id="msd-created-by">-</dd></div>
+                        <div><dt>Créée le</dt><dd id="msd-created-at">-</dd></div>
+                        <div><dt>Intentions associées</dt><dd id="msd-intentions-count">0</dd></div>
+                    </dl>
+                    <ul id="msd-intentions-list" class="payment-events-list mt-3"></ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-dialog-close="messe-detail-modal">Fermer</button>
+        </div>
+    </div>
+</div>
+
+<% if (canManage) { %>
+<div id="messe-edit-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="messe-edit-title">
+    <div class="modal-dialog modal-dialog-lg">
+        <div class="modal-header payment-modal-header">
+            <h2 id="messe-edit-title" class="modal-title">Modifier la messe</h2>
+            <button type="button" class="icon-btn" data-dialog-close="messe-edit-modal" aria-label="Fermer">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </button>
+        </div>
+        <form id="messe-edit-form">
+            <input id="mse-id" type="hidden" name="id">
+            <div class="modal-body">
+                <div id="messe-edit-error" class="alert alert-error hidden mb-3" role="alert"></div>
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="mse-type" class="form-label">Type de célébration</label>
+                        <select id="mse-type" name="type" class="form-select" required>
+                            <% for (const t of messeTypes) { %>
+                                <option value="<%= t %>"><%= t %></option>
+                            <% } %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="mse-statut" class="form-label">Statut</label>
+                        <select id="mse-statut" name="statut" class="form-select" required>
+                            <option value="A venir">À venir</option>
+                            <option value="Passée">Passée</option>
+                            <option value="Annulée">Annulée</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="mse-celebrant" class="form-label">Célébrant</label>
+                        <input id="mse-celebrant" name="celebrant" type="text" class="form-control" required maxlength="120">
+                    </div>
+                    <div class="form-group">
+                        <label for="mse-lieu" class="form-label">Lieu / Chapelle (optionnel)</label>
+                        <input id="mse-lieu" name="lieu" type="text" class="form-control" maxlength="120" placeholder="Église paroissiale">
+                    </div>
+                </div>
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="mse-date" class="form-label">Date</label>
+                        <input id="mse-date" name="date" type="date" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="mse-horaire" class="form-label">Horaire</label>
+                        <input id="mse-horaire" name="horaire" type="time" class="form-control" required>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" data-dialog-close="messe-edit-modal">Annuler</button>
+                <button type="submit" class="btn btn-primary">Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
+<% } %>

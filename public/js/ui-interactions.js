@@ -106,14 +106,89 @@ function applyAllFilters() {
   });
 }
 
+function closeAllOpenModals() {
+  document.querySelectorAll('.modal-backdrop:not(.hidden)').forEach((dlg) => {
+    dlg.classList.add('hidden');
+  });
+}
+
+function openConfirmDialog({ title, message, confirmLabel } = {}) {
+  const modal = document.getElementById('confirm-dialog');
+  if (!modal) return Promise.resolve(true);
+
+  const titleEl = document.getElementById('confirm-dialog-title');
+  const msgEl = document.getElementById('confirm-dialog-message');
+  const confirmBtn = document.getElementById('confirm-dialog-confirm');
+  const cancelBtn = document.getElementById('confirm-dialog-cancel');
+
+  if (titleEl && title) titleEl.textContent = title;
+  if (msgEl && message) msgEl.textContent = message;
+  if (confirmBtn && confirmLabel) confirmBtn.textContent = confirmLabel;
+
+  modal.classList.remove('hidden');
+
+  return new Promise((resolve) => {
+    const cleanup = (result) => {
+      modal.classList.add('hidden');
+      confirmBtn?.removeEventListener('click', onConfirm);
+      cancelBtn?.removeEventListener('click', onCancel);
+      modal.removeEventListener('click', onBackdrop);
+      document.removeEventListener('keydown', onEscape);
+      resolve(result);
+    };
+    const onConfirm = () => cleanup(true);
+    const onCancel = () => cleanup(false);
+    const onBackdrop = (ev) => {
+      if (ev.target === modal) cleanup(false);
+    };
+    const onEscape = (ev) => {
+      if (ev.key === 'Escape') cleanup(false);
+    };
+
+    confirmBtn?.addEventListener('click', onConfirm);
+    cancelBtn?.addEventListener('click', onCancel);
+    modal.addEventListener('click', onBackdrop);
+    document.addEventListener('keydown', onEscape);
+  });
+}
+
 window.missaUI = {
   applyFilters: applyAllFilters,
   getCsrfToken,
+  openConfirmDialog,
+  closeAllOpenModals,
 };
 
 document.addEventListener('click', (event) => {
   const target = event.target;
   if (!(target instanceof Element)) return;
+
+  if (target.classList.contains('modal-backdrop')) {
+    target.classList.add('hidden');
+    return;
+  }
+
+  const dirParishBtn = target.closest('[data-directory-parish-detail]');
+  if (dirParishBtn instanceof HTMLElement) {
+    const modal = document.getElementById('directory-parish-detail-modal');
+    if (modal) {
+      const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val || '-';
+      };
+      set('dpd-title', dirParishBtn.getAttribute('data-parish-name'));
+      set('dpd-diocese', dirParishBtn.getAttribute('data-parish-diocese'));
+      set('dpd-province', dirParishBtn.getAttribute('data-parish-province'));
+      set('dpd-location', dirParishBtn.getAttribute('data-parish-location'));
+      set('dpd-address', dirParishBtn.getAttribute('data-parish-address'));
+      set('dpd-phone', dirParishBtn.getAttribute('data-parish-phone'));
+      set('dpd-email', dirParishBtn.getAttribute('data-parish-email'));
+      set('dpd-schedules', dirParishBtn.getAttribute('data-parish-schedules'));
+      set('dpd-chapels', dirParishBtn.getAttribute('data-parish-chapels'));
+      modal.classList.remove('hidden');
+    }
+    return;
+  }
 
   const toggleBtn = target.closest('[data-toggle-password]');
   if (toggleBtn) {
@@ -267,6 +342,7 @@ document.addEventListener('change', (event) => {
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     closeMobileDrawer(true);
+    closeAllOpenModals();
     const drawer = document.getElementById('notifications-drawer');
     if (drawer) drawer.classList.add('hidden');
   }

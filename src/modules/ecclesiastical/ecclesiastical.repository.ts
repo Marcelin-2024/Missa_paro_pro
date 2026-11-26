@@ -1,10 +1,13 @@
 import fs from 'fs';
 import path from 'path';
+import { getAdminDb } from '../../config/firebaseAdmin.js';
+import { COLLECTIONS, stripUndefined } from '../../repositories/collections.js';
 import type {
   CatholicDirectoryDataset,
   DioceseEntry,
   ParishEntry,
   ParishRequestRecord,
+  ParishRequestStatus,
   ProvinceEntry,
 } from './ecclesiastical.types.js';
 
@@ -20,7 +23,6 @@ interface IndexedParish {
 }
 
 const DIRECTORY_PATH = path.join(process.cwd(), 'src', 'data', 'catholicDirectory.json');
-const REQUESTS_PATH = path.join(process.cwd(), 'src', 'data', 'parishRequests.json');
 
 let cachedDataset: CatholicDirectoryDataset | null = null;
 const provinceIndex = new Map<string, ProvinceEntry>();
@@ -74,21 +76,39 @@ export function getDirectoryMetadata() {
   return ensureDirectoryLoaded().metadata;
 }
 
-export function readParishRequests(): ParishRequestRecord[] {
-  try {
-    if (!fs.existsSync(REQUESTS_PATH)) {
-      fs.writeFileSync(REQUESTS_PATH, '[]\n', 'utf-8');
-      return [];
-    }
-    const raw = fs.readFileSync(REQUESTS_PATH, 'utf-8');
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as ParishRequestRecord[]) : [];
-  } catch {
-    return [];
-  }
+function requestsCol() {
+  return getAdminDb().collection(COLLECTIONS.PARISH_REQUESTS);
 }
 
-export function writeParishRequests(requests: ParishRequestRecord[]): void {
-  fs.mkdirSync(path.dirname(REQUESTS_PATH), { recursive: true });
-  fs.writeFileSync(REQUESTS_PATH, JSON.stringify(requests, null, 2) + '\n', 'utf-8');
+export async function listParishRequestsRepo(
+  status?: ParishRequestStatus
+): Promise<ParishRequestRecord[]> {
+  const snap = status
+    ? await requestsCol().where('status', '==', status).get()
+    : await requestsCol().get();
+
+  return snap.docs
+    .map((d) => d.data() as ParishRequestRecord)
+    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
+}
+
+export async function findParishRequestByIdRepo(
+  requestId: string
+): Promise<ParishRequestRecord | null> {
+  if (!requestId) return null;
+  const snap = await requestsCol().doc(requestId).get();
+  return snap.exists ? (snap.data() as ParishRequestRecord) : null;
+}
+
+export async function listPendingRequestsByDioceseRepo(
+  dioceseId: string
+): Promise<ParishRequestRecord[]> {
+  const snap = await requestsCol().where('dioceseId', '==', dioceseId).get();
+  return snap.docs
+    .map((d) => d.data() as ParishRequestRecord)
+    .filter((r) => r.status === 'PENDING');
+}
+
+export async function saveParishRequestRepo(record: ParishRequestRecord): Promise<void> {
+  await requestsCol().doc(record.id).set(stripUndefined({ ...record }));
 }

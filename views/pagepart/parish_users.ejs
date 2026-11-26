@@ -20,7 +20,7 @@
                 <input id="pm-displayName" name="displayName" type="text" class="form-control" required placeholder="Ex. Père André Kouamé">
             </div>
             <div class="form-group">
-                <label for="pm-email" class="form-label">Email</label>
+                <label for="pm-email" class="form-label">Adresse e-mail</label>
                 <input id="pm-email" name="email" type="email" class="form-control" required placeholder="membre@paroisse.ci">
             </div>
         </div>
@@ -56,12 +56,10 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Membre</th>
+                    <th>Membre &amp; Coordonnées</th>
                     <th>Rôles actifs</th>
                     <th>Compte / Appartenance</th>
-                    <% if (permissions.includes('parish.users.manage')) { %>
-                        <th>Actions</th>
-                    <% } %>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -70,7 +68,10 @@
                         <tr>
                             <td>
                                 <span class="table-cell-title"><%= m.user.displayName %></span>
-                                <span class="table-cell-sub"><%= m.user.email %> · <%= m.membership.titleLabel || 'Membre paroissial' %></span>
+                                <span class="table-cell-sub">
+                                    <%= m.user.email %> · <%= m.user.phone || 'Téléphone non renseigné' %><br>
+                                    Fonction : <%= m.membership.titleLabel || 'Membre paroissial' %>
+                                </span>
                             </td>
                             <td>
                                 <div class="roles-chip-list">
@@ -89,17 +90,19 @@
                                     <%- include('../partials/status_badge', { statut: m.membership.status }) %>
                                 </div>
                             </td>
-                            <% if (permissions.includes('parish.users.manage')) { %>
-                                <td>
-                                    <div class="table-actions">
+                            <td>
+                                <div class="table-actions">
+                                    <button type="button" class="btn btn-ghost btn-sm" data-member-detail="<%= m.membership.id %>">Détails</button>
+                                    <% if (permissions.includes('parish.users.manage')) { %>
+                                        <button type="button" class="btn btn-outline btn-sm" data-member-edit="<%= m.membership.id %>">Modifier</button>
                                         <% if (m.membership.status === 'ACTIVE') { %>
                                             <button type="button" class="btn btn-danger btn-sm" data-parish-membership-status="SUSPENDED" data-membership-id="<%= m.membership.id %>">Suspendre accès</button>
                                         <% } else if (m.membership.status === 'SUSPENDED') { %>
                                             <button type="button" class="btn btn-primary btn-sm" data-parish-membership-status="ACTIVE" data-membership-id="<%= m.membership.id %>">Réactiver</button>
                                         <% } %>
-                                    </div>
-                                </td>
-                            <% } %>
+                                    <% } %>
+                                </div>
+                            </td>
                         </tr>
                     <% } %>
                 <% } else { %>
@@ -111,3 +114,42 @@
         </table>
     </div>
 </section>
+
+<%- include('../partials/member_detail_modal') %>
+
+<% if (permissions.includes('parish.users.manage')) { %>
+<div id="member-edit-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="member-edit-title">
+    <div class="modal-dialog modal-dialog-lg">
+        <div class="modal-header payment-modal-header">
+            <h2 id="member-edit-title" class="modal-title">Modifier le membre paroissial</h2>
+            <button type="button" class="icon-btn" data-dialog-close="member-edit-modal" aria-label="Fermer">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </button>
+        </div>
+        <form id="member-edit-form">
+            <input id="me-membership-id" type="hidden" name="membershipId">
+            <div class="modal-body">
+                <div id="member-edit-error" class="alert alert-error hidden mb-3" role="alert"></div>
+                <div class="form-group">
+                    <label for="me-displayName" class="form-label">Nom complet</label>
+                    <input id="me-displayName" name="displayName" type="text" class="form-control" required maxlength="120">
+                </div>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="me-phone" class="form-label">Téléphone</label>
+                        <input id="me-phone" name="phone" type="tel" class="form-control" maxlength="40" placeholder="+225 07 00 00 00 00">
+                    </div>
+                    <div class="form-group">
+                        <label for="me-titleLabel" class="form-label">Fonction affichée</label>
+                        <input id="me-titleLabel" name="titleLabel" type="text" class="form-control" maxlength="80" placeholder="Ex. Vicaire">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" data-dialog-close="member-edit-modal">Annuler</button>
+                <button type="submit" class="btn btn-primary">Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
+<% } %>

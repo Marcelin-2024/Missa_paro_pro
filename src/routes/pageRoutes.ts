@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { loadFormConfig } from '../utils/formConfig.js';
+import { uploadAnnonceImage } from '../utils/storageHelper.js';
 import {
   listProvincesSummary,
   validateEcclesiasticalRegistration,
@@ -21,15 +22,20 @@ import {
   listParishMembersDetailed,
   registerPublicFideleAccount,
 } from '../modules/users/users.service.js';
-import { getPlatformState, savePlatformState } from '../modules/platform/platform.repository.js';
-import { createMesseForParish, listMassesForParish } from '../modules/masses/masses.service.js';
+import { isSuperAdminSetupNeeded } from '../modules/platform/platform.repository.js';
 import {
+  ALLOWED_MESSE_TYPES,
+  createMesseForParish,
+  listMassesForParish,
+} from '../modules/masses/masses.service.js';
+import {
+  ANNONCE_TYPE_LABELS,
   createAnnouncementForParish,
   listAnnouncementsForParish,
 } from '../modules/announcements/announcements.service.js';
 import {
   INTENTION_STATUS_LABELS,
-  listIntentionsForParish,
+  listEnrichedIntentionsForParish,
   submitPublicIntention,
 } from '../modules/intentions/intentions.service.js';
 import { ALL_ROLE_CODES, PERMISSION_LABELS, ROLE_CATALOG } from '../modules/roles/rbac.catalog.js';
@@ -43,6 +49,8 @@ import {
 import { listPaymentsFiltered } from '../modules/payments/payments.service.js';
 import { computePaymentStatistics } from '../modules/payments/payments.stats.js';
 import type { AnnonceEntity } from '../modules/platform/platform.types.js';
+import { getAdminAuth } from '../config/firebaseAdmin.js';
+import { findUserByEmail, findUserById, saveUser } from '../repositories/users.repository.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -51,13 +59,19 @@ const upload = multer({
 
 export const pageRouter = Router();
 
-export function buildParishDashboardData(parishId: string) {
-  const intentions = listIntentionsForParish(parishId);
-  const messes = listMassesForParish(parishId);
-  const annonces = listAnnouncementsForParish(parishId);
+export async function buildParishDashboardData(parishId: string) {
+  const [intentions, messes, annonces] = await Promise.all([
+    listEnrichedIntentionsForParish(parishId),
+    listMassesForParish(parishId),
+    listAnnouncementsForParish(parishId),
+  ]);
 
-  const pendingCount = intentions.filter((i) => i.status === 'PENDING' || i.status === 'PROCESSING').length;
-  const acceptedCount = intentions.filter((i) => i.status === 'ACCEPTED' || i.status === 'SCHEDULED').length;
+  const pendingCount = intentions.filter(
+    (i) => i.status === 'PENDING' || i.status === 'PROCESSING'
+  ).length;
+  const acceptedCount = intentions.filter(
+    (i) => i.status === 'ACCEPTED' || i.status === 'SCHEDULED'
+  ).length;
   const celebratedCount = intentions.filter((i) => i.status === 'CELEBRATED').length;
   const messesCount = messes.filter((m) => m.statut === 'A venir').length;
   const annoncesCount = annonces.length;
@@ -75,6 +89,9 @@ export function buildParishDashboardData(parishId: string) {
     allMesses: messes,
     allAnnonces: annonces,
     statusLabels: INTENTION_STATUS_LABELS,
+    annonceTypeLabels: ANNONCE_TYPE_LABELS,
+    messeTypes: ALLOWED_MESSE_TYPES,
+    tariffs: INTENTION_TARIFFS,
   };
 }
 
@@ -87,7 +104,7 @@ pageRouter.get('/inscription', (_req: Request, res: Response) => {
   });
 });
 
-pageRouter.post('/valide', (req: Request, res: Response) => {
+pageRouter.post('/valide', async (req: Request, res: Response) => {
   const {
     provinceId = '',
     dioceseId = '',
@@ -112,7 +129,7 @@ pageRouter.post('/valide', (req: Request, res: Response) => {
     return;
   }
 
-  const validation = validateEcclesiasticalRegistration({
+  const validation = await validateEcclesiasticalRegistration({
     provinceId,
     dioceseId,
     parishId,
@@ -129,7 +146,7 @@ pageRouter.post('/valide', (req: Request, res: Response) => {
     return;
   }
 
-  const regResult = registerPublicFideleAccount({
+  const regResult = await registerPublicFideleAccount({
     displayName: nom_complet,
     email: gmail,
     phone: telephone,
@@ -151,15 +168,15 @@ pageRouter.post('/valide', (req: Request, res: Response) => {
   res.redirect('/');
 });
 
-pageRouter.post('/verification', (req: Request, res: Response) => {
+pageRouter.post('/verification', async (req: Request, res: Response) => {
   const { gmail = '', motdepasse = '' } = req.body as Record<string, string>;
   const rateKey = `${req.ip || 'local'}:${String(gmail).trim().toLowerCase()}`;
-  const limit = checkLoginRateLimit(rateKey);
+  const [limit, needsSuperAdminSetup] = await Promise.all([
+    checkLoginRateLimit(rateKey),
+    isSuperAdminSetupNeeded(),
+  ]);
 
   const formData = loadFormConfig();
-  const state = getPlatformState();
-  const needsSuperAdminSetup =
-    !state.superAdminClaimed && !(process.env.SUPER_ADMIN_PASSWORD || '').trim();
 
   if (!limit.allowed) {
     res.status(429).render('compte', {
@@ -170,14 +187,14 @@ pageRouter.post('/verification', (req: Request, res: Response) => {
     return;
   }
 
-  const auth = authenticateWithCredentials(gmail, motdepasse);
+  const auth = await authenticateWithCredentials(gmail, motdepasse);
   if (!auth.ok) {
     if (auth.code === 'SUPER_ADMIN_SETUP_REQUIRED') {
-      clearLoginFailures(rateKey);
+      await clearLoginFailures(rateKey);
       res.redirect('/setup-super-admin');
       return;
     }
-    recordLoginFailure(rateKey);
+    await recordLoginFailure(rateKey);
     res.status(401).render('compte', {
       champs: formData.connection,
       error: auth.message,
@@ -186,7 +203,7 @@ pageRouter.post('/verification', (req: Request, res: Response) => {
     return;
   }
 
-  clearLoginFailures(rateKey);
+  await clearLoginFailures(rateKey);
   req.session.uid = auth.user.id;
   req.session.user = {
     uid: auth.user.id,
@@ -209,6 +226,7 @@ pageRouter.post('/verification', (req: Request, res: Response) => {
       res.status(500).render('compte', {
         champs: formData.connection,
         error: 'Erreur lors de la création de session.',
+        needsSuperAdminSetup,
       });
       return;
     }
@@ -232,7 +250,7 @@ pageRouter.post(
   '/changer-mot-de-passe',
   requireAuth,
   verifyCsrfForSessionMutation,
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const { nouveau_motdepasse = '', confirmation = '' } = req.body as Record<string, string>;
     if (nouveau_motdepasse !== confirmation) {
       res.status(400).render('changer_mot_de_passe', {
@@ -242,7 +260,7 @@ pageRouter.post(
       return;
     }
 
-    const result = changeOwnPassword(req.authContext!.user.id, nouveau_motdepasse);
+    const result = await changeOwnPassword(req.authContext!.user.id, nouveau_motdepasse);
     if (!result.ok) {
       res.status(result.status).render('changer_mot_de_passe', {
         user: req.authContext!.user,
@@ -272,11 +290,13 @@ pageRouter.post(
       return;
     }
     req.session.activeParishId = targetParishId;
-    res.redirect('/page/tableau_bords');
+    req.session.save(() => {
+      res.redirect('/page/tableau_bords');
+    });
   }
 );
 
-pageRouter.get('/tableau_bords', requireAuth, (req: Request, res: Response) => {
+pageRouter.get('/tableau_bords', requireAuth, async (req: Request, res: Response) => {
   const ctx = req.authContext!;
   if (ctx.user.isSuperAdmin) {
     res.redirect('/super-admin');
@@ -286,15 +306,6 @@ pageRouter.get('/tableau_bords', requireAuth, (req: Request, res: Response) => {
     res.redirect('/demande-intention');
     return;
   }
-
-  const stats = buildParishDashboardData(ctx.activeParish.id);
-  const members = ctx.permissions.includes('parish.users.view')
-    ? listParishMembersDetailed(ctx.activeParish.id)
-    : [];
-  const auditLogs = ctx.permissions.includes('parish.audit.view')
-    ? listAuditLogs({ scope: 'PARISH', parishId: ctx.activeParish.id, limit: 40 })
-    : [];
-  const notifications = listNotificationsForParish(ctx.activeParish.id, ctx.user.id);
 
   const canViewPayments = ctx.permissions.includes('parish.payments.view');
   const paymentFilters = {
@@ -306,12 +317,23 @@ pageRouter.get('/tableau_bords', requireAuth, (req: Request, res: Response) => {
     page: typeof req.query.page === 'string' ? Number(req.query.page) : 1,
     limit: 10,
   };
-  const paymentStats = canViewPayments
-    ? computePaymentStatistics({ parishId: ctx.activeParish.id })
-    : null;
-  const paymentList = canViewPayments
-    ? listPaymentsFiltered({ parishId: ctx.activeParish.id, ...paymentFilters })
-    : null;
+
+  const [stats, members, auditLogs, notifications, paymentStats, paymentList] = await Promise.all([
+    buildParishDashboardData(ctx.activeParish.id),
+    ctx.permissions.includes('parish.users.view')
+      ? listParishMembersDetailed(ctx.activeParish.id)
+      : Promise.resolve([]),
+    ctx.permissions.includes('parish.audit.view')
+      ? listAuditLogs({ scope: 'PARISH', parishId: ctx.activeParish.id, limit: 40 })
+      : Promise.resolve([]),
+    listNotificationsForParish(ctx.activeParish.id, ctx.user.id),
+    canViewPayments
+      ? computePaymentStatistics({ parishId: ctx.activeParish.id })
+      : Promise.resolve(null),
+    canViewPayments
+      ? listPaymentsFiltered({ parishId: ctx.activeParish.id, ...paymentFilters })
+      : Promise.resolve(null),
+  ]);
 
   res.render('tableau_bords', {
     user: {
@@ -345,7 +367,7 @@ pageRouter.get(
   requireParishPermission('parish.masses.manage'),
   (_req: Request, res: Response) => {
     const formData = loadFormConfig();
-    res.render('ajoute_messe', { champs: formData.messes });
+    res.render('ajoute_messe', { champs: formData.messes, error: null });
   }
 );
 
@@ -353,16 +375,17 @@ pageRouter.post(
   '/ajoute_messe',
   requireParishPermission('parish.masses.manage'),
   verifyCsrfForSessionMutation,
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const ctx = req.authContext!;
     const {
       Celebrant_messe = '',
       date_messe = '',
       heure_messe = '',
       type_messe = 'Messe paroissiale',
+      lieu_messe = '',
     } = req.body as Record<string, string>;
 
-    createMesseForParish({
+    const result = await createMesseForParish({
       actorUserId: ctx.user.id,
       actorEmail: ctx.user.email,
       parishId: ctx.activeParish!.id,
@@ -370,8 +393,17 @@ pageRouter.post(
       date: date_messe,
       horaire: heure_messe,
       type: type_messe,
+      lieu: lieu_messe,
     });
-    res.redirect('/page/tableau_bords');
+    if (!result.ok) {
+      const formData = loadFormConfig();
+      res.status(result.status).render('ajoute_messe', {
+        champs: formData.messes,
+        error: result.error,
+      });
+      return;
+    }
+    res.redirect('/page/tableau_bords?section=masses');
   }
 );
 
@@ -380,7 +412,7 @@ pageRouter.get(
   requireParishPermission('parish.announcements.publish'),
   (_req: Request, res: Response) => {
     const formData = loadFormConfig();
-    res.render('annonces', { champs: formData.annonces });
+    res.render('annonces', { champs: formData.annonces, error: null });
   }
 );
 
@@ -389,7 +421,7 @@ pageRouter.post(
   requireParishPermission('parish.announcements.publish'),
   upload.single('image_annonce'),
   verifyCsrfForSessionMutation,
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const ctx = req.authContext!;
     const {
       type_annonces = 'Communique',
@@ -398,24 +430,40 @@ pageRouter.post(
       contenu_annonce = '',
     } = req.body as Record<string, string>;
 
-    let imageUrl: string | undefined;
-    if (req.file) {
-      imageUrl = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+    const annonceId = `ann-${crypto.randomUUID().slice(0, 10)}`;
+    const uploadResult = await uploadAnnonceImage(req.file, ctx.activeParish!.id, annonceId);
+    if (!uploadResult.ok) {
+      const formData = loadFormConfig();
+      res.status(uploadResult.status).render('annonces', {
+        champs: formData.annonces,
+        error: uploadResult.error,
+      });
+      return;
     }
 
-    createAnnouncementForParish({
+    const result = await createAnnouncementForParish({
       actorUserId: ctx.user.id,
       actorEmail: ctx.user.email,
       parishId: ctx.activeParish!.id,
+      annonceId,
       type: (type_annonces as AnnonceEntity['type']) || 'Communique',
       titre: Titre_annonce,
       dateAnnonce: date_annonce,
       contenu: contenu_annonce,
-      imageUrl,
+      imageUrl: uploadResult.imageUrl,
       canApproveDirectly: ctx.permissions.includes('parish.announcements.approve'),
     });
 
-    res.redirect('/page/tableau_bords');
+    if (!result.ok) {
+      const formData = loadFormConfig();
+      res.status(result.status).render('annonces', {
+        champs: formData.annonces,
+        error: result.error,
+      });
+      return;
+    }
+
+    res.redirect('/page/tableau_bords?section=announcements');
   }
 );
 
@@ -423,9 +471,9 @@ pageRouter.get('/demande-intention', (_req: Request, res: Response) => {
   res.redirect('/demande-intention');
 });
 
-pageRouter.post('/demande-intention', (req: Request, res: Response) => {
+pageRouter.post('/demande-intention', async (req: Request, res: Response) => {
   const body = (req.body ?? {}) as Record<string, string>;
-  const result = submitPublicIntention({
+  const result = await submitPublicIntention({
     provinceId: body.provinceId || '',
     dioceseId: body.dioceseId || '',
     parishId: body.parishId || '',
@@ -468,30 +516,41 @@ pageRouter.post('/demande-intention', (req: Request, res: Response) => {
   });
 });
 
-pageRouter.post('/firebase-session', (req: Request, res: Response) => {
-  const {
-    uid = '',
-    nom_complet = 'Fidèle',
-    email = '',
-  } = (req.body ?? {}) as Record<string, string>;
+pageRouter.post('/firebase-session', async (req: Request, res: Response) => {
+  const { idToken = '' } = (req.body ?? {}) as Record<string, string>;
 
-  if (!uid || !email) {
-    res.status(400).json({ error: 'UID ou email manquant' });
+  if (!idToken || typeof idToken !== 'string') {
+    res.status(400).json({ error: 'Jeton d’authentification Firebase (idToken) manquant.' });
     return;
   }
 
-  const cleanEmail = email.trim().toLowerCase();
-  const state = getPlatformState();
-  const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'settaocram@gmail.com').trim().toLowerCase();
-  let user = state.users.find((u) => u.email.toLowerCase() === cleanEmail || u.id === uid);
+  let decoded;
+  try {
+    decoded = await getAdminAuth().verifyIdToken(idToken);
+  } catch {
+    res.status(401).json({ error: 'Jeton Firebase invalide ou expiré.' });
+    return;
+  }
+
+  const cleanEmail = String(decoded.email || '').trim().toLowerCase();
+  if (!cleanEmail || decoded.email_verified !== true) {
+    res.status(403).json({ error: 'Adresse e-mail Google non vérifiée.' });
+    return;
+  }
+
+  const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'settaocram@gmail.com')
+    .trim()
+    .toLowerCase();
+
+  let user = (await findUserByEmail(cleanEmail)) ?? (await findUserById(decoded.uid));
 
   if (!user) {
     const now = new Date().toISOString();
     user = {
-      id: uid,
+      id: decoded.uid,
       email: cleanEmail,
-      displayName: String(nom_complet || cleanEmail).trim().slice(0, 120),
-      phone: '',
+      displayName: String(decoded.name || cleanEmail).trim().slice(0, 120),
+      phone: decoded.phone_number ? String(decoded.phone_number).slice(0, 40) : '',
       passwordHash: null,
       accountType: cleanEmail === superAdminEmail ? 'SUPER_ADMIN' : 'FIDELE',
       isSuperAdmin: cleanEmail === superAdminEmail,
@@ -504,18 +563,16 @@ pageRouter.post('/firebase-session', (req: Request, res: Response) => {
       updatedAt: now,
       lastLoginAt: now,
     };
-    state.users.push(user);
-    savePlatformState(state);
+    await saveUser(user);
+  } else {
+    if (user.status === 'SUSPENDED' || user.status === 'DISABLED') {
+      res.status(403).json({ error: 'Compte suspendu ou désactivé.' });
+      return;
+    }
+    user.lastLoginAt = new Date().toISOString();
+    user.updatedAt = user.lastLoginAt;
+    await saveUser(user);
   }
-
-  if (user.status === 'SUSPENDED' || user.status === 'DISABLED') {
-    res.status(403).json({ error: 'Compte suspendu ou désactivé.' });
-    return;
-  }
-
-  user.lastLoginAt = new Date().toISOString();
-  user.updatedAt = user.lastLoginAt;
-  savePlatformState(state);
 
   req.session.uid = user.id;
   req.session.user = {
@@ -557,5 +614,4 @@ pageRouter.get('/logout', (req: Request, res: Response) => {
   });
 });
 
-// Keep requireParishContext imported for downstream usage if needed
 export { requireParishContext };

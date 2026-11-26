@@ -16,7 +16,7 @@
     },
     {
       "name": "gmail",
-      "label": "Adresse Gmail",
+      "label": "Adresse e-mail",
       "placeholder": "nom@domaine.com",
       "type": "email",
       "required": true
@@ -39,7 +39,7 @@
   "connection": [
     {
       "name": "gmail",
-      "label": "Adresse Gmail",
+      "label": "Adresse e-mail",
       "placeholder": "nom@domaine.com",
       "type": "email",
       "required": true
@@ -54,16 +54,53 @@
   ],
   "messes": [
     {
+      "name": "type_messe",
+      "label": "Type de célébration",
+      "type": "select",
+      "options": [
+        [
+          "Messe paroissiale",
+          "Messe paroissiale"
+        ],
+        [
+          "Messe dominicale",
+          "Messe dominicale"
+        ],
+        [
+          "Messe d’action de grâce",
+          "Messe d’action de grâce"
+        ],
+        [
+          "Messe de requiem",
+          "Messe de requiem"
+        ],
+        [
+          "Messe matinale",
+          "Messe matinale"
+        ],
+        [
+          "Solennité / Fête",
+          "Solennité / Fête"
+        ]
+      ],
+      "required": true
+    },
+    {
       "name": "Celebrant_messe",
       "label": "Célébrant de la messe",
-      "placeholder": "Célébrant de la messe",
+      "placeholder": "Ex. Père Jean-Baptiste Kouassi",
       "type": "text",
-      "width": "370px",
       "required": true
+    },
+    {
+      "name": "lieu_messe",
+      "label": "Lieu / Chapelle (optionnel)",
+      "placeholder": "Ex. Église paroissiale ou Chapelle Saint-Joseph",
+      "type": "text",
+      "required": false
     }
   ],
-    "annonces": [
-
+  "annonces": [
     {
       "name": "type_annonces",
       "label": "Type d'annonce",
@@ -88,13 +125,11 @@
       ],
       "required": true
     },
-    
     {
       "name": "Titre_annonce",
       "label": "Titre de l'annonce",
-      "placeholder": "Titre de l'annonce",
-      "type": "textarea",
-      "width": "370px",
+      "placeholder": "Ex. Veillée de prière paroissiale",
+      "type": "text",
       "required": true
     }
   ]

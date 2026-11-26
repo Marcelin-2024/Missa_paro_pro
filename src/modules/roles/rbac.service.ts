@@ -1,7 +1,7 @@
 import crypto from 'crypto';
-import { getPlatformState, savePlatformState } from '../platform/platform.repository.js';
 import type {
   MembershipRoleEntity,
+  ParishEntity,
   ParishMembershipEntity,
   PermissionCode,
   RoleCode,
@@ -9,6 +9,19 @@ import type {
 import { ALL_ROLE_CODES, ROLE_CATALOG } from './rbac.catalog.js';
 import { recordAuditLog } from '../audit/audit.service.js';
 import { createNotification } from '../notifications/notifications.service.js';
+import { findUserById } from '../../repositories/users.repository.js';
+import {
+  expireOutdatedRolesRepo,
+  findActiveMembershipRepo,
+  findMembershipByIdRepo,
+  findParishByIdRepo,
+  listAllParishesRepo,
+  listMembershipRolesByMembershipRepo,
+  listMembershipRolesByParishRepo,
+  listMembershipsByParishRepo,
+  listMembershipsByUserRepo,
+  saveMembershipRoleRepo,
+} from '../../repositories/parishes.repository.js';
 
 export interface EffectiveAccessContext {
   membership: ParishMembershipEntity;
@@ -16,51 +29,39 @@ export interface EffectiveAccessContext {
   permissions: PermissionCode[];
 }
 
-export function expireOutdatedRoles(): boolean {
-  const state = getPlatformState();
-  const nowMs = Date.now();
-  let changed = false;
-
-  for (const assignment of state.membershipRoles) {
-    if (
-      assignment.status === 'ACTIVE' &&
-      assignment.expiresAt &&
-      new Date(assignment.expiresAt).getTime() <= nowMs
-    ) {
-      assignment.status = 'EXPIRED';
-      changed = true;
-    }
-  }
-
-  if (changed) {
-    savePlatformState(state);
-  }
-  return changed;
+export interface ActiveMembershipEntry {
+  membership: ParishMembershipEntity;
+  parish: ParishEntity;
+  roles: RoleCode[];
+  permissions: PermissionCode[];
 }
 
-export function computeEffectiveAccess(
+export async function expireOutdatedRoles(scope?: {
+  parishId?: string;
+  userId?: string;
+}): Promise<boolean> {
+  return expireOutdatedRolesRepo(scope);
+}
+
+export async function computeEffectiveAccess(
   userId: string,
   parishId: string
-): EffectiveAccessContext | null {
-  expireOutdatedRoles();
-  const state = getPlatformState();
+): Promise<EffectiveAccessContext | null> {
+  await expireOutdatedRoles({ parishId });
 
-  const user = state.users.find((u) => u.id === userId);
+  const [user, parish, membership] = await Promise.all([
+    findUserById(userId),
+    findParishByIdRepo(parishId),
+    findActiveMembershipRepo(userId, parishId),
+  ]);
+
   if (!user || user.status !== 'ACTIVE') return null;
-
-  const parish = state.parishes.find((p) => p.id === parishId);
   if (!parish || parish.status !== 'ACTIVE') return null;
+  if (!membership || membership.status !== 'ACTIVE') return null;
 
-  const membership = state.memberships.find(
-    (m) => m.userId === userId && m.parishId === parishId && m.status === 'ACTIVE'
-  );
-  if (!membership) return null;
-
-  const activeAssignments = state.membershipRoles.filter(
-    (mr) =>
-      mr.membershipId === membership.id &&
-      mr.parishId === parishId &&
-      mr.status === 'ACTIVE'
+  const assignments = await listMembershipRolesByMembershipRepo(membership.id);
+  const activeAssignments = assignments.filter(
+    (mr) => mr.parishId === parishId && mr.status === 'ACTIVE'
   );
 
   const roleSet = new Set<RoleCode>();
@@ -82,59 +83,63 @@ export function computeEffectiveAccess(
   };
 }
 
-export function getUserActiveMemberships(userId: string) {
-  expireOutdatedRoles();
-  const state = getPlatformState();
-  const user = state.users.find((u) => u.id === userId);
+export async function getUserActiveMemberships(userId: string): Promise<ActiveMembershipEntry[]> {
+  await expireOutdatedRoles({ userId });
+  const user = await findUserById(userId);
   if (!user || user.status !== 'ACTIVE') return [];
 
-  return state.memberships
-    .filter((m) => m.userId === userId && m.status === 'ACTIVE')
-    .map((m) => {
-      const parish = state.parishes.find((p) => p.id === m.parishId);
-      const access = computeEffectiveAccess(userId, m.parishId);
-      return {
-        membership: m,
-        parish,
-        roles: access?.activeRoles ?? [],
-        permissions: access?.permissions ?? [],
-      };
-    })
-    .filter((entry) => entry.parish && entry.parish.status === 'ACTIVE');
+  const [memberships, allParishes] = await Promise.all([
+    listMembershipsByUserRepo(userId),
+    listAllParishesRepo(),
+  ]);
+  const parishMap = new Map(allParishes.map((p) => [p.id, p]));
+
+  const entries: ActiveMembershipEntry[] = [];
+  for (const membership of memberships) {
+    if (membership.status !== 'ACTIVE') continue;
+    const parish = parishMap.get(membership.parishId);
+    if (!parish || parish.status !== 'ACTIVE') continue;
+    const access = await computeEffectiveAccess(userId, membership.parishId);
+    entries.push({
+      membership,
+      parish,
+      roles: access?.activeRoles ?? [],
+      permissions: access?.permissions ?? [],
+    });
+  }
+
+  return entries;
 }
 
-export function assignRoleToMembership(input: {
+export async function assignRoleToMembership(input: {
   actorUserId: string;
   actorEmail: string;
   parishId: string;
   membershipId: string;
   roleCode: string;
   expiresAt?: string | null;
-}): { ok: true; assignment: MembershipRoleEntity } | { ok: false; status: number; error: string } {
+}): Promise<
+  { ok: true; assignment: MembershipRoleEntity } | { ok: false; status: number; error: string }
+> {
   const roleCode = input.roleCode as RoleCode;
   if (!ALL_ROLE_CODES.includes(roleCode)) {
     return { ok: false, status: 400, error: 'Rôle paroissial invalide.' };
   }
 
-  const state = getPlatformState();
-  const membership = state.memberships.find(
-    (m) => m.id === input.membershipId && m.parishId === input.parishId && m.status !== 'REMOVED'
-  );
-  if (!membership) {
+  const membership = await findMembershipByIdRepo(input.membershipId);
+  if (!membership || membership.parishId !== input.parishId || membership.status === 'REMOVED') {
     return { ok: false, status: 404, error: 'Appartenance paroissiale introuvable.' };
   }
 
   const now = new Date().toISOString();
-  const existing = state.membershipRoles.find(
-    (mr) =>
-      mr.membershipId === membership.id &&
-      mr.roleCode === roleCode &&
-      mr.status === 'ACTIVE'
+  const assignments = await listMembershipRolesByMembershipRepo(membership.id);
+  const existing = assignments.find(
+    (mr) => mr.roleCode === roleCode && mr.status === 'ACTIVE'
   );
 
   if (existing) {
     existing.expiresAt = input.expiresAt || null;
-    savePlatformState(state);
+    await saveMembershipRoleRepo(existing);
     return { ok: true, assignment: existing };
   }
 
@@ -152,10 +157,9 @@ export function assignRoleToMembership(input: {
     revokedBy: null,
   };
 
-  state.membershipRoles.push(assignment);
-  savePlatformState(state);
+  await saveMembershipRoleRepo(assignment);
 
-  recordAuditLog({
+  await recordAuditLog({
     actorUserId: input.actorUserId,
     actorEmail: input.actorEmail,
     scope: 'PARISH',
@@ -166,7 +170,7 @@ export function assignRoleToMembership(input: {
     summary: `Attribution du rôle ${ROLE_CATALOG[roleCode].label} sur la paroisse ${membership.parishId}.`,
   });
 
-  createNotification({
+  await createNotification({
     userId: membership.userId,
     parishId: membership.parishId,
     audience: 'PARISH_ADMIN',
@@ -178,51 +182,55 @@ export function assignRoleToMembership(input: {
   return { ok: true, assignment };
 }
 
-export function revokeRoleFromMembership(input: {
+export async function revokeRoleFromMembership(input: {
   actorUserId: string;
   actorEmail: string;
   parishId: string;
   membershipId: string;
   roleCode: string;
-}): { ok: true } | { ok: false; status: number; error: string } {
-  expireOutdatedRoles();
-  const state = getPlatformState();
+}): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  await expireOutdatedRoles({ parishId: input.parishId });
   const roleCode = input.roleCode as RoleCode;
 
-  const membership = state.memberships.find(
-    (m) => m.id === input.membershipId && m.parishId === input.parishId
-  );
-  if (!membership) {
+  const membership = await findMembershipByIdRepo(input.membershipId);
+  if (!membership || membership.parishId !== input.parishId) {
     return { ok: false, status: 404, error: 'Appartenance paroissiale introuvable.' };
   }
 
-  const target = state.membershipRoles.find(
-    (mr) =>
-      mr.membershipId === membership.id &&
-      mr.roleCode === roleCode &&
-      mr.status === 'ACTIVE'
+  const [membershipRoles, parishRoles, parishMemberships] = await Promise.all([
+    listMembershipRolesByMembershipRepo(membership.id),
+    listMembershipRolesByParishRepo(input.parishId),
+    listMembershipsByParishRepo(input.parishId),
+  ]);
+
+  const target = membershipRoles.find(
+    (mr) => mr.roleCode === roleCode && mr.status === 'ACTIVE'
   );
   if (!target) {
     return { ok: false, status: 404, error: 'Ce rôle actif n’est pas attribué à ce membre.' };
   }
 
-  // Prevent removing the last active PARISH_ADMIN in a parish
   if (roleCode === 'PARISH_ADMIN') {
-    const remainingActiveAdminsInParish = state.membershipRoles.filter((mr) => {
-      if (
-        mr.id === target.id ||
-        mr.parishId !== input.parishId ||
-        mr.roleCode !== 'PARISH_ADMIN' ||
-        mr.status !== 'ACTIVE'
-      ) {
-        return false;
-      }
-      const m = state.memberships.find((mem) => mem.id === mr.membershipId && mem.status === 'ACTIVE');
-      const u = state.users.find((usr) => usr.id === mr.userId && usr.status === 'ACTIVE');
-      return Boolean(m && u);
-    });
+    const activeMembershipIds = new Set(
+      parishMemberships.filter((m) => m.status === 'ACTIVE').map((m) => m.id)
+    );
+    const otherAdminRoles = parishRoles.filter(
+      (mr) =>
+        mr.id !== target.id &&
+        mr.roleCode === 'PARISH_ADMIN' &&
+        mr.status === 'ACTIVE' &&
+        activeMembershipIds.has(mr.membershipId)
+    );
 
-    if (remainingActiveAdminsInParish.length === 0) {
+    let activeAdminsRemaining = 0;
+    for (const mr of otherAdminRoles) {
+      const user = await findUserById(mr.userId);
+      if (user && user.status === 'ACTIVE') {
+        activeAdminsRemaining += 1;
+      }
+    }
+
+    if (activeAdminsRemaining === 0) {
       return {
         ok: false,
         status: 409,
@@ -235,9 +243,9 @@ export function revokeRoleFromMembership(input: {
   target.status = 'REVOKED';
   target.revokedAt = new Date().toISOString();
   target.revokedBy = input.actorUserId;
-  savePlatformState(state);
+  await saveMembershipRoleRepo(target);
 
-  recordAuditLog({
+  await recordAuditLog({
     actorUserId: input.actorUserId,
     actorEmail: input.actorEmail,
     scope: 'PARISH',
@@ -248,7 +256,7 @@ export function revokeRoleFromMembership(input: {
     summary: `Retrait du rôle ${ROLE_CATALOG[roleCode].label} pour l’appartenance ${membership.id}.`,
   });
 
-  createNotification({
+  await createNotification({
     userId: membership.userId,
     parishId: membership.parishId,
     audience: 'PARISH_ADMIN',

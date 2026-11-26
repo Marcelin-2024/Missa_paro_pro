@@ -1,20 +1,29 @@
 import type { NextFunction, Request, Response } from 'express';
-import { getPlatformState } from '../platform/platform.repository.js';
 import type {
   ParishEntity,
   PermissionCode,
   RoleCode,
   UserEntity,
 } from '../platform/platform.types.js';
-import { computeEffectiveAccess, getUserActiveMemberships } from '../roles/rbac.service.js';
+import {
+  computeEffectiveAccess,
+  getUserActiveMemberships,
+  type ActiveMembershipEntry,
+} from '../roles/rbac.service.js';
 import { generateCsrfToken } from './password.utils.js';
+import { findUserById } from '../../repositories/users.repository.js';
+import {
+  checkLoginRateLimitRepo,
+  clearLoginFailuresRepo,
+  recordLoginFailureRepo,
+} from '../../repositories/secondary.repository.js';
 
 export interface ActiveRequestContext {
   user: UserEntity;
   activeParish: ParishEntity | null;
   activeRoles: RoleCode[];
   permissions: PermissionCode[];
-  memberships: ReturnType<typeof getUserActiveMemberships>;
+  memberships: ActiveMembershipEntry[];
 }
 
 declare global {
@@ -25,90 +34,89 @@ declare global {
   }
 }
 
-const loginAttemptMap = new Map<string, { count: number; lockedUntilMs: number }>();
-
-export function checkLoginRateLimit(key: string): { allowed: boolean; retryAfterSec?: number } {
-  const rec = loginAttemptMap.get(key);
-  if (!rec) return { allowed: true };
-  if (rec.lockedUntilMs > Date.now()) {
-    return { allowed: false, retryAfterSec: Math.ceil((rec.lockedUntilMs - Date.now()) / 1000) };
-  }
-  return { allowed: true };
+export async function checkLoginRateLimit(
+  key: string
+): Promise<{ allowed: boolean; retryAfterSec?: number }> {
+  return checkLoginRateLimitRepo(key);
 }
 
-export function recordLoginFailure(key: string): void {
-  const prev = loginAttemptMap.get(key) ?? { count: 0, lockedUntilMs: 0 };
-  const nextCount = prev.lockedUntilMs > Date.now() ? prev.count + 1 : prev.count + 1;
-  const lockedUntilMs = nextCount >= 5 ? Date.now() + 5 * 60 * 1000 : 0;
-  loginAttemptMap.set(key, { count: nextCount, lockedUntilMs });
+export async function recordLoginFailure(key: string): Promise<void> {
+  await recordLoginFailureRepo(key);
 }
 
-export function clearLoginFailures(key: string): void {
-  loginAttemptMap.delete(key);
+export async function clearLoginFailures(key: string): Promise<void> {
+  await clearLoginFailuresRepo(key);
 }
 
-export function attachSessionContext(req: Request, res: Response, next: NextFunction): void {
-  if (!req.session.csrfToken) {
-    req.session.csrfToken = generateCsrfToken();
-  }
-  res.locals.csrfToken = req.session.csrfToken;
-  res.locals.currentUser = null;
-  res.locals.activeParish = null;
-  res.locals.activeRoles = [];
-  res.locals.permissions = [];
-
-  const uid = req.session.uid;
-  if (!uid) {
-    next();
-    return;
-  }
-
-  const state = getPlatformState();
-  const user = state.users.find((u) => u.id === uid);
-
-  if (!user || user.status === 'SUSPENDED' || user.status === 'DISABLED') {
-    req.session.destroy(() => {
-      next();
-    });
-    return;
-  }
-
-  const memberships = getUserActiveMemberships(user.id);
-  let selectedParishId = req.session.activeParishId || user.preferredParishId || '';
-  if (!memberships.some((m) => m.parish?.id === selectedParishId)) {
-    selectedParishId = memberships[0]?.parish?.id || '';
-  }
-
-  let activeParish: ParishEntity | null = null;
-  let activeRoles: RoleCode[] = [];
-  let permissions: PermissionCode[] = [];
-
-  if (selectedParishId) {
-    const matched = memberships.find((m) => m.parish?.id === selectedParishId);
-    if (matched?.parish) {
-      activeParish = matched.parish;
-      const access = computeEffectiveAccess(user.id, matched.parish.id);
-      activeRoles = access?.activeRoles ?? [];
-      permissions = access?.permissions ?? [];
-      req.session.activeParishId = matched.parish.id;
+export async function attachSessionContext(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.session.csrfToken) {
+      req.session.csrfToken = generateCsrfToken();
     }
+    res.locals.csrfToken = req.session.csrfToken;
+    res.locals.currentUser = null;
+    res.locals.activeParish = null;
+    res.locals.activeRoles = [];
+    res.locals.permissions = [];
+
+    const uid = req.session.uid;
+    if (!uid) {
+      next();
+      return;
+    }
+
+    const user = await findUserById(uid);
+
+    if (!user || user.status === 'SUSPENDED' || user.status === 'DISABLED') {
+      req.session.destroy(() => {
+        next();
+      });
+      return;
+    }
+
+    const memberships = await getUserActiveMemberships(user.id);
+    let selectedParishId = req.session.activeParishId || user.preferredParishId || '';
+    if (!memberships.some((m) => m.parish.id === selectedParishId)) {
+      selectedParishId = memberships[0]?.parish.id || '';
+    }
+
+    let activeParish: ParishEntity | null = null;
+    let activeRoles: RoleCode[] = [];
+    let permissions: PermissionCode[] = [];
+
+    if (selectedParishId) {
+      const matched = memberships.find((m) => m.parish.id === selectedParishId);
+      if (matched?.parish) {
+        activeParish = matched.parish;
+        const access = await computeEffectiveAccess(user.id, matched.parish.id);
+        activeRoles = access?.activeRoles ?? [];
+        permissions = access?.permissions ?? [];
+        req.session.activeParishId = matched.parish.id;
+      }
+    }
+
+    req.authContext = {
+      user,
+      activeParish,
+      activeRoles,
+      permissions,
+      memberships,
+    };
+
+    res.locals.currentUser = user;
+    res.locals.activeParish = activeParish;
+    res.locals.activeRoles = activeRoles;
+    res.locals.permissions = permissions;
+    res.locals.memberships = memberships;
+
+    next();
+  } catch (error) {
+    next(error);
   }
-
-  req.authContext = {
-    user,
-    activeParish,
-    activeRoles,
-    permissions,
-    memberships,
-  };
-
-  res.locals.currentUser = user;
-  res.locals.activeParish = activeParish;
-  res.locals.activeRoles = activeRoles;
-  res.locals.permissions = permissions;
-  res.locals.memberships = memberships;
-
-  next();
 }
 
 export function verifyCsrfForSessionMutation(
@@ -129,16 +137,20 @@ export function verifyCsrfForSessionMutation(
 
   const headerToken = String(req.headers['x-csrf-token'] || '').trim();
   const bodyToken =
-    req.body && typeof req.body === 'object' && typeof (req.body as Record<string, unknown>)._csrf === 'string'
+    req.body &&
+    typeof req.body === 'object' &&
+    typeof (req.body as Record<string, unknown>)._csrf === 'string'
       ? String((req.body as Record<string, unknown>)._csrf).trim()
       : '';
 
-  if (req.session.csrfToken && (headerToken === req.session.csrfToken || bodyToken === req.session.csrfToken)) {
+  if (
+    req.session.csrfToken &&
+    (headerToken === req.session.csrfToken || bodyToken === req.session.csrfToken)
+  ) {
     next();
     return;
   }
 
-  // Fallback check: verify Origin matches Host / X-Forwarded-Host or X-Requested-With on same-origin fetch
   const origin = String(req.headers.origin || '');
   const host = String(req.headers['x-forwarded-host'] || req.headers.host || '');
   if (origin && host) {

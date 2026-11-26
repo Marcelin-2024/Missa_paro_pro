@@ -5,19 +5,21 @@ import {
   verifyCsrfForSessionMutation,
 } from '../auth/auth.middleware.js';
 import {
+  getIntentionDetailsForParish,
   getPublicIntentionTracking,
-  listIntentionsForParish,
+  listEnrichedIntentionsForParish,
   submitPublicIntention,
   transitionIntentionStatus,
+  updateIntentionDetailsByParish,
 } from './intentions.service.js';
 import type { IntentionStatus, PermissionCode } from '../platform/platform.types.js';
 
 export const intentionsPublicRouter = Router();
 export const intentionsParishRouter = Router();
 
-intentionsPublicRouter.post('/public', (req: Request, res: Response) => {
+intentionsPublicRouter.post('/public', async (req: Request, res: Response) => {
   const body = (req.body ?? {}) as Record<string, string>;
-  const result = submitPublicIntention({
+  const result = await submitPublicIntention({
     provinceId: body.provinceId || '',
     dioceseId: body.dioceseId || '',
     parishId: body.parishId || '',
@@ -49,8 +51,8 @@ intentionsPublicRouter.post('/public', (req: Request, res: Response) => {
   });
 });
 
-intentionsPublicRouter.get('/suivi/:ref', (req: Request, res: Response) => {
-  const summary = getPublicIntentionTracking(String(req.params.ref || ''));
+intentionsPublicRouter.get('/suivi/:ref', async (req: Request, res: Response) => {
+  const summary = await getPublicIntentionTracking(String(req.params.ref || ''));
   if (!summary) {
     res.status(404).json({ success: false, error: 'Référence d’intention introuvable.' });
     return;
@@ -64,19 +66,73 @@ intentionsParishRouter.use(verifyCsrfForSessionMutation);
 intentionsParishRouter.get(
   '/',
   requireParishPermission('parish.intentions.view'),
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const parishId = req.authContext!.activeParish!.id;
-    const rows = listIntentionsForParish(parishId, {
-      status: typeof req.query.status === 'string' ? req.query.status : undefined,
-      objet: typeof req.query.objet === 'string' ? req.query.objet : undefined,
-      requester: typeof req.query.requester === 'string' ? req.query.requester : undefined,
-      messeId: typeof req.query.messeId === 'string' ? req.query.messeId : undefined,
-      date: typeof req.query.date === 'string' ? req.query.date : undefined,
-    });
+    let rows = await listEnrichedIntentionsForParish(parishId);
+    if (typeof req.query.status === 'string' && req.query.status) {
+      rows = rows.filter((r) => r.status === req.query.status);
+    }
+    if (typeof req.query.messeId === 'string' && req.query.messeId) {
+      rows = rows.filter((r) => r.messeId === req.query.messeId);
+    }
 
     res.json({ parishId, intentions: rows });
   }
 );
+
+intentionsParishRouter.get(
+  '/:id',
+  requireParishPermission('parish.intentions.view'),
+  async (req: Request, res: Response) => {
+    const detail = await getIntentionDetailsForParish(
+      req.authContext!.activeParish!.id,
+      String(req.params.id || '')
+    );
+    if (!detail) {
+      res.status(404).json({ success: false, error: 'Intention introuvable.' });
+      return;
+    }
+    res.json({ success: true, ...detail });
+  }
+);
+
+intentionsParishRouter.patch('/:id', async (req: Request, res: Response) => {
+  const ctx = req.authContext!;
+  const canEdit =
+    ctx.permissions.includes('parish.intentions.process') ||
+    ctx.permissions.includes('parish.intentions.approve');
+  if (!canEdit) {
+    res
+      .status(403)
+      .json({ success: false, error: 'Permission insuffisante pour modifier cette intention.' });
+    return;
+  }
+
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const result = await updateIntentionDetailsByParish({
+    actorUserId: ctx.user.id,
+    actorEmail: ctx.user.email,
+    parishId: ctx.activeParish!.id,
+    intentionId: String(req.params.id || ''),
+    requesterName: typeof body.requesterName === 'string' ? body.requesterName : undefined,
+    requesterPhone: typeof body.requesterPhone === 'string' ? body.requesterPhone : undefined,
+    requesterEmail: typeof body.requesterEmail === 'string' ? body.requesterEmail : undefined,
+    intentionType: typeof body.intentionType === 'string' ? body.intentionType : undefined,
+    objet: typeof body.objet === 'string' ? body.objet : undefined,
+    details: typeof body.details === 'string' ? body.details : undefined,
+    desiredDate:
+      body.desiredDate !== undefined ? (body.desiredDate ? String(body.desiredDate) : null) : undefined,
+    messeId: body.messeId !== undefined ? (body.messeId ? String(body.messeId) : null) : undefined,
+    internalComment: typeof body.internalComment === 'string' ? body.internalComment : undefined,
+  });
+
+  if (!result.ok) {
+    res.status(result.status).json({ success: false, error: result.error });
+    return;
+  }
+
+  res.json({ success: true, intention: result.intention });
+});
 
 function requiredPermissionForStatus(nextStatus: IntentionStatus): PermissionCode {
   if (nextStatus === 'CELEBRATED') return 'parish.intentions.celebrate';
@@ -84,7 +140,7 @@ function requiredPermissionForStatus(nextStatus: IntentionStatus): PermissionCod
   return 'parish.intentions.process';
 }
 
-intentionsParishRouter.patch('/:id/status', (req: Request, res: Response) => {
+intentionsParishRouter.patch('/:id/status', async (req: Request, res: Response) => {
   const ctx = req.authContext!;
   const body = (req.body ?? {}) as Record<string, string>;
   const nextStatus = String(body.status || '').toUpperCase() as IntentionStatus;
@@ -104,7 +160,6 @@ intentionsParishRouter.patch('/:id/status', (req: Request, res: Response) => {
   }
 
   const requiredPerm = requiredPermissionForStatus(nextStatus);
-  // Also allow parish.intentions.approve if processing/cancelling when user is Curé
   const hasPerm =
     ctx.permissions.includes(requiredPerm) ||
     (nextStatus === 'CANCELLED' && ctx.permissions.includes('parish.intentions.approve'));
@@ -117,7 +172,7 @@ intentionsParishRouter.patch('/:id/status', (req: Request, res: Response) => {
     return;
   }
 
-  const result = transitionIntentionStatus({
+  const result = await transitionIntentionStatus({
     actorUserId: ctx.user.id,
     actorEmail: ctx.user.email,
     parishId: ctx.activeParish!.id,

@@ -1,5 +1,4 @@
 import crypto from 'crypto';
-import { getPlatformState, savePlatformState } from '../platform/platform.repository.js';
 import type {
   ParishMembershipEntity,
   RoleCode,
@@ -13,11 +12,33 @@ import {
   hashToken,
   verifyPassword,
 } from '../auth/password.utils.js';
-import { ALL_ROLE_CODES, ROLE_CATALOG } from '../roles/rbac.catalog.js';
+import { ALL_ROLE_CODES, PERMISSION_LABELS, ROLE_CATALOG } from '../roles/rbac.catalog.js';
 import { assignRoleToMembership, computeEffectiveAccess } from '../roles/rbac.service.js';
 import { recordAuditLog } from '../audit/audit.service.js';
 import { createNotification } from '../notifications/notifications.service.js';
 import { provisionOrActivateParish } from '../parishes/parishes.service.js';
+import {
+  getPlatformSettings,
+  getSystemMetadata,
+  saveSystemMetadata,
+} from '../../repositories/system.repository.js';
+import {
+  findSuperAdminUsers,
+  findUserByActivationTokenHash,
+  findUserByEmail,
+  findUserById,
+  listAllUsers,
+  saveUser,
+} from '../../repositories/users.repository.js';
+import {
+  findActiveMembershipRepo,
+  findMembershipByIdRepo,
+  listAllParishesRepo,
+  listMembershipRolesByParishRepo,
+  listMembershipsByParishRepo,
+  listMembershipsByUserRepo,
+  saveMembershipRepo,
+} from '../../repositories/parishes.repository.js';
 
 export interface SafeUserSummary {
   id: string;
@@ -47,26 +68,27 @@ export function sanitizeUser(user: UserEntity): SafeUserSummary {
   };
 }
 
-export function authenticateWithCredentials(
+export async function authenticateWithCredentials(
   email: string,
   password: string
-):
+): Promise<
   | { ok: true; user: UserEntity }
-  | { ok: false; code: string; message: string } {
+  | { ok: false; code: string; message: string }
+> {
   const cleanEmail = String(email || '').trim().toLowerCase();
-  const state = getPlatformState();
-  const user = state.users.find((u) => u.email.toLowerCase() === cleanEmail);
+  const [user, meta] = await Promise.all([findUserByEmail(cleanEmail), getSystemMetadata()]);
 
   if (!user) {
     return { ok: false, code: 'INVALID_CREDENTIALS', message: 'Identifiants invalides.' };
   }
 
   if (!user.passwordHash) {
-    if (user.isSuperAdmin && !state.superAdminClaimed) {
+    if (user.isSuperAdmin && !meta.superAdminClaimed) {
       return {
         ok: false,
         code: 'SUPER_ADMIN_SETUP_REQUIRED',
-        message: 'Ce serveur déployé n’a pas encore de mot de passe Super Administrateur initialisé.',
+        message:
+          'Ce serveur déployé n’a pas encore de mot de passe Super Administrateur initialisé.',
       };
     }
     return { ok: false, code: 'INVALID_CREDENTIALS', message: 'Identifiants invalides.' };
@@ -97,9 +119,14 @@ export function authenticateWithCredentials(
   }
 
   if (user.accountType === 'PARISH_STAFF' && !user.isSuperAdmin) {
-    const hasActiveMembership = state.memberships.some((m) => {
-      if (m.userId !== user.id || m.status !== 'ACTIVE') return false;
-      const parish = state.parishes.find((p) => p.id === m.parishId);
+    const [memberships, parishes] = await Promise.all([
+      listMembershipsByUserRepo(user.id),
+      listAllParishesRepo(),
+    ]);
+    const parishMap = new Map(parishes.map((p) => [p.id, p]));
+    const hasActiveMembership = memberships.some((m) => {
+      if (m.status !== 'ACTIVE') return false;
+      const parish = parishMap.get(m.parishId);
       return Boolean(parish && parish.status === 'ACTIVE');
     });
     if (!hasActiveMembership) {
@@ -116,17 +143,17 @@ export function authenticateWithCredentials(
   }
   user.lastLoginAt = new Date().toISOString();
   user.updatedAt = user.lastLoginAt;
-  savePlatformState(state);
+  await saveUser(user);
 
   return { ok: true, user };
 }
 
-export function claimInitialSuperAdminPassword(
+export async function claimInitialSuperAdminPassword(
   email: string,
   newPassword: string
-): { ok: true; user: UserEntity } | { ok: false; status: number; error: string } {
-  const state = getPlatformState();
-  if (state.superAdminClaimed) {
+): Promise<{ ok: true; user: UserEntity } | { ok: false; status: number; error: string }> {
+  const [meta, superAdmins] = await Promise.all([getSystemMetadata(), findSuperAdminUsers()]);
+  if (meta.superAdminClaimed || superAdmins.some((u) => Boolean(u.passwordHash))) {
     return { ok: false, status: 403, error: 'Le compte Super Administrateur est déjà initialisé.' };
   }
   if ((process.env.SUPER_ADMIN_PASSWORD || '').trim()) {
@@ -138,7 +165,32 @@ export function claimInitialSuperAdminPassword(
   }
 
   const cleanEmail = String(email || '').trim().toLowerCase();
-  const superAdmin = state.users.find((u) => u.isSuperAdmin && u.email.toLowerCase() === cleanEmail);
+  const configuredSaEmail = (process.env.SUPER_ADMIN_EMAIL || 'settaocram@gmail.com')
+    .trim()
+    .toLowerCase();
+
+  let superAdmin = superAdmins.find((u) => u.email.toLowerCase() === cleanEmail);
+  if (!superAdmin && cleanEmail === configuredSaEmail) {
+    const nowInit = new Date().toISOString();
+    superAdmin = {
+      id: 'user-super-admin-1',
+      email: configuredSaEmail,
+      displayName: 'Super Administrateur Missa Paro',
+      phone: '+225 0100000000',
+      passwordHash: null,
+      accountType: 'SUPER_ADMIN',
+      isSuperAdmin: true,
+      status: 'ACTIVE',
+      mustChangePassword: false,
+      tempPasswordExpiresAt: null,
+      activationTokenHash: null,
+      activationExpiresAt: null,
+      createdAt: nowInit,
+      updatedAt: nowInit,
+      lastLoginAt: null,
+    };
+  }
+
   if (!superAdmin) {
     return { ok: false, status: 404, error: 'Adresse Super Administrateur non reconnue.' };
   }
@@ -151,10 +203,16 @@ export function claimInitialSuperAdminPassword(
   superAdmin.status = 'ACTIVE';
   superAdmin.mustChangePassword = false;
   superAdmin.updatedAt = now;
-  state.superAdminClaimed = true;
-  savePlatformState(state);
 
-  recordAuditLog({
+  await saveUser(superAdmin);
+  await saveSystemMetadata({
+    ...meta,
+    version: meta.version || 1,
+    superAdminClaimed: true,
+    bootstrappedAt: meta.bootstrappedAt || now,
+  });
+
+  await recordAuditLog({
     actorUserId: superAdmin.id,
     actorEmail: superAdmin.email,
     scope: 'GLOBAL',
@@ -168,7 +226,7 @@ export function claimInitialSuperAdminPassword(
   return { ok: true, user: superAdmin };
 }
 
-export function createParishAdminBySuperAdmin(input: {
+export async function createParishAdminBySuperAdmin(input: {
   actorUserId: string;
   actorEmail: string;
   provinceId: string;
@@ -180,7 +238,7 @@ export function createParishAdminBySuperAdmin(input: {
   phone: string;
   tempPasswordTtlHours?: number;
   customTempPassword?: string;
-}):
+}): Promise<
   | {
       ok: true;
       user: SafeUserSummary;
@@ -190,14 +248,15 @@ export function createParishAdminBySuperAdmin(input: {
       activationToken: string;
       expiresAt: string;
     }
-  | { ok: false; status: number; error: string } {
+  | { ok: false; status: number; error: string }
+> {
   const cleanEmail = String(input.email || '').trim().toLowerCase();
   const cleanName = String(input.displayName || '').trim().slice(0, 120);
   if (!cleanEmail || !cleanEmail.includes('@') || cleanName.length < 2) {
     return { ok: false, status: 400, error: 'Nom complet et adresse e-mail valides requis.' };
   }
 
-  const parishResult = provisionOrActivateParish({
+  const parishResult = await provisionOrActivateParish({
     actorUserId: input.actorUserId,
     actorEmail: input.actorEmail,
     provinceId: input.provinceId,
@@ -208,14 +267,14 @@ export function createParishAdminBySuperAdmin(input: {
   });
   if (!parishResult.ok) return parishResult;
 
-  const state = getPlatformState();
+  const settings = await getPlatformSettings();
   const now = new Date().toISOString();
-  const ttlHours = input.tempPasswordTtlHours ?? state.settings.tempPasswordTtlHours ?? 48;
+  const ttlHours = input.tempPasswordTtlHours ?? settings.tempPasswordTtlHours ?? 48;
   const expiresAt = new Date(Date.now() + ttlHours * 3600 * 1000).toISOString();
   const temporaryPassword = input.customTempPassword?.trim() || generateTempPassword(14);
   const { rawToken, tokenHash } = generateActivationToken();
 
-  let user = state.users.find((u) => u.email.toLowerCase() === cleanEmail);
+  let user = await findUserByEmail(cleanEmail);
   if (user && user.isSuperAdmin) {
     return {
       ok: false,
@@ -245,8 +304,11 @@ export function createParishAdminBySuperAdmin(input: {
       updatedAt: now,
       lastLoginAt: null,
     };
-    state.users.push(user);
   } else {
+    user.displayName = cleanName;
+    if (String(input.phone || '').trim()) {
+      user.phone = String(input.phone).trim().slice(0, 40);
+    }
     user.accountType = 'PARISH_STAFF';
     user.passwordHash = hashPassword(temporaryPassword);
     user.mustChangePassword = true;
@@ -255,10 +317,9 @@ export function createParishAdminBySuperAdmin(input: {
     user.activationExpiresAt = expiresAt;
     user.updatedAt = now;
   }
+  await saveUser(user);
 
-  let membership = state.memberships.find(
-    (m) => m.userId === user.id && m.parishId === parishResult.parish.id && m.status !== 'REMOVED'
-  );
+  let membership = await findActiveMembershipRepo(user.id, parishResult.parish.id);
   if (!membership) {
     membership = {
       id: `mem-${crypto.randomUUID().slice(0, 12)}`,
@@ -270,11 +331,10 @@ export function createParishAdminBySuperAdmin(input: {
       updatedAt: now,
       createdBy: input.actorUserId,
     };
-    state.memberships.push(membership);
+    await saveMembershipRepo(membership);
   }
-  savePlatformState(state);
 
-  assignRoleToMembership({
+  await assignRoleToMembership({
     actorUserId: input.actorUserId,
     actorEmail: input.actorEmail,
     parishId: parishResult.parish.id,
@@ -282,7 +342,7 @@ export function createParishAdminBySuperAdmin(input: {
     roleCode: 'PARISH_ADMIN',
   });
 
-  recordAuditLog({
+  await recordAuditLog({
     actorUserId: input.actorUserId,
     actorEmail: input.actorEmail,
     scope: 'GLOBAL',
@@ -293,7 +353,7 @@ export function createParishAdminBySuperAdmin(input: {
     summary: `Création de l’administrateur paroissial ${user.email} pour ${parishResult.parish.name}.`,
   });
 
-  createNotification({
+  await createNotification({
     userId: user.id,
     parishId: parishResult.parish.id,
     audience: 'PARISH_ADMIN',
@@ -313,21 +373,24 @@ export function createParishAdminBySuperAdmin(input: {
   };
 }
 
-export function resetAdminAccessBySuperAdmin(input: {
+export async function resetAdminAccessBySuperAdmin(input: {
   actorUserId: string;
   actorEmail: string;
   userId: string;
   ttlHours?: number;
-}):
+}): Promise<
   | { ok: true; temporaryPassword: string; activationToken: string; expiresAt: string }
-  | { ok: false; status: number; error: string } {
-  const state = getPlatformState();
-  const user = state.users.find((u) => u.id === input.userId && !u.isSuperAdmin);
-  if (!user) {
+  | { ok: false; status: number; error: string }
+> {
+  const [user, settings] = await Promise.all([
+    findUserById(input.userId),
+    getPlatformSettings(),
+  ]);
+  if (!user || user.isSuperAdmin) {
     return { ok: false, status: 404, error: 'Administrateur introuvable.' };
   }
 
-  const ttlHours = input.ttlHours ?? state.settings.tempPasswordTtlHours ?? 48;
+  const ttlHours = input.ttlHours ?? settings.tempPasswordTtlHours ?? 48;
   const expiresAt = new Date(Date.now() + ttlHours * 3600 * 1000).toISOString();
   const temporaryPassword = generateTempPassword(14);
   const { rawToken, tokenHash } = generateActivationToken();
@@ -338,9 +401,9 @@ export function resetAdminAccessBySuperAdmin(input: {
   user.activationTokenHash = tokenHash;
   user.activationExpiresAt = expiresAt;
   user.updatedAt = new Date().toISOString();
-  savePlatformState(state);
+  await saveUser(user);
 
-  recordAuditLog({
+  await recordAuditLog({
     actorUserId: input.actorUserId,
     actorEmail: input.actorEmail,
     scope: 'GLOBAL',
@@ -351,7 +414,7 @@ export function resetAdminAccessBySuperAdmin(input: {
     summary: `Réinitialisation d’accès pour ${user.email}.`,
   });
 
-  createNotification({
+  await createNotification({
     userId: user.id,
     parishId: user.preferredParishId ?? null,
     audience: 'PARISH_ADMIN',
@@ -363,21 +426,20 @@ export function resetAdminAccessBySuperAdmin(input: {
   return { ok: true, temporaryPassword, activationToken: rawToken, expiresAt };
 }
 
-export function updateUserStatus(input: {
+export async function updateUserStatus(input: {
   actorUserId: string;
   actorEmail: string;
   userId: string;
   status: UserAccountStatus;
   scope: 'GLOBAL' | 'PARISH';
   parishId?: string | null;
-}): { ok: true; user: SafeUserSummary } | { ok: false; status: number; error: string } {
+}): Promise<{ ok: true; user: SafeUserSummary } | { ok: false; status: number; error: string }> {
   const allowed: UserAccountStatus[] = ['PENDING_ACTIVATION', 'ACTIVE', 'SUSPENDED', 'DISABLED'];
   if (!allowed.includes(input.status)) {
     return { ok: false, status: 400, error: 'Statut de compte invalide.' };
   }
 
-  const state = getPlatformState();
-  const user = state.users.find((u) => u.id === input.userId);
+  const user = await findUserById(input.userId);
   if (!user) {
     return { ok: false, status: 404, error: 'Compte utilisateur introuvable.' };
   }
@@ -391,9 +453,9 @@ export function updateUserStatus(input: {
   const prev = user.status;
   user.status = input.status;
   user.updatedAt = new Date().toISOString();
-  savePlatformState(state);
+  await saveUser(user);
 
-  recordAuditLog({
+  await recordAuditLog({
     actorUserId: input.actorUserId,
     actorEmail: input.actorEmail,
     scope: input.scope,
@@ -405,7 +467,7 @@ export function updateUserStatus(input: {
   });
 
   if (input.status === 'ACTIVE') {
-    createNotification({
+    await createNotification({
       userId: user.id,
       parishId: input.parishId ?? null,
       audience: 'PARISH_ADMIN',
@@ -418,10 +480,10 @@ export function updateUserStatus(input: {
   return { ok: true, user: sanitizeUser(user) };
 }
 
-export function activateAccountWithToken(
+export async function activateAccountWithToken(
   rawToken: string,
   newPassword: string
-): { ok: true; user: UserEntity } | { ok: false; status: number; error: string } {
+): Promise<{ ok: true; user: UserEntity } | { ok: false; status: number; error: string }> {
   if (!rawToken || newPassword.length < 8) {
     return {
       ok: false,
@@ -430,9 +492,8 @@ export function activateAccountWithToken(
     };
   }
 
-  const state = getPlatformState();
   const tokenDigest = hashToken(rawToken.trim());
-  const user = state.users.find((u) => u.activationTokenHash === tokenDigest);
+  const user = await findUserByActivationTokenHash(tokenDigest);
   if (!user) {
     return { ok: false, status: 404, error: 'Lien d’activation invalide ou déjà utilisé.' };
   }
@@ -452,9 +513,9 @@ export function activateAccountWithToken(
   user.activationTokenHash = null;
   user.activationExpiresAt = null;
   user.updatedAt = now;
-  savePlatformState(state);
+  await saveUser(user);
 
-  recordAuditLog({
+  await recordAuditLog({
     actorUserId: user.id,
     actorEmail: user.email,
     scope: 'GLOBAL',
@@ -468,16 +529,19 @@ export function activateAccountWithToken(
   return { ok: true, user };
 }
 
-export function changeOwnPassword(
+export async function changeOwnPassword(
   userId: string,
   newPassword: string
-): { ok: true; user: UserEntity } | { ok: false; status: number; error: string } {
+): Promise<{ ok: true; user: UserEntity } | { ok: false; status: number; error: string }> {
   if (String(newPassword || '').length < 8) {
-    return { ok: false, status: 400, error: 'Le nouveau mot de passe doit contenir au moins 8 caractères.' };
+    return {
+      ok: false,
+      status: 400,
+      error: 'Le nouveau mot de passe doit contenir au moins 8 caractères.',
+    };
   }
 
-  const state = getPlatformState();
-  const user = state.users.find((u) => u.id === userId);
+  const user = await findUserById(userId);
   if (!user) {
     return { ok: false, status: 404, error: 'Utilisateur introuvable.' };
   }
@@ -490,9 +554,9 @@ export function changeOwnPassword(
   user.activationExpiresAt = null;
   user.status = 'ACTIVE';
   user.updatedAt = now;
-  savePlatformState(state);
+  await saveUser(user);
 
-  recordAuditLog({
+  await recordAuditLog({
     actorUserId: user.id,
     actorEmail: user.email,
     scope: user.isSuperAdmin ? 'GLOBAL' : 'PARISH',
@@ -506,7 +570,7 @@ export function changeOwnPassword(
   return { ok: true, user };
 }
 
-export function createOrAttachParishMember(input: {
+export async function createOrAttachParishMember(input: {
   actorUserId: string;
   actorEmail: string;
   parishId: string;
@@ -515,14 +579,15 @@ export function createOrAttachParishMember(input: {
   phone: string;
   roles: RoleCode[];
   titleLabel?: string;
-}):
+}): Promise<
   | {
       ok: true;
       user: SafeUserSummary;
       membership: ParishMembershipEntity;
       temporaryPassword: string | null;
     }
-  | { ok: false; status: number; error: string } {
+  | { ok: false; status: number; error: string }
+> {
   const cleanEmail = String(input.email || '').trim().toLowerCase();
   const cleanName = String(input.displayName || '').trim().slice(0, 120);
   const validRoles = (input.roles || []).filter((r) => ALL_ROLE_CODES.includes(r));
@@ -534,11 +599,13 @@ export function createOrAttachParishMember(input: {
     return { ok: false, status: 400, error: 'Sélectionnez au moins un rôle paroissial.' };
   }
 
-  const state = getPlatformState();
+  const [existingUser, settings] = await Promise.all([
+    findUserByEmail(cleanEmail),
+    getPlatformSettings(),
+  ]);
   const now = new Date().toISOString();
-  let user = state.users.find((u) => u.email.toLowerCase() === cleanEmail);
+  let user = existingUser;
 
-  // Security guard: never allow Parish Admin to modify/attach Super Admin or escalate privileges
   if (user && user.isSuperAdmin) {
     return {
       ok: false,
@@ -551,7 +618,7 @@ export function createOrAttachParishMember(input: {
   if (!user) {
     temporaryPassword = generateTempPassword(14);
     const expiresAt = new Date(
-      Date.now() + (state.settings.tempPasswordTtlHours || 48) * 3600 * 1000
+      Date.now() + (settings.tempPasswordTtlHours || 48) * 3600 * 1000
     ).toISOString();
     user = {
       id: `user-${crypto.randomUUID().slice(0, 12)}`,
@@ -571,12 +638,18 @@ export function createOrAttachParishMember(input: {
       updatedAt: now,
       lastLoginAt: null,
     };
-    state.users.push(user);
+  } else {
+    if (String(input.phone || '').trim()) {
+      user.phone = String(input.phone).trim().slice(0, 40);
+    }
+    if (user.status === 'PENDING_ACTIVATION') {
+      user.displayName = cleanName;
+    }
+    user.updatedAt = now;
   }
+  await saveUser(user);
 
-  let membership = state.memberships.find(
-    (m) => m.userId === user.id && m.parishId === input.parishId && m.status !== 'REMOVED'
-  );
+  let membership = await findActiveMembershipRepo(user.id, input.parishId);
   if (!membership) {
     membership = {
       id: `mem-${crypto.randomUUID().slice(0, 12)}`,
@@ -590,12 +663,15 @@ export function createOrAttachParishMember(input: {
       updatedAt: now,
       createdBy: input.actorUserId,
     };
-    state.memberships.push(membership);
+    await saveMembershipRepo(membership);
+  } else if (typeof input.titleLabel === 'string' && input.titleLabel.trim()) {
+    membership.titleLabel = input.titleLabel.trim().slice(0, 80);
+    membership.updatedAt = now;
+    await saveMembershipRepo(membership);
   }
-  savePlatformState(state);
 
   for (const roleCode of validRoles) {
-    assignRoleToMembership({
+    await assignRoleToMembership({
       actorUserId: input.actorUserId,
       actorEmail: input.actorEmail,
       parishId: input.parishId,
@@ -604,7 +680,7 @@ export function createOrAttachParishMember(input: {
     });
   }
 
-  recordAuditLog({
+  await recordAuditLog({
     actorUserId: input.actorUserId,
     actorEmail: input.actorEmail,
     scope: 'PARISH',
@@ -618,61 +694,254 @@ export function createOrAttachParishMember(input: {
   return { ok: true, user: sanitizeUser(user), membership, temporaryPassword };
 }
 
-export function listParishMembersDetailed(parishId: string) {
-  const state = getPlatformState();
-  return state.memberships
-    .filter((m) => m.parishId === parishId && m.status !== 'REMOVED')
-    .map((m) => {
-      const user = state.users.find((u) => u.id === m.userId);
-      if (!user) return null;
-      const access = computeEffectiveAccess(user.id, parishId);
-      const roleAssignments = state.membershipRoles.filter(
-        (mr) => mr.membershipId === m.id && mr.parishId === parishId && mr.status === 'ACTIVE'
-      );
-      return {
-        membership: m,
-        user: sanitizeUser(user),
-        roles: roleAssignments,
-        roleAssignments,
-        activeRoles: access?.activeRoles ?? roleAssignments.map((r) => r.roleCode),
-        permissions: access?.permissions ?? [],
-      };
-    })
-    .filter((item): item is NonNullable<typeof item> => item !== null);
+export async function listParishMembersDetailed(parishId: string) {
+  const [memberships, users, parishRoles] = await Promise.all([
+    listMembershipsByParishRepo(parishId),
+    listAllUsers(),
+    listMembershipRolesByParishRepo(parishId),
+  ]);
+  const userMap = new Map(users.map((u) => [u.id, u]));
+
+  const detailed = await Promise.all(
+    memberships
+      .filter((m) => m.status !== 'REMOVED')
+      .map(async (m) => {
+        const user = userMap.get(m.userId);
+        if (!user) return null;
+        const access = await computeEffectiveAccess(user.id, parishId);
+        const roleAssignments = parishRoles.filter(
+          (mr) => mr.membershipId === m.id && mr.parishId === parishId && mr.status === 'ACTIVE'
+        );
+        return {
+          membership: m,
+          user: sanitizeUser(user),
+          roles: roleAssignments,
+          roleAssignments,
+          activeRoles: access?.activeRoles ?? roleAssignments.map((r) => r.roleCode),
+          permissions: access?.permissions ?? [],
+        };
+      })
+  );
+
+  return detailed.filter((item): item is NonNullable<typeof item> => item !== null);
 }
 
-export function updateMembershipStatus(input: {
+export async function getParishMemberDetails(parishId: string, membershipId: string) {
+  const members = await listParishMembersDetailed(parishId);
+  const member = members.find((m) => m.membership.id === membershipId);
+  if (!member) return null;
+  return {
+    ...member,
+    roleLabels: member.activeRoles.map((code) => ({
+      code,
+      label: ROLE_CATALOG[code]?.label || code,
+    })),
+    permissionDetails: member.permissions.map((code) => ({
+      code,
+      label: PERMISSION_LABELS[code] || code,
+    })),
+  };
+}
+
+export async function getParishAdminDetails(userId: string) {
+  const user = await findUserById(userId);
+  if (!user || user.isSuperAdmin) return null;
+
+  const [rawMemberships, parishes] = await Promise.all([
+    listMembershipsByUserRepo(user.id),
+    listAllParishesRepo(),
+  ]);
+  const parishMap = new Map(parishes.map((p) => [p.id, p]));
+
+  const memberships = await Promise.all(
+    rawMemberships
+      .filter((m) => m.status !== 'REMOVED')
+      .map(async (m) => {
+        const parish = parishMap.get(m.parishId);
+        const access = await computeEffectiveAccess(user.id, m.parishId);
+        const activeRoles = access?.activeRoles ?? [];
+        const permissions = access?.permissions ?? [];
+        return {
+          membershipId: m.id,
+          parishId: m.parishId,
+          parishName: parish?.name || m.parishId,
+          parishLocation: parish?.location || '',
+          parishStatus: parish?.status || 'ACTIVE',
+          membershipStatus: m.status,
+          titleLabel: m.titleLabel,
+          roles: activeRoles.map((code) => ({
+            code,
+            label: ROLE_CATALOG[code]?.label || code,
+          })),
+          permissions: permissions.map((code) => ({
+            code,
+            label: PERMISSION_LABELS[code] || code,
+          })),
+        };
+      })
+  );
+
+  return {
+    user: sanitizeUser(user),
+    memberships,
+  };
+}
+
+export async function updateParishMemberByParishAdmin(input: {
+  actorUserId: string;
+  actorEmail: string;
+  parishId: string;
+  membershipId: string;
+  displayName?: string;
+  phone?: string;
+  titleLabel?: string;
+}): Promise<
+  | { ok: true; member: NonNullable<Awaited<ReturnType<typeof getParishMemberDetails>>> }
+  | { ok: false; status: number; error: string }
+> {
+  const membership = await findMembershipByIdRepo(input.membershipId);
+  if (!membership || membership.parishId !== input.parishId || membership.status === 'REMOVED') {
+    return { ok: false, status: 404, error: 'Membre introuvable dans cette paroisse.' };
+  }
+
+  const user = await findUserById(membership.userId);
+  if (!user || user.isSuperAdmin) {
+    return { ok: false, status: 403, error: 'Modification non autorisée sur ce compte.' };
+  }
+
+  if (typeof input.displayName === 'string') {
+    const cleanName = input.displayName.trim().slice(0, 120);
+    if (cleanName.length < 2) {
+      return {
+        ok: false,
+        status: 400,
+        error: 'Le nom complet doit contenir au moins 2 caractères.',
+      };
+    }
+    user.displayName = cleanName;
+  }
+
+  if (typeof input.phone === 'string') {
+    user.phone = input.phone.trim().slice(0, 40);
+  }
+
+  if (typeof input.titleLabel === 'string') {
+    membership.titleLabel = input.titleLabel.trim().slice(0, 80);
+  }
+
+  const now = new Date().toISOString();
+  user.updatedAt = now;
+  membership.updatedAt = now;
+  await Promise.all([saveUser(user), saveMembershipRepo(membership)]);
+
+  await recordAuditLog({
+    actorUserId: input.actorUserId,
+    actorEmail: input.actorEmail,
+    scope: 'PARISH',
+    parishId: input.parishId,
+    action: 'PARISH_MEMBER_UPDATED',
+    targetType: 'MEMBERSHIP',
+    targetId: membership.id,
+    summary: `Mise à jour du membre ${user.displayName} (${user.email}).`,
+  });
+
+  const updated = await getParishMemberDetails(input.parishId, membership.id);
+  if (!updated) {
+    return { ok: false, status: 404, error: 'Membre introuvable.' };
+  }
+  return { ok: true, member: updated };
+}
+
+export async function updateParishAdminBySuperAdmin(input: {
+  actorUserId: string;
+  actorEmail: string;
+  userId: string;
+  displayName?: string;
+  phone?: string;
+}): Promise<{ ok: true; user: SafeUserSummary } | { ok: false; status: number; error: string }> {
+  const user = await findUserById(input.userId);
+  if (!user || user.isSuperAdmin) {
+    return { ok: false, status: 404, error: 'Compte administrateur introuvable.' };
+  }
+
+  if (typeof input.displayName === 'string') {
+    const cleanName = input.displayName.trim().slice(0, 120);
+    if (cleanName.length < 2) {
+      return {
+        ok: false,
+        status: 400,
+        error: 'Le nom complet doit contenir au moins 2 caractères.',
+      };
+    }
+    user.displayName = cleanName;
+  }
+
+  if (typeof input.phone === 'string') {
+    user.phone = input.phone.trim().slice(0, 40);
+  }
+
+  user.updatedAt = new Date().toISOString();
+  await saveUser(user);
+
+  await recordAuditLog({
+    actorUserId: input.actorUserId,
+    actorEmail: input.actorEmail,
+    scope: 'GLOBAL',
+    parishId: user.preferredParishId ?? null,
+    action: 'PARISH_ADMIN_UPDATED',
+    targetType: 'USER',
+    targetId: user.id,
+    summary: `Mise à jour du responsable ${user.displayName} (${user.email}).`,
+  });
+
+  return { ok: true, user: sanitizeUser(user) };
+}
+
+export async function updateMembershipStatus(input: {
   actorUserId: string;
   actorEmail: string;
   parishId: string;
   membershipId: string;
   status: 'ACTIVE' | 'SUSPENDED' | 'REMOVED';
-}): { ok: true } | { ok: false; status: number; error: string } {
-  const state = getPlatformState();
-  const membership = state.memberships.find(
-    (m) => m.id === input.membershipId && m.parishId === input.parishId
-  );
-  if (!membership) {
+}): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  const membership = await findMembershipByIdRepo(input.membershipId);
+  if (!membership || membership.parishId !== input.parishId) {
     return { ok: false, status: 404, error: 'Appartenance introuvable.' };
   }
 
   if (input.status !== 'ACTIVE') {
-    const isAdminHere = state.membershipRoles.some(
+    const [parishRoles, parishMemberships] = await Promise.all([
+      listMembershipRolesByParishRepo(input.parishId),
+      listMembershipsByParishRepo(input.parishId),
+    ]);
+
+    const isAdminHere = parishRoles.some(
       (mr) =>
         mr.membershipId === membership.id &&
         mr.roleCode === 'PARISH_ADMIN' &&
         mr.status === 'ACTIVE'
     );
     if (isAdminHere) {
-      const activeAdminMemberships = state.membershipRoles.filter((mr) => {
-        if (mr.parishId !== input.parishId || mr.roleCode !== 'PARISH_ADMIN' || mr.status !== 'ACTIVE') {
-          return false;
+      const activeMembershipIds = new Set(
+        parishMemberships.filter((mem) => mem.status === 'ACTIVE').map((mem) => mem.id)
+      );
+      const otherAdmins = parishRoles.filter(
+        (mr) =>
+          mr.membershipId !== membership.id &&
+          mr.roleCode === 'PARISH_ADMIN' &&
+          mr.status === 'ACTIVE' &&
+          activeMembershipIds.has(mr.membershipId)
+      );
+
+      let activeAdminCount = 0;
+      for (const mr of otherAdmins) {
+        const u = await findUserById(mr.userId);
+        if (u && u.status === 'ACTIVE') {
+          activeAdminCount += 1;
         }
-        const m = state.memberships.find((mem) => mem.id === mr.membershipId && mem.status === 'ACTIVE');
-        const u = state.users.find((usr) => usr.id === mr.userId && usr.status === 'ACTIVE');
-        return Boolean(m && u);
-      });
-      if (activeAdminMemberships.length <= 1) {
+      }
+
+      if (activeAdminCount === 0) {
         return {
           ok: false,
           status: 409,
@@ -684,9 +953,9 @@ export function updateMembershipStatus(input: {
 
   membership.status = input.status;
   membership.updatedAt = new Date().toISOString();
-  savePlatformState(state);
+  await saveMembershipRepo(membership);
 
-  recordAuditLog({
+  await recordAuditLog({
     actorUserId: input.actorUserId,
     actorEmail: input.actorEmail,
     scope: 'PARISH',
@@ -700,7 +969,7 @@ export function updateMembershipStatus(input: {
   return { ok: true };
 }
 
-export function registerPublicFideleAccount(input: {
+export async function registerPublicFideleAccount(input: {
   displayName: string;
   email: string;
   phone: string;
@@ -708,7 +977,7 @@ export function registerPublicFideleAccount(input: {
   provinceId: string;
   dioceseId: string;
   parishId?: string;
-}): { ok: true; user: SafeUserSummary } | { ok: false; status: number; error: string } {
+}): Promise<{ ok: true; user: SafeUserSummary } | { ok: false; status: number; error: string }> {
   const cleanEmail = String(input.email || '').trim().toLowerCase();
   const cleanName = String(input.displayName || '').trim().slice(0, 120);
   if (!cleanEmail || !cleanEmail.includes('@') || cleanName.length < 2) {
@@ -718,12 +987,19 @@ export function registerPublicFideleAccount(input: {
     return { ok: false, status: 400, error: 'Le mot de passe doit contenir au moins 6 caractères.' };
   }
 
-  const state = getPlatformState();
-  if (!state.settings.allowPublicFideleSignup) {
-    return { ok: false, status: 403, error: 'L’inscription publique des fidèles est actuellement fermée.' };
+  const [settings, existing] = await Promise.all([
+    getPlatformSettings(),
+    findUserByEmail(cleanEmail),
+  ]);
+  if (!settings.allowPublicFideleSignup) {
+    return {
+      ok: false,
+      status: 403,
+      error: 'L’inscription publique des fidèles est actuellement fermée.',
+    };
   }
 
-  if (state.users.some((u) => u.email.toLowerCase() === cleanEmail)) {
+  if (existing) {
     return { ok: false, status: 409, error: 'Un compte existe déjà avec cette adresse e-mail.' };
   }
 
@@ -749,10 +1025,9 @@ export function registerPublicFideleAccount(input: {
     lastLoginAt: null,
   };
 
-  state.users.push(user);
-  savePlatformState(state);
+  await saveUser(user);
 
-  recordAuditLog({
+  await recordAuditLog({
     actorUserId: user.id,
     actorEmail: user.email,
     scope: 'PUBLIC',

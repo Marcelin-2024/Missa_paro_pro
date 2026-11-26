@@ -3,8 +3,8 @@ import type {
   PaymentProviderCode,
   PaymentStatus,
 } from '../platform/platform.types.js';
-import { getPlatformState } from '../platform/platform.repository.js';
 import { PAYMENT_PROVIDERS_META, PAYMENT_STATUS_LABELS } from './payment.config.js';
+import { listPaymentsRepo } from '../../repositories/payments.repository.js';
 
 export interface ProviderBreakdownItem {
   provider: PaymentProviderCode;
@@ -47,21 +47,16 @@ export interface PaymentStatistics {
 function toHeightBucket(value: number, maxVal: number): number {
   if (maxVal <= 0 || value <= 0) return 0;
   const pct = Math.round((value / maxVal) * 100);
-  const clamped = Math.max(10, Math.min(100, Math.round(pct / 5) * 5));
-  return clamped;
+  return Math.max(10, Math.min(100, Math.round(pct / 5) * 5));
 }
 
-export function computePaymentStatistics(filters?: {
+export async function computePaymentStatistics(filters?: {
   parishId?: string;
   dateFrom?: string;
   dateTo?: string;
-}): PaymentStatistics {
-  const state = getPlatformState();
-  let rows = [...(state.payments || [])];
+}): Promise<PaymentStatistics> {
+  let rows = await listPaymentsRepo(filters?.parishId);
 
-  if (filters?.parishId) {
-    rows = rows.filter((p) => p.parishId === filters.parishId);
-  }
   if (filters?.dateFrom) {
     const fromIso = filters.dateFrom.trim();
     rows = rows.filter((p) => p.createdAt.slice(0, 10) >= fromIso);

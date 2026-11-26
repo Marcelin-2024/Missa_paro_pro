@@ -1,5 +1,4 @@
 import crypto from 'crypto';
-import { getPlatformState, savePlatformState } from '../platform/platform.repository.js';
 import type { IntentionEntity, IntentionStatus } from '../platform/platform.types.js';
 import { ensureDirectoryParishTenant, getParishById } from '../parishes/parishes.service.js';
 import { findParishById } from '../ecclesiastical/ecclesiastical.repository.js';
@@ -11,6 +10,18 @@ import {
   resolveIntentionTariff,
 } from '../payments/payment.config.js';
 import { getLatestPaymentForIntention } from '../payments/payments.service.js';
+import {
+  findIntentionByIdRepo,
+  findIntentionByTrackingRefRepo,
+  listIntentionsByParishRepo,
+  saveIntentionRepo,
+} from '../../repositories/intentions.repository.js';
+import {
+  findMesseByIdRepo,
+  listMessesByParishRepo,
+} from '../../repositories/massesAnnouncements.repository.js';
+import { listPaymentsByIntentionRepo, listPaymentsRepo } from '../../repositories/payments.repository.js';
+import { findUserById } from '../../repositories/users.repository.js';
 
 export const ALLOWED_INTENTION_TRANSITIONS: Record<IntentionStatus, IntentionStatus[]> = {
   PENDING: ['PROCESSING', 'ACCEPTED', 'REJECTED', 'CANCELLED'],
@@ -38,7 +49,7 @@ function generateTrackingRef(): string {
   return `INT-${year}-${suffix}`;
 }
 
-export function submitPublicIntention(input: {
+export async function submitPublicIntention(input: {
   provinceId: string;
   dioceseId: string;
   parishId: string;
@@ -51,7 +62,7 @@ export function submitPublicIntention(input: {
   details: string;
   desiredDate?: string | null;
   messeId?: string | null;
-}): { ok: true; intention: IntentionEntity } | { ok: false; status: number; error: string } {
+}): Promise<{ ok: true; intention: IntentionEntity } | { ok: false; status: number; error: string }> {
   const cleanName = String(input.requesterName || '').trim().slice(0, 120);
   const cleanPhone = String(input.requesterPhone || '').trim().slice(0, 40);
   const tariff = resolveIntentionTariff(input.intentionType, input.objet);
@@ -66,7 +77,7 @@ export function submitPublicIntention(input: {
     };
   }
 
-  let parish = getParishById(String(input.parishId || '').trim());
+  let parish = await getParishById(String(input.parishId || '').trim());
   if (!parish) {
     const dirMatch = findParishById(String(input.parishId || '').trim());
     if (
@@ -74,7 +85,7 @@ export function submitPublicIntention(input: {
       dirMatch.province.id === String(input.provinceId || '').trim() &&
       dirMatch.diocese.id === String(input.dioceseId || '').trim()
     ) {
-      parish = ensureDirectoryParishTenant(dirMatch.parish.id) ?? undefined;
+      parish = (await ensureDirectoryParishTenant(dirMatch.parish.id)) ?? undefined;
     }
   }
 
@@ -93,7 +104,6 @@ export function submitPublicIntention(input: {
     };
   }
 
-  const state = getPlatformState();
   const now = new Date().toISOString();
   const record: IntentionEntity = {
     id: `int-${crypto.randomUUID().slice(0, 12)}`,
@@ -123,10 +133,9 @@ export function submitPublicIntention(input: {
     updatedAt: now,
   };
 
-  state.intentions.unshift(record);
-  savePlatformState(state);
+  await saveIntentionRepo(record);
 
-  createNotification({
+  await createNotification({
     parishId: parish.id,
     trackingRef: record.trackingRef,
     audience: 'PARISH_STAFF',
@@ -135,7 +144,7 @@ export function submitPublicIntention(input: {
     message: `${record.objet} déposée par ${record.requesterName} (${record.trackingRef}).`,
   });
 
-  createNotification({
+  await createNotification({
     userId: record.requesterUserId,
     parishId: parish.id,
     trackingRef: record.trackingRef,
@@ -148,7 +157,7 @@ export function submitPublicIntention(input: {
   return { ok: true, intention: record };
 }
 
-export function listIntentionsForParish(
+export async function listIntentionsForParish(
   parishId: string,
   filter?: {
     status?: string;
@@ -157,9 +166,8 @@ export function listIntentionsForParish(
     messeId?: string;
     date?: string;
   }
-): IntentionEntity[] {
-  const state = getPlatformState();
-  let rows = state.intentions.filter((item) => item.parishId === parishId);
+): Promise<IntentionEntity[]> {
+  let rows = await listIntentionsByParishRepo(parishId);
 
   if (filter?.status) {
     rows = rows.filter((item) => item.status === filter.status);
@@ -186,7 +194,7 @@ export function listIntentionsForParish(
   return rows;
 }
 
-export function transitionIntentionStatus(input: {
+export async function transitionIntentionStatus(input: {
   actorUserId: string;
   actorEmail: string;
   parishId: string;
@@ -194,12 +202,9 @@ export function transitionIntentionStatus(input: {
   nextStatus: IntentionStatus;
   internalComment?: string;
   messeId?: string | null;
-}): { ok: true; intention: IntentionEntity } | { ok: false; status: number; error: string } {
-  const state = getPlatformState();
-  const intention = state.intentions.find(
-    (item) => item.id === input.intentionId && item.parishId === input.parishId
-  );
-  if (!intention) {
+}): Promise<{ ok: true; intention: IntentionEntity } | { ok: false; status: number; error: string }> {
+  const intention = await findIntentionByIdRepo(input.intentionId);
+  if (!intention || intention.parishId !== input.parishId) {
     return { ok: false, status: 404, error: 'Intention introuvable dans cette paroisse.' };
   }
 
@@ -221,10 +226,8 @@ export function transitionIntentionStatus(input: {
         error: 'Une messe associée est obligatoire pour programmer une intention.',
       };
     }
-    const validMesse = state.messes.find(
-      (m) => m.id === chosenMesseId && m.parishId === input.parishId
-    );
-    if (!validMesse) {
+    const validMesse = await findMesseByIdRepo(chosenMesseId);
+    if (!validMesse || validMesse.parishId !== input.parishId) {
       return {
         ok: false,
         status: 400,
@@ -239,7 +242,7 @@ export function transitionIntentionStatus(input: {
   intention.status = input.nextStatus;
   intention.updatedAt = now;
 
-  if (typeof input.internalComment === 'string' && input.internalComment.trim()) {
+  if (typeof input.internalComment === 'string') {
     intention.internalComment = input.internalComment.trim().slice(0, 500);
   }
 
@@ -253,9 +256,9 @@ export function transitionIntentionStatus(input: {
     intention.celebratedBy = input.actorUserId;
   }
 
-  savePlatformState(state);
+  await saveIntentionRepo(intention);
 
-  recordAuditLog({
+  await recordAuditLog({
     actorUserId: input.actorUserId,
     actorEmail: input.actorEmail,
     scope: 'PARISH',
@@ -266,8 +269,7 @@ export function transitionIntentionStatus(input: {
     summary: `Intention ${intention.trackingRef} : ${previousStatus} → ${input.nextStatus}.`,
   });
 
-  // Never expose internalComment in faithful notifications!
-  createNotification({
+  await createNotification({
     userId: intention.requesterUserId,
     parishId: intention.parishId,
     trackingRef: intention.trackingRef,
@@ -280,19 +282,240 @@ export function transitionIntentionStatus(input: {
   return { ok: true, intention };
 }
 
-export function getPublicIntentionTracking(trackingRef: string) {
-  const cleanRef = String(trackingRef || '').trim().toUpperCase();
-  if (!cleanRef) return null;
+export async function updateIntentionDetailsByParish(input: {
+  actorUserId: string;
+  actorEmail: string;
+  parishId: string;
+  intentionId: string;
+  requesterName?: string;
+  requesterPhone?: string;
+  requesterEmail?: string;
+  intentionType?: string;
+  objet?: string;
+  details?: string;
+  desiredDate?: string | null;
+  messeId?: string | null;
+  internalComment?: string;
+}): Promise<{ ok: true; intention: IntentionEntity } | { ok: false; status: number; error: string }> {
+  const intention = await findIntentionByIdRepo(input.intentionId);
+  if (!intention || intention.parishId !== input.parishId) {
+    return { ok: false, status: 404, error: 'Intention introuvable dans cette paroisse.' };
+  }
 
-  const state = getPlatformState();
-  const item = state.intentions.find((i) => i.trackingRef.toUpperCase() === cleanRef);
+  if (['CELEBRATED', 'REJECTED', 'CANCELLED'].includes(intention.status)) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'Une intention clôturée ne peut plus être modifiée.',
+    };
+  }
+
+  if (typeof input.requesterName === 'string') {
+    const cleanName = input.requesterName.trim().slice(0, 120);
+    if (cleanName.length < 2) {
+      return {
+        ok: false,
+        status: 400,
+        error: 'Le nom du demandeur doit contenir au moins 2 caractères.',
+      };
+    }
+    intention.requesterName = cleanName;
+  }
+
+  if (typeof input.requesterPhone === 'string') {
+    const cleanPhone = input.requesterPhone.trim().slice(0, 40);
+    if (cleanPhone.length < 6) {
+      return { ok: false, status: 400, error: 'Numéro de téléphone invalide.' };
+    }
+    intention.requesterPhone = cleanPhone;
+  }
+
+  if (typeof input.requesterEmail === 'string') {
+    intention.requesterEmail = input.requesterEmail.trim().slice(0, 150);
+  }
+
+  if (typeof input.objet === 'string') {
+    const cleanObjet = input.objet.trim().slice(0, 150);
+    if (cleanObjet.length < 2) {
+      return { ok: false, status: 400, error: 'L’objet de l’intention est requis.' };
+    }
+    intention.objet = cleanObjet;
+  }
+
+  if (typeof input.details === 'string') {
+    const cleanDetails = input.details.trim().slice(0, 1000);
+    if (cleanDetails.length < 3) {
+      return { ok: false, status: 400, error: 'Les précisions de prière sont requises.' };
+    }
+    intention.details = cleanDetails;
+  }
+
+  if (input.desiredDate !== undefined) {
+    intention.desiredDate = input.desiredDate ? String(input.desiredDate).trim().slice(0, 40) : null;
+  }
+
+  if (typeof input.internalComment === 'string') {
+    intention.internalComment = input.internalComment.trim().slice(0, 500);
+  }
+
+  if (typeof input.intentionType === 'string' && input.intentionType.trim()) {
+    const tariff = resolveIntentionTariff(input.intentionType, intention.objet);
+    intention.intentionType = tariff.code;
+    const paymentsForIntention = await listPaymentsByIntentionRepo(intention.id);
+    const hasPaidTx = paymentsForIntention.some((p) => p.status === 'SUCCESS');
+    if (!hasPaidTx) {
+      intention.amount = tariff.amount;
+      intention.currency = 'XOF';
+    }
+  }
+
+  if (input.messeId !== undefined) {
+    const nextMesseId = input.messeId ? String(input.messeId).trim().slice(0, 80) : null;
+    if (nextMesseId) {
+      const validMesse = await findMesseByIdRepo(nextMesseId);
+      if (!validMesse || validMesse.parishId !== input.parishId) {
+        return {
+          ok: false,
+          status: 400,
+          error: 'La messe sélectionnée n’appartient pas à cette paroisse.',
+        };
+      }
+      intention.messeId = validMesse.id;
+    } else if (intention.status !== 'SCHEDULED') {
+      intention.messeId = null;
+    }
+  }
+
+  intention.updatedAt = new Date().toISOString();
+  await saveIntentionRepo(intention);
+
+  await recordAuditLog({
+    actorUserId: input.actorUserId,
+    actorEmail: input.actorEmail,
+    scope: 'PARISH',
+    parishId: input.parishId,
+    action: 'INTENTION_UPDATED',
+    targetType: 'INTENTION',
+    targetId: intention.id,
+    summary: `Mise à jour des informations de l’intention ${intention.trackingRef}.`,
+  });
+
+  return { ok: true, intention };
+}
+
+export async function getIntentionDetailsForParish(parishId: string, intentionId: string) {
+  const item = await findIntentionByIdRepo(intentionId);
+  if (!item || item.parishId !== parishId) return null;
+
+  const tariff = resolveIntentionTariff(item.intentionType, item.objet);
+  const [linkedMesse, latestPayment, processedByUser, celebratedByUser] = await Promise.all([
+    item.messeId ? findMesseByIdRepo(item.messeId) : Promise.resolve(null),
+    getLatestPaymentForIntention(item.id),
+    item.processedBy ? findUserById(item.processedBy) : Promise.resolve(null),
+    item.celebratedBy ? findUserById(item.celebratedBy) : Promise.resolve(null),
+  ]);
+
+  const validMesse = linkedMesse && linkedMesse.parishId === parishId ? linkedMesse : null;
+
+  return {
+    intention: item,
+    statusLabel: INTENTION_STATUS_LABELS[item.status] || item.status,
+    intentionTypeLabel: tariff.label,
+    effectiveAmount:
+      typeof item.amount === 'number' && item.amount > 0 ? item.amount : tariff.amount,
+    currency: item.currency || 'XOF',
+    processedByName: processedByUser ? processedByUser.displayName : null,
+    celebratedByName: celebratedByUser ? celebratedByUser.displayName : null,
+    messe: validMesse
+      ? {
+          id: validMesse.id,
+          date: validMesse.date,
+          horaire: validMesse.horaire,
+          celebrant: validMesse.celebrant,
+          type: validMesse.type || 'Messe paroissiale',
+          lieu: validMesse.lieu || 'Église paroissiale',
+        }
+      : null,
+    payment: latestPayment
+      ? {
+          id: latestPayment.id,
+          transactionReference: latestPayment.transactionReference,
+          provider: latestPayment.provider,
+          providerName: PAYMENT_PROVIDERS_META[latestPayment.provider].name,
+          amount: latestPayment.amount,
+          currency: latestPayment.currency,
+          status: latestPayment.status,
+          statusLabel: PAYMENT_STATUS_LABELS[latestPayment.status],
+          confirmedAt: latestPayment.confirmedAt,
+          createdAt: latestPayment.createdAt,
+        }
+      : null,
+  };
+}
+
+export async function listEnrichedIntentionsForParish(parishId: string) {
+  const [rows, parishMesses, parishPayments] = await Promise.all([
+    listIntentionsByParishRepo(parishId),
+    listMessesByParishRepo(parishId),
+    listPaymentsRepo(parishId),
+  ]);
+
+  const messeMap = new Map(parishMesses.map((m) => [m.id, m]));
+  const paymentsByIntention = new Map<string, typeof parishPayments>();
+  for (const pay of parishPayments) {
+    const arr = paymentsByIntention.get(pay.intentionId) ?? [];
+    arr.push(pay);
+    paymentsByIntention.set(pay.intentionId, arr);
+  }
+
+  return rows.map((item) => {
+    const tariff = resolveIntentionTariff(item.intentionType, item.objet);
+    const linkedMesse = item.messeId ? messeMap.get(item.messeId) ?? null : null;
+    const candidates = (paymentsByIntention.get(item.id) ?? []).sort((a, b) => {
+      if (a.status === 'SUCCESS' && b.status !== 'SUCCESS') return -1;
+      if (b.status === 'SUCCESS' && a.status !== 'SUCCESS') return 1;
+      return b.createdAt.localeCompare(a.createdAt);
+    });
+    const latestPayment = candidates[0] ?? null;
+
+    return {
+      ...item,
+      intentionTypeLabel: tariff.label,
+      effectiveAmount:
+        typeof item.amount === 'number' && item.amount > 0 ? item.amount : tariff.amount,
+      currency: item.currency || 'XOF',
+      linkedMesse: linkedMesse
+        ? {
+            id: linkedMesse.id,
+            date: linkedMesse.date,
+            horaire: linkedMesse.horaire,
+            celebrant: linkedMesse.celebrant,
+          }
+        : null,
+      paymentSummary: latestPayment
+        ? {
+            status: latestPayment.status,
+            statusLabel: PAYMENT_STATUS_LABELS[latestPayment.status],
+            providerName: PAYMENT_PROVIDERS_META[latestPayment.provider].name,
+            transactionReference: latestPayment.transactionReference,
+          }
+        : null,
+    };
+  });
+}
+
+export async function getPublicIntentionTracking(trackingRef: string) {
+  const item = await findIntentionByTrackingRefRepo(trackingRef);
   if (!item) return null;
 
-  const linkedMesse = item.messeId
-    ? state.messes.find((m) => m.id === item.messeId && m.parishId === item.parishId)
-    : null;
+  const [linkedMesse, latestPayment] = await Promise.all([
+    item.messeId ? findMesseByIdRepo(item.messeId) : Promise.resolve(null),
+    getLatestPaymentForIntention(item.id),
+  ]);
 
-  const latestPayment = getLatestPaymentForIntention(item.id);
+  const validMesse =
+    linkedMesse && linkedMesse.parishId === item.parishId ? linkedMesse : null;
+
   const amount =
     typeof item.amount === 'number' && item.amount > 0
       ? item.amount
@@ -314,8 +537,8 @@ export function getPublicIntentionTracking(trackingRef: string) {
     status: item.status,
     statusLabel: INTENTION_STATUS_LABELS[item.status],
     celebratedAt: item.celebratedAt,
-    messe: linkedMesse
-      ? { date: linkedMesse.date, horaire: linkedMesse.horaire, celebrant: linkedMesse.celebrant }
+    messe: validMesse
+      ? { date: validMesse.date, horaire: validMesse.horaire, celebrant: validMesse.celebrant }
       : null,
     payment: latestPayment
       ? {
