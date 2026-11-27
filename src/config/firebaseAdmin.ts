@@ -2,10 +2,12 @@ import fs from 'fs';
 import path from 'path';
 import {
   applicationDefault,
+  cert,
   getApp,
   getApps,
   initializeApp,
   type App,
+  type ServiceAccount,
 } from 'firebase-admin/app';
 import { getAuth, type Auth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
@@ -17,12 +19,49 @@ export interface FirebaseAppletConfig {
   storageBucket?: string;
 }
 
+interface RawServiceAccountJson extends ServiceAccount {
+  project_id?: string;
+  private_key?: string;
+  client_email?: string;
+}
+
 let cachedConfig: FirebaseAppletConfig | null = null;
 let cachedApp: App | null = null;
 let cachedDb: Firestore | null = null;
 let cachedAuth: Auth | null = null;
 
-export function getFirebaseConfig(): FirebaseAppletConfig {
+function parseServiceAccountFromEnv(): RawServiceAccountJson {
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!raw || !raw.trim()) {
+    throw new Error(
+      'Variable d’environnement FIREBASE_SERVICE_ACCOUNT manquante ou vide : fournissez le JSON du compte de service Firebase Admin.'
+    );
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`FIREBASE_SERVICE_ACCOUNT invalide : JSON mal formé (${detail}).`);
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT invalide : un objet JSON est attendu.');
+  }
+
+  const serviceAccount = { ...(parsed as RawServiceAccountJson) };
+  if (typeof serviceAccount.private_key === 'string' && serviceAccount.private_key.length > 0) {
+    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+  }
+  if (typeof serviceAccount.privateKey === 'string' && serviceAccount.privateKey.length > 0) {
+    serviceAccount.privateKey = serviceAccount.privateKey.replace(/\\n/g, '\n');
+  }
+
+  return serviceAccount;
+}
+
+export function getFirebaseConfig(serviceAccount?: RawServiceAccountJson): FirebaseAppletConfig {
   if (cachedConfig) return cachedConfig;
 
   const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
@@ -33,7 +72,13 @@ export function getFirebaseConfig(): FirebaseAppletConfig {
     fileCfg = JSON.parse(raw) as Partial<FirebaseAppletConfig>;
   }
 
-  const projectId = (process.env.FIREBASE_PROJECT_ID || fileCfg.projectId || '').trim();
+  const projectId = (
+    process.env.FIREBASE_PROJECT_ID ||
+    serviceAccount?.project_id ||
+    serviceAccount?.projectId ||
+    fileCfg.projectId ||
+    ''
+  ).trim();
   const firestoreDatabaseId = (
     process.env.FIRESTORE_DATABASE_ID ||
     fileCfg.firestoreDatabaseId ||
@@ -43,7 +88,7 @@ export function getFirebaseConfig(): FirebaseAppletConfig {
 
   if (!projectId || projectId === 'remixed-project-id') {
     throw new Error(
-      'Configuration Firebase manquante ou invalide : projectId absent dans firebase-applet-config.json ou FIREBASE_PROJECT_ID.'
+      'Configuration Firebase manquante ou invalide : projectId absent dans FIREBASE_PROJECT_ID, FIREBASE_SERVICE_ACCOUNT ou firebase-applet-config.json.'
     );
   }
 
@@ -57,16 +102,37 @@ export function getFirebaseConfig(): FirebaseAppletConfig {
 
 export function getAdminApp(): App {
   if (cachedApp) return cachedApp;
-  const cfg = getFirebaseConfig();
 
-  cachedApp = getApps().length
-    ? getApp()
-    : initializeApp({
-        credential: applicationDefault(),
+  const isProduction = process.env.NODE_ENV === 'production';
+  const hasServiceAccountEnv = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT?.trim());
+
+  if (isProduction || hasServiceAccountEnv) {
+    const serviceAccount = parseServiceAccountFromEnv();
+    const cfg = getFirebaseConfig(serviceAccount);
+
+    if (!getApps().length) {
+      initializeApp({
+        credential: cert(serviceAccount as ServiceAccount),
         projectId: cfg.projectId,
         storageBucket: cfg.storageBucket,
       });
+    }
 
+    cachedApp = getApp();
+    return cachedApp;
+  }
+
+  // En développement local / aperçu AI Studio uniquement si FIREBASE_SERVICE_ACCOUNT n'est pas défini
+  const cfg = getFirebaseConfig();
+  if (!getApps().length) {
+    initializeApp({
+      credential: applicationDefault(),
+      projectId: cfg.projectId,
+      storageBucket: cfg.storageBucket,
+    });
+  }
+
+  cachedApp = getApp();
   return cachedApp;
 }
 
