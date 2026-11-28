@@ -42,6 +42,7 @@ import { loadFormConfig } from './src/utils/formConfig.js';
 import {
   classifyFirestoreError,
   formatFirestoreError,
+  initializeFirebaseRuntime,
   verifyFirestoreConnection,
 } from './src/config/firebaseAdmin.js';
 
@@ -359,6 +360,13 @@ export function createApp() {
 }
 
 if (process.env.MISSA_NO_LISTEN !== '1') {
+  try {
+    initializeFirebaseRuntime();
+  } catch (err) {
+    console.error(formatFirestoreError('Initialisation Firebase Admin au démarrage', err));
+    process.exit(1);
+  }
+
   const PORT = Number(process.env.PORT || 3000);
   const HOST = '0.0.0.0';
   const app = createApp();

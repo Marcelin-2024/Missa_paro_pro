@@ -110,9 +110,13 @@ async function testAdminValidationAndSingleton() {
   assert.ok(badEmailRes.output.includes('client_email'), badEmailRes.output);
 
   // Valid missaparo-70dfd JSON -> singleton app & single Firestore instance
+  // CRITICAL regression check: call getAdminDb() FIRST WITHOUT FIREBASE_PROJECT_ID set,
+  // proving firebase-applet-config.json on disk NEVER overrides FIREBASE_SERVICE_ACCOUNT!
   const validRes = runSubprocessEnvCheck(
     {
       NODE_ENV: 'production',
+      FIREBASE_PROJECT_ID: '',
+      FIRESTORE_DATABASE_ID: '',
       FIREBASE_SERVICE_ACCOUNT: JSON.stringify({
         type: 'service_account',
         project_id: 'missaparo-70dfd',
@@ -120,20 +124,80 @@ async function testAdminValidationAndSingleton() {
         private_key: privateKey.replace(/\n/g, '\\n'),
       }),
     },
-    "import { getApps } from 'firebase-admin/app'; import { getAdminApp, getAdminDb } from './src/config/firebaseAdmin'; const a1 = getAdminApp(); const a2 = getAdminApp(); const d1 = getAdminDb(); const d2 = getAdminDb(); if (a1 !== a2 || d1 !== d2 || getApps().length !== 1) process.exit(1); console.log(JSON.stringify({ apps: getApps().length, projectId: a1.options.projectId }));"
+    "import { getApps } from 'firebase-admin/app'; import { getAdminApp, getAdminDb, getFirebaseRuntimeIdentity } from './src/config/firebaseAdmin'; const d1 = getAdminDb(); const a1 = getAdminApp(); const a2 = getAdminApp(); const d2 = getAdminDb(); const id = getFirebaseRuntimeIdentity(); if (a1 !== a2 || d1 !== d2 || getApps().length !== 1) process.exit(1); console.log(JSON.stringify({ apps: getApps().length, projectId: a1.options.projectId, identity: id }));"
   );
   assert.strictEqual(validRes.ok, true, validRes.output);
   assert.ok(validRes.output.includes('"apps":1'), validRes.output);
   assert.ok(validRes.output.includes('"projectId":"missaparo-70dfd"'), validRes.output);
+  assert.ok(validRes.output.includes('"databaseId":"(default)"'), validRes.output);
+  assert.ok(validRes.output.includes('"clientEmail":"firebase-adminsdk-fbsvc@missaparo-70dfd.iam.gserviceaccount.com"'), validRes.output);
+  assert.ok(validRes.output.includes('"credentialSource":"FIREBASE_SERVICE_ACCOUNT (cert)"'), validRes.output);
+  assert.ok(!validRes.output.includes('BEGIN PRIVATE KEY'), validRes.output);
 
-  // Error classification coverage
-  assert.strictEqual(classifyFirestoreError({ code: 7, message: 'PERMISSION_DENIED' }).category, 'PERMISSION_DENIED');
-  assert.strictEqual(classifyFirestoreError({ code: 16, message: 'UNAUTHENTICATED' }).category, 'UNAUTHENTICATED');
+  // Conflicting FIREBASE_PROJECT_ID vs FIREBASE_SERVICE_ACCOUNT.project_id must fail explicitly
+  const conflictProjectRes = runSubprocessEnvCheck(
+    {
+      NODE_ENV: 'production',
+      FIREBASE_PROJECT_ID: 'galvanized-math-478019-q1',
+      FIREBASE_SERVICE_ACCOUNT: JSON.stringify({
+        type: 'service_account',
+        project_id: 'missaparo-70dfd',
+        client_email: 'firebase-adminsdk-fbsvc@missaparo-70dfd.iam.gserviceaccount.com',
+        private_key: privateKey.replace(/\n/g, '\\n'),
+      }),
+    },
+    "import { getAdminDb } from './src/config/firebaseAdmin'; getAdminDb();"
+  );
+  assert.strictEqual(conflictProjectRes.ok, false);
+  assert.ok(conflictProjectRes.output.includes('FIREBASE_PROJECT_ID'), conflictProjectRes.output);
+
+  // Invalid FIRESTORE_DATABASE_ID must fail explicitly
+  const invalidDbIdRes = runSubprocessEnvCheck(
+    {
+      NODE_ENV: 'production',
+      FIRESTORE_DATABASE_ID: 'INVALID_DB_ID!!',
+      FIREBASE_SERVICE_ACCOUNT: JSON.stringify({
+        type: 'service_account',
+        project_id: 'missaparo-70dfd',
+        client_email: 'firebase-adminsdk-fbsvc@missaparo-70dfd.iam.gserviceaccount.com',
+        private_key: privateKey.replace(/\n/g, '\\n'),
+      }),
+    },
+    "import { getAdminDb } from './src/config/firebaseAdmin'; getAdminDb();"
+  );
+  assert.strictEqual(invalidDbIdRes.ok, false);
+  assert.ok(invalidDbIdRes.output.includes('FIRESTORE_DATABASE_ID invalide'), invalidDbIdRes.output);
+
+  // Explicit custom FIRESTORE_DATABASE_ID is honored consistently
+  const customDbIdRes = runSubprocessEnvCheck(
+    {
+      NODE_ENV: 'production',
+      FIRESTORE_DATABASE_ID: 'missaparo-prod-db',
+      FIREBASE_SERVICE_ACCOUNT: JSON.stringify({
+        type: 'service_account',
+        project_id: 'missaparo-70dfd',
+        client_email: 'firebase-adminsdk-fbsvc@missaparo-70dfd.iam.gserviceaccount.com',
+        private_key: privateKey.replace(/\n/g, '\\n'),
+      }),
+    },
+    "import { getAdminDb, getFirebaseRuntimeIdentity } from './src/config/firebaseAdmin'; const db = getAdminDb(); console.log(JSON.stringify({ dbId: db.databaseId, identityDbId: getFirebaseRuntimeIdentity().databaseId }));"
+  );
+  assert.strictEqual(customDbIdRes.ok, true, customDbIdRes.output);
+  assert.ok(customDbIdRes.output.includes('"dbId":"missaparo-prod-db"'), customDbIdRes.output);
+  assert.ok(customDbIdRes.output.includes('"identityDbId":"missaparo-prod-db"'), customDbIdRes.output);
+
+  // Distinct Firestore error classification coverage
+  assert.strictEqual(classifyFirestoreError({ code: 7, message: 'PERMISSION_DENIED: Missing or insufficient permissions.' }).category, 'PERMISSION_DENIED');
+  assert.strictEqual(classifyFirestoreError({ code: 7, message: 'PERMISSION_DENIED: Cloud Firestore API has not been used in project missaparo-70dfd before or it is disabled. SERVICE_DISABLED' }).publicMessage.includes('API Cloud Firestore désactivée'), true);
+  assert.strictEqual(classifyFirestoreError(new Error('FIREBASE_SERVICE_ACCOUNT invalide : project_id "other" ne correspond pas au projet attendu "missaparo-70dfd".')).category, 'WRONG_PROJECT');
+  assert.strictEqual(classifyFirestoreError(new Error('Identifiant FIRESTORE_DATABASE_ID invalide : "BAD"')).category, 'WRONG_DATABASE_ID');
+  assert.strictEqual(classifyFirestoreError({ code: 5, message: '5 NOT_FOUND: The database (default) does not exist for project missaparo-70dfd' }).category, 'DATABASE_NOT_FOUND');
   assert.strictEqual(classifyFirestoreError({ code: 5, message: 'NOT_FOUND' }).category, 'NOT_FOUND');
+  assert.strictEqual(classifyFirestoreError({ code: 16, message: 'UNAUTHENTICATED' }).category, 'UNAUTHENTICATED');
   assert.strictEqual(classifyFirestoreError({ code: 14, message: 'UNAVAILABLE' }).category, 'UNAVAILABLE');
   assert.strictEqual(classifyFirestoreError({ code: 4, message: 'DEADLINE_EXCEEDED' }).category, 'DEADLINE_EXCEEDED');
 
-  console.log('   ✔ Validations credentials, project_id, client_email, erreurs & singleton OK.');
+  console.log('   ✔ Validations credentials, project_id, databaseId, identité effective, erreurs & singleton OK.');
 }
 
 async function testHealthRoutesAndFirestoreCrud() {
