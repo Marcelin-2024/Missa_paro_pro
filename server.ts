@@ -40,8 +40,9 @@ import {
 import { getPublicPaymentByReference } from './src/modules/payments/payments.service.js';
 import { loadFormConfig } from './src/utils/formConfig.js';
 import {
+  classifyFirestoreError,
   formatFirestoreError,
-  isFirestorePermissionDenied,
+  verifyFirestoreConnection,
 } from './src/config/firebaseAdmin.js';
 
 declare module 'express-session' {
@@ -112,6 +113,29 @@ export function createApp() {
       req.headers['x-forwarded-proto'] = 'https';
     }
     next();
+  });
+
+  app.get('/health', (_req: Request, res: Response) => {
+    res.status(200).json({ status: 'ok', service: 'missa-paro' });
+  });
+
+  app.get('/health/ready', async (_req: Request, res: Response) => {
+    try {
+      await verifyFirestoreConnection();
+      res.status(200).json({ status: 'ready', firestore: 'ok' });
+    } catch (err) {
+      const classified = classifyFirestoreError(err);
+      console.error(formatFirestoreError('GET /health/ready', err));
+      res.status(503).json({
+        status: 'unavailable',
+        firestore: 'error',
+        code: classified.publicCode,
+      });
+    }
+  });
+
+  app.head('/', (_req: Request, res: Response) => {
+    res.status(200).end();
   });
 
   app.use(
@@ -315,23 +339,19 @@ export function createApp() {
     const formatted = formatFirestoreError(`${req.method} ${req.originalUrl}`, err);
     console.error(formatted);
 
-    const permissionDenied = isFirestorePermissionDenied(err);
-    const statusCode = permissionDenied ? 503 : 500;
-    const message = permissionDenied
-      ? 'Base de données Firestore inaccessible (permissions IAM manquantes pour le compte de service).'
-      : 'Erreur interne lors de l’accès à la base de données Firestore.';
+    const classified = classifyFirestoreError(err);
 
     if (req.originalUrl.startsWith('/api/') || req.accepts('json') === 'json') {
-      res.status(statusCode).json({
+      res.status(classified.httpStatus).json({
         success: false,
-        code: permissionDenied ? 'FIRESTORE_PERMISSION_DENIED' : 'FIRESTORE_ERROR',
-        error: message,
+        code: classified.publicCode,
+        error: classified.publicMessage,
       });
       return;
     }
 
-    res.status(statusCode).type('html').send(
-      `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Erreur serveur — Missa Paro</title></head><body style="font-family:system-ui,sans-serif;max-width:640px;margin:4rem auto;padding:1.5rem;"><h1>Service temporairement indisponible</h1><p>${message}</p></body></html>`
+    res.status(classified.httpStatus).type('html').send(
+      `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Erreur serveur — Missa Paro</title></head><body style="font-family:system-ui,sans-serif;max-width:640px;margin:4rem auto;padding:1.5rem;"><h1>Service temporairement indisponible</h1><p>${classified.publicMessage}</p></body></html>`
     );
   });
 
@@ -343,13 +363,25 @@ if (process.env.MISSA_NO_LISTEN !== '1') {
   const HOST = '0.0.0.0';
   const app = createApp();
 
-  startSessionCleanupTimer();
+  const cleanupTimer = startSessionCleanupTimer();
 
   void ensureSuperAdminFromEnvIfUnclaimed().catch((err) => {
     console.error(formatFirestoreError('Bootstrap Super Admin ENV', err));
   });
 
-  app.listen(PORT, HOST, () => {
+  const server = app.listen(PORT, HOST, () => {
     console.log(`Missa Paro server listening on http://${HOST}:${PORT}`);
   });
+
+  const shutdown = (signal: NodeJS.Signals) => {
+    console.info(`[Server] Signal ${signal} reçu, arrêt gracieux en cours...`);
+    clearInterval(cleanupTimer);
+    server.close(() => {
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 10_000).unref();
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }

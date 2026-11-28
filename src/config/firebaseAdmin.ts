@@ -13,6 +13,8 @@ import { getAuth, type Auth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 
+export const EXPECTED_PRODUCTION_PROJECT_ID = 'missaparo-70dfd';
+
 export interface FirebaseAppletConfig {
   projectId: string;
   firestoreDatabaseId?: string;
@@ -25,10 +27,34 @@ interface RawServiceAccountJson extends ServiceAccount {
   client_email?: string;
 }
 
+export type FirestoreErrorCategory =
+  | 'PERMISSION_DENIED'
+  | 'UNAUTHENTICATED'
+  | 'NOT_FOUND'
+  | 'UNAVAILABLE'
+  | 'DEADLINE_EXCEEDED'
+  | 'INTERNAL';
+
+export interface ClassifiedFirestoreError {
+  category: FirestoreErrorCategory;
+  httpStatus: number;
+  publicCode: string;
+  publicMessage: string;
+  logMessage: string;
+}
+
 let cachedConfig: FirebaseAppletConfig | null = null;
 let cachedApp: App | null = null;
 let cachedDb: Firestore | null = null;
 let cachedAuth: Auth | null = null;
+let loggedStartupIdentity = false;
+
+function sanitizeErrorText(raw: string): string {
+  return raw
+    .replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, '[REDACTED_PRIVATE_KEY]')
+    .replace(/"private_key"\s*:\s*"[^"]*"/gi, '"private_key":"[REDACTED]"')
+    .replace(/Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi, 'Bearer [REDACTED]');
+}
 
 function parseServiceAccountFromEnv(): RawServiceAccountJson {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
@@ -51,11 +77,38 @@ function parseServiceAccountFromEnv(): RawServiceAccountJson {
   }
 
   const serviceAccount = { ...(parsed as RawServiceAccountJson) };
+
+  const projectId = String(serviceAccount.project_id || serviceAccount.projectId || '').trim();
+  if (!projectId) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT invalide : champ project_id manquant.');
+  }
+
+  const expectedProjectId = (
+    process.env.EXPECTED_FIREBASE_PROJECT_ID || EXPECTED_PRODUCTION_PROJECT_ID
+  ).trim();
+  if (projectId !== expectedProjectId) {
+    throw new Error(
+      `FIREBASE_SERVICE_ACCOUNT invalide : project_id "${projectId}" ne correspond pas au projet attendu "${expectedProjectId}".`
+    );
+  }
+
+  const clientEmail = String(serviceAccount.client_email || serviceAccount.clientEmail || '').trim();
+  if (!clientEmail || !clientEmail.includes('@')) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT invalide : champ client_email manquant ou invalide.');
+  }
+
   if (typeof serviceAccount.private_key === 'string' && serviceAccount.private_key.length > 0) {
     serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
   }
   if (typeof serviceAccount.privateKey === 'string' && serviceAccount.privateKey.length > 0) {
     serviceAccount.privateKey = serviceAccount.privateKey.replace(/\\n/g, '\n');
+  }
+
+  const resolvedPrivateKey = String(
+    serviceAccount.private_key || serviceAccount.privateKey || ''
+  ).trim();
+  if (!resolvedPrivateKey) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT invalide : champ private_key manquant ou vide.');
   }
 
   return serviceAccount;
@@ -118,6 +171,9 @@ export function getAdminApp(): App {
     const cfg = getFirebaseConfig(serviceAccount);
 
     if (!getApps().length) {
+      // Note : firebase-admin@14.5.1 convertit en interne ServiceAccountCredential en option
+      // `credentials` vers @google-cloud/firestore@9 -> google-auth-library@11, ce qui peut
+      // émettre un warning deprecated interne provenant du SDK lui-même.
       initializeApp({
         credential: cert(serviceAccount as ServiceAccount),
         projectId: cfg.projectId,
@@ -126,6 +182,12 @@ export function getAdminApp(): App {
     }
 
     cachedApp = getApp();
+    if (!loggedStartupIdentity) {
+      loggedStartupIdentity = true;
+      console.info(
+        `[FirebaseAdmin] Initialisé via FIREBASE_SERVICE_ACCOUNT (project_id=${cfg.projectId}, databaseId=${cfg.firestoreDatabaseId}, client_email=${serviceAccount.client_email || serviceAccount.clientEmail})`
+      );
+    }
     return cachedApp;
   }
 
@@ -140,6 +202,12 @@ export function getAdminApp(): App {
   }
 
   cachedApp = getApp();
+  if (!loggedStartupIdentity) {
+    loggedStartupIdentity = true;
+    console.info(
+      `[FirebaseAdmin] Initialisé via ADC développement (project_id=${cfg.projectId}, databaseId=${cfg.firestoreDatabaseId})`
+    );
+  }
   return cachedApp;
 }
 
@@ -176,18 +244,77 @@ export function getAdminStorageBucket() {
 }
 
 export function isFirestorePermissionDenied(error: unknown): boolean {
-  if (!error || typeof error !== 'object') return false;
-  const code = (error as { code?: unknown }).code;
-  const msg = error instanceof Error ? error.message : String(error);
-  return code === 7 || code === 'permission-denied' || msg.includes('PERMISSION_DENIED');
+  return classifyFirestoreError(error).category === 'PERMISSION_DENIED';
+}
+
+export function classifyFirestoreError(error: unknown): ClassifiedFirestoreError {
+  const code =
+    error && typeof error === 'object' ? (error as { code?: unknown }).code : undefined;
+  const rawMsg = error instanceof Error ? error.message : String(error ?? '');
+  const msg = sanitizeErrorText(rawMsg);
+
+  if (code === 7 || code === 'permission-denied' || msg.includes('PERMISSION_DENIED')) {
+    return {
+      category: 'PERMISSION_DENIED',
+      httpStatus: 503,
+      publicCode: 'FIRESTORE_PERMISSION_DENIED',
+      publicMessage: 'Base de données Firestore inaccessible (autorisations IAM insuffisantes).',
+      logMessage: `PERMISSION_DENIED (${msg})`,
+    };
+  }
+
+  if (code === 16 || code === 'unauthenticated' || msg.includes('UNAUTHENTICATED')) {
+    return {
+      category: 'UNAUTHENTICATED',
+      httpStatus: 503,
+      publicCode: 'FIRESTORE_UNAUTHENTICATED',
+      publicMessage: 'Authentification vers Firestore invalide ou expirée.',
+      logMessage: `UNAUTHENTICATED (${msg})`,
+    };
+  }
+
+  if (code === 5 || code === 'not-found' || msg.includes('NOT_FOUND')) {
+    return {
+      category: 'NOT_FOUND',
+      httpStatus: 503,
+      publicCode: 'FIRESTORE_NOT_FOUND',
+      publicMessage: 'Ressource ou base Firestore introuvable.',
+      logMessage: `NOT_FOUND (${msg})`,
+    };
+  }
+
+  if (code === 14 || code === 'unavailable' || msg.includes('UNAVAILABLE')) {
+    return {
+      category: 'UNAVAILABLE',
+      httpStatus: 503,
+      publicCode: 'FIRESTORE_UNAVAILABLE',
+      publicMessage: 'Service Firestore temporairement indisponible.',
+      logMessage: `UNAVAILABLE (${msg})`,
+    };
+  }
+
+  if (code === 4 || code === 'deadline-exceeded' || msg.includes('DEADLINE_EXCEEDED')) {
+    return {
+      category: 'DEADLINE_EXCEEDED',
+      httpStatus: 504,
+      publicCode: 'FIRESTORE_TIMEOUT',
+      publicMessage: 'Délai de réponse Firestore dépassé.',
+      logMessage: `DEADLINE_EXCEEDED (${msg})`,
+    };
+  }
+
+  return {
+    category: 'INTERNAL',
+    httpStatus: 500,
+    publicCode: 'FIRESTORE_ERROR',
+    publicMessage: 'Erreur interne lors de l’accès à la base de données Firestore.',
+    logMessage: `INTERNAL (${msg})`,
+  };
 }
 
 export function formatFirestoreError(context: string, error: unknown): string {
-  const msg = error instanceof Error ? error.message : String(error);
-  if (isFirestorePermissionDenied(error)) {
-    return `[Firestore PERMISSION_DENIED] ${context} : vérifiez que le compte de service possède le rôle roles/datastore.user sur le projet cible. Détail : ${msg}`;
-  }
-  return `[Firestore Error] ${context} : ${msg}`;
+  const classified = classifyFirestoreError(error);
+  return `[Firestore ${classified.category}] ${context} : ${classified.logMessage}`;
 }
 
 export async function verifyFirestoreConnection(): Promise<{
@@ -195,8 +322,8 @@ export async function verifyFirestoreConnection(): Promise<{
   projectId: string;
   databaseId: string;
 }> {
-  const cfg = getFirebaseConfig();
   const db = getAdminDb();
+  const cfg = getFirebaseConfig();
   await db.collection('systemMetadata').doc('bootstrap').get();
   return {
     ok: true,

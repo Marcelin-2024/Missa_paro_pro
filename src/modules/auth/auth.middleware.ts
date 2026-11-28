@@ -54,10 +54,7 @@ export async function attachSessionContext(
   next: NextFunction
 ): Promise<void> {
   try {
-    if (!req.session.csrfToken) {
-      req.session.csrfToken = generateCsrfToken();
-    }
-    res.locals.csrfToken = req.session.csrfToken;
+    res.locals.csrfToken = req.session.csrfToken || '';
     res.locals.currentUser = null;
     res.locals.activeParish = null;
     res.locals.activeRoles = [];
@@ -68,6 +65,11 @@ export async function attachSessionContext(
       next();
       return;
     }
+
+    if (!req.session.csrfToken) {
+      req.session.csrfToken = generateCsrfToken();
+    }
+    res.locals.csrfToken = req.session.csrfToken;
 
     const user = await findUserById(uid);
 
