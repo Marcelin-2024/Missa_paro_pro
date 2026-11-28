@@ -79,12 +79,19 @@ export function getFirebaseConfig(serviceAccount?: RawServiceAccountJson): Fireb
     fileCfg.projectId ||
     ''
   ).trim();
+  const matchesFileProject = Boolean(
+    fileCfg.projectId && projectId === fileCfg.projectId.trim()
+  );
   const firestoreDatabaseId = (
     process.env.FIRESTORE_DATABASE_ID ||
-    fileCfg.firestoreDatabaseId ||
+    (matchesFileProject ? fileCfg.firestoreDatabaseId : undefined) ||
     '(default)'
   ).trim();
-  const storageBucket = (process.env.FIREBASE_STORAGE_BUCKET || fileCfg.storageBucket || '').trim();
+  const storageBucket = (
+    process.env.FIREBASE_STORAGE_BUCKET ||
+    (matchesFileProject ? fileCfg.storageBucket : undefined) ||
+    `${projectId}.firebasestorage.app`
+  ).trim();
 
   if (!projectId || projectId === 'remixed-project-id') {
     throw new Error(
